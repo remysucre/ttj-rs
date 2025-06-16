@@ -1,7 +1,7 @@
 use polars::prelude::*;
 use std::time::Instant;
 
-pub fn q16bo() {
+pub fn q16b() {
     let an = LazyFrame::scan_parquet("imdb/aka_name.parquet", Default::default())
         .unwrap()
         .collect()
