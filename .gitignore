@@ -1,0 +1,3 @@
+/target
+/imdb/*.csv
+/imdb/*.parquet

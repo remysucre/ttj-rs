@@ -1,0 +1,7 @@
+[package]
+name = "lfj"
+version = "0.1.0"
+edition = "2024"
+
+[dependencies]
+polars = {version = "0.48.1", features = ["lazy", "parquet", "regex", "strings", "is_in", "dtype-i128"]}
