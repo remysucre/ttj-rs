@@ -125,7 +125,7 @@ pub fn q19d() -> Result<(), PolarsError> {
         .suffix("_chn")
         .finish()
         .select([
-            col("name").min().alias("voicing_actress"),
+            col("name_n").min().alias("voicing_actress"),
             col("title").min().alias("jap_engl_voiced_movie"),
         ])
         .collect()?;
