@@ -1,9 +1,4 @@
-use lfj::q1a;
-use lfj::q16b;
-use lfj::q19d;
-
-use lfj::o1a;
-use lfj::o16b;
+use lfj::*;
 
 fn main() -> Result<(), polars::prelude::PolarsError> {
     // q1a::q1a()?;
@@ -12,5 +7,6 @@ fn main() -> Result<(), polars::prelude::PolarsError> {
 
     o1a::q1a()?;
     o16b::q16b()?;
+    o19d::q19d()?;
     Ok(())
 }

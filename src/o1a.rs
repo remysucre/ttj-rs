@@ -1,6 +1,6 @@
+use ahash::HashSet;
 use polars::prelude::*;
 use std::time::Instant;
-use ahash::HashSet;
 
 pub fn q1a() -> Result<(), PolarsError> {
     let ct = LazyFrame::scan_parquet("imdb/company_type.parquet", Default::default())?.collect()?;
