@@ -1,5 +1,6 @@
 use polars::prelude::*;
-use std::{collections::HashSet, time::Instant};
+use std::time::Instant;
+use ahash::HashSet;
 
 pub fn q1a() -> Result<(), PolarsError> {
     let ct = LazyFrame::scan_parquet("imdb/company_type.parquet", Default::default())?.collect()?;
@@ -39,10 +40,7 @@ pub fn q1a() -> Result<(), PolarsError> {
     let it_s: HashSet<i32> = it.column("id")?.i32()?.into_iter().flatten().collect();
     let ct_s: HashSet<i32> = ct.column("id")?.i32()?.into_iter().flatten().collect();
 
-    dbg!(&it_s);
-    dbg!(&ct_s);
-
-    let mut mi_idx_s: HashSet<i32> = HashSet::new();
+    let mut mi_idx_s: HashSet<i32> = HashSet::default();
 
     for (x, y) in mi_idx
         .column("movie_id")?
@@ -57,7 +55,7 @@ pub fn q1a() -> Result<(), PolarsError> {
         }
     }
 
-    let mut mc_s: HashSet<i32> = HashSet::new();
+    let mut mc_s: HashSet<i32> = HashSet::default();
 
     for (x, y) in mc
         .column("company_type_id")?

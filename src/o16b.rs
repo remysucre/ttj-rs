@@ -1,4 +1,6 @@
+use ahash::{HashMap, HashSet};
 use polars::prelude::*;
+// use std::{collections::HashMap, collections::HashSet, time::Instant};
 use std::time::Instant;
 
 pub fn q16b() -> Result<(), PolarsError> {
@@ -24,57 +26,108 @@ pub fn q16b() -> Result<(), PolarsError> {
         .filter(col("keyword").eq(lit("character-name-in-title")))
         .collect()?;
 
-    let res = an
-        .lazy()
-        .join_builder()
-        .with(n.lazy())
-        .left_on([col("person_id")])
-        .right_on([col("id")])
-        .suffix("_n")
-        .finish()
-        .join_builder()
-        .with(ci.lazy())
-        .left_on([col("person_id")])
-        .right_on([col("person_id")])
-        .suffix("_ci")
-        .finish()
-        .join_builder()
-        .with(t.lazy())
-        .left_on([col("movie_id")])
-        .right_on([col("id")])
-        .suffix("_t")
-        .finish()
-        .join_builder()
-        .with(mk.lazy())
-        .left_on([col("movie_id")])
-        .right_on([col("movie_id")])
-        .suffix("_mk")
-        .finish()
-        .join_builder()
-        .with(k.lazy())
-        .left_on([col("keyword_id")])
-        .right_on([col("id")])
-        .suffix("_k")
-        .finish()
-        .join_builder()
-        .with(mc.lazy())
-        .left_on([col("movie_id")])
-        .right_on([col("movie_id")])
-        .suffix("_mc")
-        .finish()
-        .join_builder()
-        .with(cn.lazy())
-        .left_on([col("company_id")])
-        .right_on([col("id")])
-        .suffix("_cn")
-        .finish()
-        .select([
-            col("name").min().alias("cool_actor_pseudonym"),
-            col("title").min().alias("series_named_after_char"),
-        ])
-        .collect()?;
+    let k_s: HashSet<i32> = k.column("id")?.i32()?.into_iter().flatten().collect();
+    let cn_s: HashSet<i32> = cn.column("id")?.i32()?.into_iter().flatten().collect();
 
-    println!("{:?}", res);
+    // build a hashmap for an, mapping person_id to name
+    let mut an_map: HashMap<i32, Vec<&str>> = HashMap::default();
+    for (person_id, name) in an
+        .column("person_id")?
+        .i32()?
+        .into_iter()
+        .zip(an.column("name")?.str()?.into_iter())
+    {
+        if let (Some(person_id), Some(name)) = (person_id, name) {
+            an_map.entry(person_id).or_default().push(name);
+        }
+    }
+
+    let n_s: HashSet<i32> = n
+        .column("id")?
+        .i32()?
+        .into_iter()
+        .flatten()
+        .filter(|&id| an_map.contains_key(&id))
+        .collect();
+
+    let mut mk_s: HashSet<i32> = HashSet::default();
+
+    for (movie_id, keyword_id) in mk
+        .column("movie_id")?
+        .i32()?
+        .into_iter()
+        .zip(mk.column("keyword_id")?.i32()?.into_iter())
+    {
+        if let (Some(movie_id), Some(keyword_id)) = (movie_id, keyword_id) {
+            if k_s.contains(&keyword_id) {
+                mk_s.insert(movie_id);
+            }
+        }
+    }
+
+    let mut mc_s: HashSet<i32> = HashSet::default();
+
+    for (movie_id, company_id) in mc
+        .column("movie_id")?
+        .i32()?
+        .into_iter()
+        .zip(mc.column("company_id")?.i32()?.into_iter())
+    {
+        if let (Some(movie_id), Some(company_id)) = (movie_id, company_id) {
+            if cn_s.contains(&company_id) {
+                mc_s.insert(movie_id);
+            }
+        }
+    }
+
+    let mut t_s: HashMap<i32, Vec<&str>> = HashMap::default();
+
+    for (movie_id, title) in t
+        .column("id")?
+        .i32()?
+        .into_iter()
+        .zip(t.column("title")?.str()?.into_iter())
+    {
+        if let (Some(movie_id), Some(title)) = (movie_id, title) {
+            if mk_s.contains(&movie_id) && mc_s.contains(&movie_id) {
+                t_s.entry(movie_id).or_default().push(title);
+            }
+        }
+    }
+
+    let mut res = None;
+
+    for (x, y) in ci
+        .column("person_id")?
+        .i32()?
+        .into_iter()
+        .zip(ci.column("movie_id")?.i32()?.into_iter())
+    {
+        if let (Some(person_id), Some(movie_id)) = (x, y) {
+            if n_s.contains(&person_id) {
+                if let Some(ts) = t_s.get(&movie_id) {
+                    if let Some(names) = an_map.get(&person_id) {
+                        for name in names {
+                            for title in ts {
+                                if let Some((old_name, old_title)) = res.as_mut() {
+                                    if name < *old_name {
+                                        *old_name = name;
+                                    }
+                                    if title < *old_title {
+                                        *old_title = title;
+                                    }
+                                } else {
+                                    res = Some((name, title));
+                                }
+                            }
+                        }
+                    }
+                }
+            }
+        }
+    }
+
+    dbg!(res);
     let duration = start.elapsed();
     dbg!(duration);
 
