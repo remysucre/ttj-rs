@@ -2,16 +2,13 @@ use polars::prelude::*;
 use std::time::Instant;
 
 pub fn q1a() -> Result<(), PolarsError> {
-    let ct = LazyFrame::scan_parquet("imdb/company_type.parquet", Default::default())?
-        .collect()?;
-    let it = LazyFrame::scan_parquet("imdb/info_type.parquet", Default::default())?
-        .collect()?;
-    let mc = LazyFrame::scan_parquet("imdb/movie_companies.parquet", Default::default())?
-        .collect()?;
-    let mi_idx = LazyFrame::scan_parquet("imdb/movie_info_idx.parquet", Default::default())?
-        .collect()?;
-    let t = LazyFrame::scan_parquet("imdb/title.parquet", Default::default())?
-        .collect()?;
+    let ct = LazyFrame::scan_parquet("imdb/company_type.parquet", Default::default())?.collect()?;
+    let it = LazyFrame::scan_parquet("imdb/info_type.parquet", Default::default())?.collect()?;
+    let mc =
+        LazyFrame::scan_parquet("imdb/movie_companies.parquet", Default::default())?.collect()?;
+    let mi_idx =
+        LazyFrame::scan_parquet("imdb/movie_info_idx.parquet", Default::default())?.collect()?;
+    let t = LazyFrame::scan_parquet("imdb/title.parquet", Default::default())?.collect()?;
 
     let start = Instant::now();
 
@@ -98,4 +95,4 @@ pub fn q1a() -> Result<(), PolarsError> {
 //   AND t.id = mc.movie_id
 //   AND t.id = mi_idx.movie_id
 //   AND mc.movie_id = mi_idx.movie_id
-//   AND it.id = mi_idx.info_type_id; 
+//   AND it.id = mi_idx.info_type_id;

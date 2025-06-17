@@ -2,22 +2,16 @@ use polars::prelude::*;
 use std::time::Instant;
 
 pub fn q16b() -> Result<(), PolarsError> {
-    let an = LazyFrame::scan_parquet("imdb/aka_name.parquet", Default::default())?
-        .collect()?;
-    let ci = LazyFrame::scan_parquet("imdb/cast_info.parquet", Default::default())?
-        .collect()?;
-    let cn = LazyFrame::scan_parquet("imdb/company_name.parquet", Default::default())?
-        .collect()?;
-    let k = LazyFrame::scan_parquet("imdb/keyword.parquet", Default::default())?
-        .collect()?;
-    let mc = LazyFrame::scan_parquet("imdb/movie_companies.parquet", Default::default())?
-        .collect()?;
-    let mk = LazyFrame::scan_parquet("imdb/movie_keyword.parquet", Default::default())?
-        .collect()?;
-    let n = LazyFrame::scan_parquet("imdb/name.parquet", Default::default())?
-        .collect()?;
-    let t = LazyFrame::scan_parquet("imdb/title.parquet", Default::default())?
-        .collect()?;
+    let an = LazyFrame::scan_parquet("imdb/aka_name.parquet", Default::default())?.collect()?;
+    let ci = LazyFrame::scan_parquet("imdb/cast_info.parquet", Default::default())?.collect()?;
+    let cn = LazyFrame::scan_parquet("imdb/company_name.parquet", Default::default())?.collect()?;
+    let k = LazyFrame::scan_parquet("imdb/keyword.parquet", Default::default())?.collect()?;
+    let mc =
+        LazyFrame::scan_parquet("imdb/movie_companies.parquet", Default::default())?.collect()?;
+    let mk =
+        LazyFrame::scan_parquet("imdb/movie_keyword.parquet", Default::default())?.collect()?;
+    let n = LazyFrame::scan_parquet("imdb/name.parquet", Default::default())?.collect()?;
+    let t = LazyFrame::scan_parquet("imdb/title.parquet", Default::default())?.collect()?;
 
     let start = Instant::now();
 
@@ -110,4 +104,4 @@ pub fn q16b() -> Result<(), PolarsError> {
 //   AND an.person_id = ci.person_id
 //   AND ci.movie_id = mc.movie_id
 //   AND ci.movie_id = mk.movie_id
-//   AND mc.movie_id = mk.movie_id; 
+//   AND mc.movie_id = mk.movie_id;

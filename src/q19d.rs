@@ -2,26 +2,17 @@ use polars::prelude::*;
 use std::time::Instant;
 
 pub fn q19d() -> Result<(), PolarsError> {
-    let an = LazyFrame::scan_parquet("imdb/aka_name.parquet", Default::default())?
-        .collect()?;
-    let chn = LazyFrame::scan_parquet("imdb/char_name.parquet", Default::default())?
-        .collect()?;
-    let ci = LazyFrame::scan_parquet("imdb/cast_info.parquet", Default::default())?
-        .collect()?;
-    let cn = LazyFrame::scan_parquet("imdb/company_name.parquet", Default::default())?
-        .collect()?;
-    let it = LazyFrame::scan_parquet("imdb/info_type.parquet", Default::default())?
-        .collect()?;
-    let mc = LazyFrame::scan_parquet("imdb/movie_companies.parquet", Default::default())?
-        .collect()?;
-    let mi = LazyFrame::scan_parquet("imdb/movie_info.parquet", Default::default())?
-        .collect()?;
-    let n = LazyFrame::scan_parquet("imdb/name.parquet", Default::default())?
-        .collect()?;
-    let rt = LazyFrame::scan_parquet("imdb/role_type.parquet", Default::default())?
-        .collect()?;
-    let t = LazyFrame::scan_parquet("imdb/title.parquet", Default::default())?
-        .collect()?;
+    let an = LazyFrame::scan_parquet("imdb/aka_name.parquet", Default::default())?.collect()?;
+    let chn = LazyFrame::scan_parquet("imdb/char_name.parquet", Default::default())?.collect()?;
+    let ci = LazyFrame::scan_parquet("imdb/cast_info.parquet", Default::default())?.collect()?;
+    let cn = LazyFrame::scan_parquet("imdb/company_name.parquet", Default::default())?.collect()?;
+    let it = LazyFrame::scan_parquet("imdb/info_type.parquet", Default::default())?.collect()?;
+    let mc =
+        LazyFrame::scan_parquet("imdb/movie_companies.parquet", Default::default())?.collect()?;
+    let mi = LazyFrame::scan_parquet("imdb/movie_info.parquet", Default::default())?.collect()?;
+    let n = LazyFrame::scan_parquet("imdb/name.parquet", Default::default())?.collect()?;
+    let rt = LazyFrame::scan_parquet("imdb/role_type.parquet", Default::default())?.collect()?;
+    let t = LazyFrame::scan_parquet("imdb/title.parquet", Default::default())?.collect()?;
 
     let start = Instant::now();
 
@@ -37,10 +28,7 @@ pub fn q19d() -> Result<(), PolarsError> {
 
     let ci = ci
         .lazy()
-        .filter(col("note").is_in(
-            lit(s).implode(),
-            false,
-        ))
+        .filter(col("note").is_in(lit(s).implode(), false))
         .collect()?;
 
     let cn = cn
@@ -53,15 +41,9 @@ pub fn q19d() -> Result<(), PolarsError> {
         .filter(col("info").eq(lit("release dates")))
         .collect()?;
 
-    let n = n
-        .lazy()
-        .filter(col("gender").eq(lit("f")))
-        .collect()?;
+    let n = n.lazy().filter(col("gender").eq(lit("f"))).collect()?;
 
-    let rt = rt
-        .lazy()
-        .filter(col("role").eq(lit("actress")))
-        .collect()?;
+    let rt = rt.lazy().filter(col("role").eq(lit("actress"))).collect()?;
 
     let t = t
         .lazy()
@@ -171,4 +153,4 @@ pub fn q19d() -> Result<(), PolarsError> {
 //   AND rt.id = ci.role_id
 //   AND n.id = an.person_id
 //   AND ci.person_id = an.person_id
-//   AND chn.id = ci.person_role_id; 
+//   AND chn.id = ci.person_role_id;
