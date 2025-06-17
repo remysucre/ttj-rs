@@ -74,14 +74,15 @@ pub fn q1a() -> Result<(), PolarsError> {
         .zip(t.column("production_year")?.i32()?.into_iter()) {
         if let (Some(id), Some(title), Some(production_year)) = (x, y, z) {
             if mi_idx_s.contains(&id) && mc_s.contains(&id) {
-                let new_res = (title.to_string(), production_year);
-                if let Some((old_title, old_year)) = res.as_ref() {
-                    let new_year = std::cmp::min(*old_year, production_year);
-                    let title_string = title.to_string();
-                    let new_title: &String  = std::cmp::min(old_title, &title_string);
-                    res = Some((new_title.to_string(), new_year));
+                if let Some((old_title, old_year)) = res.as_mut() {
+                    if production_year < *old_year {
+                        *old_year = production_year;
+                    } 
+                    if title < *old_title {
+                        *old_title = title;
+                    }
                 } else {
-                    res = Some(new_res);
+                    res = Some((title, production_year));
                 }
             }
         }
