@@ -1,40 +1,28 @@
 use polars::prelude::*;
 use std::time::Instant;
 
-pub fn q1a() {
-    let ct = LazyFrame::scan_parquet("imdb/company_type.parquet", Default::default())
-        .unwrap()
-        .collect()
-        .unwrap();
-    let it = LazyFrame::scan_parquet("imdb/info_type.parquet", Default::default())
-        .unwrap()
-        .collect()
-        .unwrap();
-    let mc = LazyFrame::scan_parquet("imdb/movie_companies.parquet", Default::default())
-        .unwrap()
-        .collect()
-        .unwrap();
-    let mi_idx = LazyFrame::scan_parquet("imdb/movie_info_idx.parquet", Default::default())
-        .unwrap()
-        .collect()
-        .unwrap();
-    let t = LazyFrame::scan_parquet("imdb/title.parquet", Default::default())
-        .unwrap()
-        .collect()
-        .unwrap();
+pub fn q1a() -> Result<(), PolarsError> {
+    let ct = LazyFrame::scan_parquet("imdb/company_type.parquet", Default::default())?
+        .collect()?;
+    let it = LazyFrame::scan_parquet("imdb/info_type.parquet", Default::default())?
+        .collect()?;
+    let mc = LazyFrame::scan_parquet("imdb/movie_companies.parquet", Default::default())?
+        .collect()?;
+    let mi_idx = LazyFrame::scan_parquet("imdb/movie_info_idx.parquet", Default::default())?
+        .collect()?;
+    let t = LazyFrame::scan_parquet("imdb/title.parquet", Default::default())?
+        .collect()?;
 
     let start = Instant::now();
 
     let ct = ct
         .lazy()
         .filter(col("kind").eq(lit("production companies")))
-        .collect()
-        .unwrap();
+        .collect()?;
     let it = it
         .lazy()
         .filter(col("info").eq(lit("top 250 rank")))
-        .collect()
-        .unwrap();
+        .collect()?;
     let mc = mc
         .lazy()
         .filter(
@@ -49,8 +37,7 @@ pub fn q1a() {
                 .contains(lit("(co-production)"), false)
                 .or(col("note").str().contains(lit("(presents)"), false)),
         )
-        .collect()
-        .unwrap();
+        .collect()?;
 
     let res = ct
         .lazy()
@@ -83,13 +70,14 @@ pub fn q1a() {
             col("title").min().alias("movie_title"),
             col("production_year").min().alias("movie_year"),
         ])
-        .collect()
-        .unwrap();
+        .collect()?;
 
     println!("{:?}", res);
 
     let duration = start.elapsed();
     dbg!(duration);
+
+    Ok(())
 }
 
 // 1a.sql

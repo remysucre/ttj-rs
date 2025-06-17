@@ -1,52 +1,34 @@
 use polars::prelude::*;
 use std::time::Instant;
 
-pub fn q16b() {
-    let an = LazyFrame::scan_parquet("imdb/aka_name.parquet", Default::default())
-        .unwrap()
-        .collect()
-        .unwrap();
-    let ci = LazyFrame::scan_parquet("imdb/cast_info.parquet", Default::default())
-        .unwrap()
-        .collect()
-        .unwrap();
-    let cn = LazyFrame::scan_parquet("imdb/company_name.parquet", Default::default())
-        .unwrap()
-        .collect()
-        .unwrap();
-    let k = LazyFrame::scan_parquet("imdb/keyword.parquet", Default::default())
-        .unwrap()
-        .collect()
-        .unwrap();
-    let mc = LazyFrame::scan_parquet("imdb/movie_companies.parquet", Default::default())
-        .unwrap()
-        .collect()
-        .unwrap();
-    let mk = LazyFrame::scan_parquet("imdb/movie_keyword.parquet", Default::default())
-        .unwrap()
-        .collect()
-        .unwrap();
-    let n = LazyFrame::scan_parquet("imdb/name.parquet", Default::default())
-        .unwrap()
-        .collect()
-        .unwrap();
-    let t = LazyFrame::scan_parquet("imdb/title.parquet", Default::default())
-        .unwrap()
-        .collect()
-        .unwrap();
+pub fn q16b() -> Result<(), PolarsError> {
+    let an = LazyFrame::scan_parquet("imdb/aka_name.parquet", Default::default())?
+        .collect()?;
+    let ci = LazyFrame::scan_parquet("imdb/cast_info.parquet", Default::default())?
+        .collect()?;
+    let cn = LazyFrame::scan_parquet("imdb/company_name.parquet", Default::default())?
+        .collect()?;
+    let k = LazyFrame::scan_parquet("imdb/keyword.parquet", Default::default())?
+        .collect()?;
+    let mc = LazyFrame::scan_parquet("imdb/movie_companies.parquet", Default::default())?
+        .collect()?;
+    let mk = LazyFrame::scan_parquet("imdb/movie_keyword.parquet", Default::default())?
+        .collect()?;
+    let n = LazyFrame::scan_parquet("imdb/name.parquet", Default::default())?
+        .collect()?;
+    let t = LazyFrame::scan_parquet("imdb/title.parquet", Default::default())?
+        .collect()?;
 
     let start = Instant::now();
 
     let cn = cn
         .lazy()
         .filter(col("country_code").eq(lit("[us]")))
-        .collect()
-        .unwrap();
+        .collect()?;
     let k = k
         .lazy()
         .filter(col("keyword").eq(lit("character-name-in-title")))
-        .collect()
-        .unwrap();
+        .collect()?;
 
     let res = an
         .lazy()
@@ -96,12 +78,13 @@ pub fn q16b() {
             col("name").min().alias("cool_actor_pseudonym"),
             col("title").min().alias("series_named_after_char"),
         ])
-        .collect()
-        .unwrap();
+        .collect()?;
 
     println!("{:?}", res);
     let duration = start.elapsed();
     dbg!(duration);
+
+    Ok(())
 }
 
 // 16b.sql

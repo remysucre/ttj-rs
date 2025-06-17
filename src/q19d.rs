@@ -1,47 +1,27 @@
 use polars::prelude::*;
 use std::time::Instant;
 
-pub fn q19d() {
-    let an = LazyFrame::scan_parquet("imdb/aka_name.parquet", Default::default())
-        .unwrap()
-        .collect()
-        .unwrap();
-    let chn = LazyFrame::scan_parquet("imdb/char_name.parquet", Default::default())
-        .unwrap()
-        .collect()
-        .unwrap();
-    let ci = LazyFrame::scan_parquet("imdb/cast_info.parquet", Default::default())
-        .unwrap()
-        .collect()
-        .unwrap();
-    let cn = LazyFrame::scan_parquet("imdb/company_name.parquet", Default::default())
-        .unwrap()
-        .collect()
-        .unwrap();
-    let it = LazyFrame::scan_parquet("imdb/info_type.parquet", Default::default())
-        .unwrap()
-        .collect()
-        .unwrap();
-    let mc = LazyFrame::scan_parquet("imdb/movie_companies.parquet", Default::default())
-        .unwrap()
-        .collect()
-        .unwrap();
-    let mi = LazyFrame::scan_parquet("imdb/movie_info.parquet", Default::default())
-        .unwrap()
-        .collect()
-        .unwrap();
-    let n = LazyFrame::scan_parquet("imdb/name.parquet", Default::default())
-        .unwrap()
-        .collect()
-        .unwrap();
-    let rt = LazyFrame::scan_parquet("imdb/role_type.parquet", Default::default())
-        .unwrap()
-        .collect()
-        .unwrap();
-    let t = LazyFrame::scan_parquet("imdb/title.parquet", Default::default())
-        .unwrap()
-        .collect()
-        .unwrap();
+pub fn q19d() -> Result<(), PolarsError> {
+    let an = LazyFrame::scan_parquet("imdb/aka_name.parquet", Default::default())?
+        .collect()?;
+    let chn = LazyFrame::scan_parquet("imdb/char_name.parquet", Default::default())?
+        .collect()?;
+    let ci = LazyFrame::scan_parquet("imdb/cast_info.parquet", Default::default())?
+        .collect()?;
+    let cn = LazyFrame::scan_parquet("imdb/company_name.parquet", Default::default())?
+        .collect()?;
+    let it = LazyFrame::scan_parquet("imdb/info_type.parquet", Default::default())?
+        .collect()?;
+    let mc = LazyFrame::scan_parquet("imdb/movie_companies.parquet", Default::default())?
+        .collect()?;
+    let mi = LazyFrame::scan_parquet("imdb/movie_info.parquet", Default::default())?
+        .collect()?;
+    let n = LazyFrame::scan_parquet("imdb/name.parquet", Default::default())?
+        .collect()?;
+    let rt = LazyFrame::scan_parquet("imdb/role_type.parquet", Default::default())?
+        .collect()?;
+    let t = LazyFrame::scan_parquet("imdb/title.parquet", Default::default())?
+        .collect()?;
 
     let start = Instant::now();
 
@@ -61,38 +41,32 @@ pub fn q19d() {
             lit(s).implode(),
             false,
         ))
-        .collect()
-        .unwrap();
+        .collect()?;
 
     let cn = cn
         .lazy()
         .filter(col("country_code").eq(lit("[us]")))
-        .collect()
-        .unwrap();
+        .collect()?;
 
     let it = it
         .lazy()
         .filter(col("info").eq(lit("release dates")))
-        .collect()
-        .unwrap();
+        .collect()?;
 
     let n = n
         .lazy()
         .filter(col("gender").eq(lit("f")))
-        .collect()
-        .unwrap();
+        .collect()?;
 
     let rt = rt
         .lazy()
         .filter(col("role").eq(lit("actress")))
-        .collect()
-        .unwrap();
+        .collect()?;
 
     let t = t
         .lazy()
         .filter(col("production_year").gt(lit(2000)))
-        .collect()
-        .unwrap();
+        .collect()?;
 
     let res = t
         .lazy()
@@ -154,12 +128,13 @@ pub fn q19d() {
             col("name").min().alias("voicing_actress"),
             col("title").min().alias("jap_engl_voiced_movie"),
         ])
-        .collect()
-        .unwrap();
+        .collect()?;
 
     println!("{:?}", res);
     let duration = start.elapsed();
     dbg!(duration);
+
+    Ok(())
 }
 
 // 19d.sql
