@@ -1,5 +1,5 @@
 use polars::prelude::*;
-use std::{collections::HashSet, time::Instant, vec};
+use std::{collections::HashSet, time::Instant};
 
 pub fn q1a() -> Result<(), PolarsError> {
     let ct = LazyFrame::scan_parquet("imdb/company_type.parquet", Default::default())?
