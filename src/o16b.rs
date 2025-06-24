@@ -8,10 +8,8 @@ pub fn q16b() -> Result<(), PolarsError> {
     let ci = LazyFrame::scan_parquet("imdb/cast_info.parquet", Default::default())?.collect()?;
     let cn = LazyFrame::scan_parquet("imdb/company_name.parquet", Default::default())?.collect()?;
     let k = LazyFrame::scan_parquet("imdb/keyword.parquet", Default::default())?.collect()?;
-    let mc =
-        LazyFrame::scan_parquet("imdb/movie_companies.parquet", Default::default())?.collect()?;
-    let mk =
-        LazyFrame::scan_parquet("imdb/movie_keyword.parquet", Default::default())?.collect()?;
+    let mc = LazyFrame::scan_parquet("imdb/movie_companies.parquet", Default::default())?.collect()?;
+    let mk = LazyFrame::scan_parquet("imdb/movie_keyword.parquet", Default::default())?.collect()?;
     let t = LazyFrame::scan_parquet("imdb/title.parquet", Default::default())?.collect()?;
 
     let start = Instant::now();

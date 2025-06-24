@@ -178,26 +178,27 @@ pub fn q7c() -> Result<(), PolarsError> {
         .zip(ci.column("movie_id")?.i32()?.into_iter())
     {
         if let (Some(pid), Some(mid)) = (pid, mid) {
-            if let Some(info) = pi_m.get(&pid) {
-                if let Some(name) = n_m.get(&pid) {
-                    if t_s.contains(&mid) && an_s.contains(&pid) {
-                        for name in name {
-                            for info in info {
-                                if let Some((old_name, old_info)) = res.as_mut() {
-                                    if name < old_name {
-                                        *old_name = name;
+                if let Some(info) = pi_m.get(&pid) {
+                        if let Some(name) = n_m.get(&pid) {
+                            if t_s.contains(&mid) && an_s.contains(&pid)
+                            {
+                                for name in name {
+                                    for info in info {
+                                        if let Some((old_name, old_info)) = res.as_mut() {
+                                            if name < old_name {
+                                                *old_name = name;
+                                            }
+                                            if info < old_info {
+                                                *old_info = info;
+                                            }
+                                        } else {
+                                            res = Some((name, info));
+                                        }
                                     }
-                                    if info < old_info {
-                                        *old_info = info;
-                                    }
-                                } else {
-                                    res = Some((name, info));
                                 }
                             }
                         }
-                    }
                 }
-            }
         }
     }
 
