@@ -36,7 +36,10 @@ pub fn q7c() -> Result<(), PolarsError> {
         })
         .collect();
 
-    let it_s: HashSet<i32> = it
+    dbg!("built lt_s");
+    dbg!(start.elapsed());
+
+    let it_s: Vec<i32> = it
         .column("id")?
         .i32()?
         .into_iter()
@@ -53,6 +56,10 @@ pub fn q7c() -> Result<(), PolarsError> {
             }
         })
         .collect();
+
+    dbg!(&it_s);
+    dbg!("built it_s");
+    dbg!(start.elapsed());
 
     let ml_s: HashSet<i32> = ml
         .column("linked_movie_id")?
@@ -72,26 +79,34 @@ pub fn q7c() -> Result<(), PolarsError> {
         })
         .collect();
 
-    let pi_m: HashMap<i32, Vec<&str>> = pi
-        .column("person_id")?
-        .i32()?
+    dbg!("built ml_s");
+    dbg!(start.elapsed());
+
+    let mut pi_m: HashMap<i32, Vec<&str>> = HashMap::default();
+
+    let pi_id_col = pi.column("person_id")?.i32()?;
+    let pi_note_col = pi.column("note")?.str()?;
+    let pi_info_type_id_col = pi.column("info_type_id")?.i32()?;
+    let pi_info_col = pi.column("info")?.str()?;
+
+    for (((id, note), info_type_id), info) in pi_id_col
         .into_iter()
-        .zip(pi.column("note")?.str()?.into_iter())
-        .zip(pi.column("info_type_id")?.i32()?.into_iter())
-        .zip(pi.column("info")?.str()?.into_iter())
-        .fold(
-            HashMap::default(),
-            |mut acc, (((id, note), info_type_id), info)| {
-                if let (Some(id), Some(note), Some(info_type_id), Some(info)) =
-                    (id, note, info_type_id, info)
-                {
-                    if it_s.contains(&info_type_id) {
-                        acc.entry(id).or_default().push(info);
-                    }
-                }
-                acc
-            },
-        );
+        .zip(pi_note_col.into_iter())
+        .zip(pi_info_type_id_col.into_iter())
+        .zip(pi_info_col.into_iter())
+    {
+        if let (Some(id), Some(_note), Some(info_type_id), Some(info)) =
+            (id, note, info_type_id, info)
+        {
+            if it_s.contains(&info_type_id) {
+                pi_m.entry(id).or_default().push(info);
+            }
+        }
+    }
+
+    dbg!("built pi_m");
+    dbg!(pi_m.len());
+    dbg!(start.elapsed());
 
     let t_s: HashSet<i32> = t
         .column("id")?
@@ -111,47 +126,53 @@ pub fn q7c() -> Result<(), PolarsError> {
         })
         .collect();
 
-    let n_m: HashMap<i32, Vec<&str>> = n
-        .column("id")?
-        .i32()?
-        .into_iter()
-        .zip(n.column("name")?.str()?.into_iter())
-        .zip(n.column("name_pcode_cf")?.str()?.into_iter())
-        .zip(n.column("gender")?.str()?.into_iter())
-        .fold(
-            HashMap::default(),
-            |mut acc, (((id, name), name_pcode), gender)| {
-                if let (Some(id), Some(name), Some(name_pcode), Some(gender)) =
-                    (id, name, name_pcode, gender)
-                {
-                    if pi_m.contains_key(&id) && ((name_pcode >= "A" && name_pcode <= "F") && gender == "m" || gender == "f" && name.starts_with('A'))
-                    {
-                        acc.entry(id).or_default().push(name);
-                    }
-                }
-                acc
-            },
-        );
+    dbg!("built t_s");
+    dbg!(t_s.len());
+    dbg!(start.elapsed());
+    let mut n_m: HashMap<i32, Vec<&str>> = HashMap::default();
 
-    let an_s: HashSet<i32> = an
-        .column("person_id")?
-        .i32()?
+    let id_col = n.column("id")?.i32()?;
+    let name_col = n.column("name")?.str()?;
+    let name_pcode_col = n.column("name_pcode_cf")?.str()?;
+    let gender_col = n.column("gender")?.str()?;
+
+    for ((id, name), (name_pcode, gender)) in id_col
         .into_iter()
-        .zip(an.column("name")?.str()?.into_iter())
-        .filter_map(|(id, name)| {
-            if let (Some(id), Some(name)) = (id, name) {
-                if n_m.contains_key(&id) && (name.contains('a') || name.starts_with('A')){
-                    Some(id)
-                } else {
-                    None
-                }
-            } else {
-                None
+        .zip(name_col.into_iter())
+        .zip(name_pcode_col.into_iter().zip(gender_col.into_iter()))
+    {
+        if let (Some(id), Some(name), Some(name_pcode), Some(gender)) =
+            (id, name, name_pcode, gender)
+        {
+            if pi_m.contains_key(&id)
+                && ((name_pcode >= "A" && name_pcode <= "F") && gender == "m"
+                    || gender == "f" && name.starts_with('A'))
+            {
+                n_m.entry(id).or_default().push(name);
             }
-        })
-        .collect();
+        }
+    }
 
-    // let mut all_res = HashSet::default();
+    dbg!("built n_m");
+    dbg!(n_m.len());
+    dbg!(start.elapsed());
+
+    let mut an_s: HashSet<i32> = HashSet::default();
+
+    let an_id_col = an.column("person_id")?.i32()?;
+    let an_name_col = an.column("name")?.str()?;
+
+    for (id, name) in an_id_col.into_iter().zip(an_name_col.into_iter()) {
+        if let (Some(id), Some(name)) = (id, name) {
+            if n_m.contains_key(&id) && (name.contains('a') || name.starts_with('A')) {
+                an_s.insert(id);
+            }
+        }
+    }
+
+    dbg!("built an_s");
+    dbg!(an_s.len());
+    dbg!(start.elapsed());
 
     let mut res: Option<(&str, &str)> = None;
 
@@ -162,7 +183,7 @@ pub fn q7c() -> Result<(), PolarsError> {
         .zip(ci.column("movie_id")?.i32()?.into_iter())
     {
         if let (Some(pid), Some(mid)) = (pid, mid) {
-            if an_s.contains(&pid) && t_s.contains(&mid) {
+            if t_s.contains(&mid) && an_s.contains(&pid) {
                 if let Some(name) = n_m.get(&pid) {
                     if let Some(info) = pi_m.get(&pid) {
                         for name in name {
@@ -188,6 +209,7 @@ pub fn q7c() -> Result<(), PolarsError> {
     dbg!(res);
 
     let duration = start.elapsed();
+    dbg!("total elapsed");
     dbg!(duration);
 
     Ok(())
