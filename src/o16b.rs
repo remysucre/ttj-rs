@@ -12,42 +12,26 @@ pub fn q16b() -> Result<(), PolarsError> {
         LazyFrame::scan_parquet("imdb/movie_companies.parquet", Default::default())?.collect()?;
     let mk =
         LazyFrame::scan_parquet("imdb/movie_keyword.parquet", Default::default())?.collect()?;
-    let n = LazyFrame::scan_parquet("imdb/name.parquet", Default::default())?.collect()?;
     let t = LazyFrame::scan_parquet("imdb/title.parquet", Default::default())?.collect()?;
 
     let start = Instant::now();
 
-    let cn = cn
-        .lazy()
-        .filter(col("country_code").eq(lit("[us]")))
-        .collect()?;
-    let k = k
-        .lazy()
-        .filter(col("keyword").eq(lit("character-name-in-title")))
-        .collect()?;
-
-    let k_s: HashSet<i32> = k.column("id")?.i32()?.into_iter().flatten().collect();
-    let cn_s: HashSet<i32> = cn.column("id")?.i32()?.into_iter().flatten().collect();
-
-    // build a hashmap for an, mapping person_id to name
-    let mut an_map: HashMap<i32, Vec<&str>> = HashMap::default();
-    for (person_id, name) in an
-        .column("person_id")?
-        .i32()?
-        .into_iter()
-        .zip(an.column("name")?.str()?.into_iter())
-    {
-        if let (Some(person_id), Some(name)) = (person_id, name) {
-            an_map.entry(person_id).or_default().push(name);
-        }
-    }
-
-    let n_s: HashSet<i32> = n
+    let k_s: HashSet<i32> = k
         .column("id")?
         .i32()?
         .into_iter()
-        .flatten()
-        .filter(|&id| an_map.contains_key(&id))
+        .zip(k.column("keyword")?.str()?.into_iter())
+        .filter_map(|(id, keyword)| {
+            if let (Some(id), Some(keyword)) = (id, keyword) {
+                if keyword == "character-name-in-title" {
+                    Some(id)
+                } else {
+                    None
+                }
+            } else {
+                None
+            }
+        })
         .collect();
 
     let mut mk_s: HashSet<i32> = HashSet::default();
@@ -65,6 +49,24 @@ pub fn q16b() -> Result<(), PolarsError> {
         }
     }
 
+    let cn_s: HashSet<i32> = cn
+        .column("id")?
+        .i32()?
+        .into_iter()
+        .zip(cn.column("country_code")?.str()?.into_iter())
+        .filter_map(|(id, country_code)| {
+            if let (Some(id), Some(country_code)) = (id, country_code) {
+                if country_code == "[us]" {
+                    Some(id)
+                } else {
+                    None
+                }
+            } else {
+                None
+            }
+        })
+        .collect();
+
     let mut mc_s: HashSet<i32> = HashSet::default();
 
     for (movie_id, company_id) in mc
@@ -80,7 +82,7 @@ pub fn q16b() -> Result<(), PolarsError> {
         }
     }
 
-    let mut t_s: HashMap<i32, Vec<&str>> = HashMap::default();
+    let mut t_m: HashMap<i32, Vec<&str>> = HashMap::default();
 
     for (movie_id, title) in t
         .column("id")?
@@ -90,8 +92,20 @@ pub fn q16b() -> Result<(), PolarsError> {
     {
         if let (Some(movie_id), Some(title)) = (movie_id, title) {
             if mk_s.contains(&movie_id) && mc_s.contains(&movie_id) {
-                t_s.entry(movie_id).or_default().push(title);
+                t_m.entry(movie_id).or_default().push(title);
             }
+        }
+    }
+
+    let mut an_m: HashMap<i32, Vec<&str>> = HashMap::default();
+    for (person_id, name) in an
+        .column("person_id")?
+        .i32()?
+        .into_iter()
+        .zip(an.column("name")?.str()?.into_iter())
+    {
+        if let (Some(person_id), Some(name)) = (person_id, name) {
+            an_m.entry(person_id).or_default().push(name);
         }
     }
 
@@ -104,21 +118,19 @@ pub fn q16b() -> Result<(), PolarsError> {
         .zip(ci.column("movie_id")?.i32()?.into_iter())
     {
         if let (Some(person_id), Some(movie_id)) = (x, y) {
-            if n_s.contains(&person_id) {
-                if let Some(ts) = t_s.get(&movie_id) {
-                    if let Some(names) = an_map.get(&person_id) {
-                        for name in names {
-                            for title in ts {
-                                if let Some((old_name, old_title)) = res.as_mut() {
-                                    if name < *old_name {
-                                        *old_name = name;
-                                    }
-                                    if title < *old_title {
-                                        *old_title = title;
-                                    }
-                                } else {
-                                    res = Some((name, title));
+            if let Some(ts) = t_m.get(&movie_id) {
+                if let Some(names) = an_m.get(&person_id) {
+                    for name in names {
+                        for title in ts {
+                            if let Some((old_name, old_title)) = res.as_mut() {
+                                if name < *old_name {
+                                    *old_name = name;
                                 }
+                                if title < *old_title {
+                                    *old_title = title;
+                                }
+                            } else {
+                                res = Some((name, title));
                             }
                         }
                     }
