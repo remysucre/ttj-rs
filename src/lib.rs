@@ -6,6 +6,7 @@ pub mod o10c;
 pub mod o16b;
 pub mod o19d;
 pub mod o25c;
+pub mod o30c;
 pub mod q16b;
 pub mod q19d;
 pub mod q1a;

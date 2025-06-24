@@ -9,9 +9,10 @@ fn main() -> Result<(), polars::prelude::PolarsError> {
     // o6f::q6f()?;
     // o7c::q7c()?;
     // o8c::q8c()?;
-    o10c::q10c()?;
+    // o10c::q10c()?;
     // o16b::q16b()?;
     // o19d::q19d()?;
     // o25c::q25c()?;
+    o30c::q30c()?;
     Ok(())
 }
