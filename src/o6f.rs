@@ -1,5 +1,4 @@
 use ahash::HashMap;
-use ahash::HashSet;
 use polars::prelude::*;
 use std::time::Instant;
 
@@ -10,6 +9,19 @@ pub fn q6f() -> Result<(), PolarsError> {
         LazyFrame::scan_parquet("imdb/movie_keyword.parquet", Default::default())?.collect()?;
     let n = LazyFrame::scan_parquet("imdb/name.parquet", Default::default())?.collect()?;
     let t = LazyFrame::scan_parquet("imdb/title.parquet", Default::default())?.collect()?;
+
+    let mut n_m: HashMap<i32, Vec<&str>> = HashMap::default();
+
+    for (id, name) in n
+        .column("id")?
+        .i32()?
+        .into_iter()
+        .zip(n.column("name")?.str()?.into_iter())
+    {
+        if let (Some(id), Some(name)) = (id, name) {
+            n_m.entry(id).or_default().push(name);
+        }
+    }
 
     let start = Instant::now();
 
@@ -66,19 +78,6 @@ pub fn q6f() -> Result<(), PolarsError> {
             if mk_m.contains_key(&id) && production_year > 2000 {
                 t_m.entry(id).or_default().push(title);
             }
-        }
-    }
-
-    let mut n_m: HashMap<i32, Vec<&str>> = HashMap::default();
-
-    for (id, name) in n
-        .column("id")?
-        .i32()?
-        .into_iter()
-        .zip(n.column("name")?.str()?.into_iter())
-    {
-        if let (Some(id), Some(name)) = (id, name) {
-            n_m.entry(id).or_default().push(name);
         }
     }
 
