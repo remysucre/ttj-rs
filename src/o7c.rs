@@ -15,7 +15,7 @@ pub fn q7c() -> Result<(), PolarsError> {
 
     let start = Instant::now();
 
-    let lt_s: HashSet<i32> = lt
+    let lt_s: Vec<i32> = lt
         .column("id")?
         .i32()?
         .into_iter()
