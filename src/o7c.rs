@@ -1,7 +1,5 @@
 use ahash::HashMap;
 use ahash::HashSet;
-// use ahash::RandomState;
-// use fastbloom::BloomFilter;
 use polars::prelude::*;
 use std::time::Instant;
 
@@ -84,9 +82,6 @@ pub fn q7c() -> Result<(), PolarsError> {
     dbg!(start.elapsed());
 
     let mut pi_m: HashMap<i32, Vec<&str>> = HashMap::default();
-    // let mut pi_bloom = BloomFilter::with_false_pos(0.001)
-    //     .hasher(RandomState::default())
-    //     .expected_items(82301);
 
     let pi_id_col = pi.column("person_id")?.i32()?;
     let pi_note_col = pi.column("note")?.str()?;
@@ -104,7 +99,6 @@ pub fn q7c() -> Result<(), PolarsError> {
         {
             if it_s.contains(&info_type_id) {
                 pi_m.entry(id).or_default().push(info);
-                // pi_bloom.insert(&id);
             }
         }
     }
@@ -114,9 +108,6 @@ pub fn q7c() -> Result<(), PolarsError> {
     dbg!(start.elapsed());
 
     let mut t_s: HashSet<i32> = HashSet::default();
-    // let mut t_bloom = BloomFilter::with_false_pos(0.001)
-    //     .hasher(RandomState::default())
-    //     .expected_items(8007);
 
     let t_id_col = t.column("id")?.i32()?;
     let t_year_col = t.column("production_year")?.i32()?;
@@ -125,37 +116,15 @@ pub fn q7c() -> Result<(), PolarsError> {
         if let (Some(id), Some(production_year)) = (id, production_year) {
             if production_year >= 1980 && production_year <= 2010 && ml_s.contains(&id) {
                 t_s.insert(id);
-                // t_bloom.insert(&id);
             }
         }
     }
-
-    // let t_s: HashSet<i32> = t
-    //     .column("id")?
-    //     .i32()?
-    //     .into_iter()
-    //     .zip(t.column("production_year")?.i32()?.into_iter())
-    //     .filter_map(|(id, production_year)| {
-    //         if let (Some(id), Some(production_year)) = (id, production_year) {
-    //             if production_year >= 1980 && production_year <= 2010 && ml_s.contains(&id) {
-    //                 Some(id)
-    //             } else {
-    //                 None
-    //             }
-    //         } else {
-    //             None
-    //         }
-    //     })
-    //     .collect();
 
     dbg!("built t_s");
     dbg!(t_s.len());
     dbg!(start.elapsed());
 
     let mut n_m: HashMap<i32, Vec<&str>> = HashMap::default();
-    // let mut n_bloom = BloomFilter::with_false_pos(0.001)
-    //     .hasher(RandomState::default())
-    //     .expected_items(12733);
 
     let id_col = n.column("id")?.i32()?;
     let name_col = n.column("name")?.str()?;
@@ -175,7 +144,6 @@ pub fn q7c() -> Result<(), PolarsError> {
                     || gender == "f" && name.starts_with('A'))
             {
                 n_m.entry(id).or_default().push(name);
-                // n_bloom.insert(&id);
             }
         }
     }
@@ -185,9 +153,6 @@ pub fn q7c() -> Result<(), PolarsError> {
     dbg!(start.elapsed());
 
     let mut an_s: HashSet<i32> = HashSet::default();
-    // let mut an_bloom = BloomFilter::with_false_pos(0.001)
-    //     .hasher(RandomState::default())
-    //     .expected_items(6485);
 
     let an_id_col = an.column("person_id")?.i32()?;
     let an_name_col = an.column("name")?.str()?;
@@ -196,7 +161,6 @@ pub fn q7c() -> Result<(), PolarsError> {
         if let (Some(id), Some(name)) = (id, name) {
             if n_m.contains_key(&id) && (name.contains('a') || name.starts_with('A')) {
                 an_s.insert(id);
-                // an_bloom.insert(&id);
             }
         }
     }
@@ -214,35 +178,26 @@ pub fn q7c() -> Result<(), PolarsError> {
         .zip(ci.column("movie_id")?.i32()?.into_iter())
     {
         if let (Some(pid), Some(mid)) = (pid, mid) {
-            // if pi_bloom.contains(&pid) {
-                if let Some(info) = pi_m.get(&pid) {
-                    // if n_bloom.contains(&pid) {
-                        if let Some(name) = n_m.get(&pid) {
-                            // if t_bloom.contains(&mid)
-                            //     && t_s.contains(&mid)
-                            //     && an_bloom.contains(&pid)
-                            //     && an_s.contains(&pid)
-                            if t_s.contains(&mid) && an_s.contains(&pid)
-                            {
-                                for name in name {
-                                    for info in info {
-                                        if let Some((old_name, old_info)) = res.as_mut() {
-                                            if name < old_name {
-                                                *old_name = name;
-                                            }
-                                            if info < old_info {
-                                                *old_info = info;
-                                            }
-                                        } else {
-                                            res = Some((name, info));
-                                        }
+            if let Some(info) = pi_m.get(&pid) {
+                if let Some(name) = n_m.get(&pid) {
+                    if t_s.contains(&mid) && an_s.contains(&pid) {
+                        for name in name {
+                            for info in info {
+                                if let Some((old_name, old_info)) = res.as_mut() {
+                                    if name < old_name {
+                                        *old_name = name;
                                     }
+                                    if info < old_info {
+                                        *old_info = info;
+                                    }
+                                } else {
+                                    res = Some((name, info));
                                 }
                             }
                         }
-                    // }
+                    }
                 }
-            // }
+            }
         }
     }
 
