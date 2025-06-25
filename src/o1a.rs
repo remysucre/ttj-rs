@@ -1,44 +1,74 @@
 use ahash::HashSet;
 use polars::prelude::*;
 use std::time::Instant;
+use crate::data::ImdbData;
 
-pub fn q1a() -> Result<(), PolarsError> {
-    let ct = LazyFrame::scan_parquet("imdb/company_type.parquet", Default::default())?.collect()?;
-    let it = LazyFrame::scan_parquet("imdb/info_type.parquet", Default::default())?.collect()?;
-    let mc =
-        LazyFrame::scan_parquet("imdb/movie_companies.parquet", Default::default())?.collect()?;
-    let mi_idx =
-        LazyFrame::scan_parquet("imdb/movie_info_idx.parquet", Default::default())?.collect()?;
-    let t = LazyFrame::scan_parquet("imdb/title.parquet", Default::default())?.collect()?;
+pub fn q1a(db: &ImdbData) -> Result<(), PolarsError> {
+    let ct = &db.ct;
+    let it = &db.it;
+    let mc = &db.mc;
+    let mi_idx = &db.mi_idx;
+    let t = &db.t;
 
     let start = Instant::now();
 
-    let ct = ct
-        .lazy()
-        .filter(col("kind").eq(lit("production companies")))
-        .collect()?;
-    let it = it
-        .lazy()
-        .filter(col("info").eq(lit("top 250 rank")))
-        .collect()?;
-    let mc = mc
-        .lazy()
-        .filter(
-            col("note")
-                .str()
-                .contains(lit("(as Metro-Goldwyn-Mayer Pictures)"), false)
-                .not(),
-        )
-        .filter(
-            col("note")
-                .str()
-                .contains(lit("(co-production)"), false)
-                .or(col("note").str().contains(lit("(presents)"), false)),
-        )
-        .collect()?;
+    let ct_s: HashSet<i32> = ct
+        .column("kind")?
+        .str()?
+        .into_iter()
+        .zip(ct.column("id")?.i32()?.into_iter())
+        .filter_map(|(kind, id)| {
+            if let (Some(kind), Some(id)) = (kind, id) {
+                if kind == "production companies" {
+                    Some(id)
+                } else {
+                    None
+                }
+            } else {
+                None
+            }
+        })
+        .collect();
 
-    let it_s: HashSet<i32> = it.column("id")?.i32()?.into_iter().flatten().collect();
-    let ct_s: HashSet<i32> = ct.column("id")?.i32()?.into_iter().flatten().collect();
+    let it_s: HashSet<i32> = it
+        .column("info")?
+        .str()?
+        .into_iter()
+        .zip(it.column("id")?.i32()?.into_iter())
+        .filter_map(|(info, id)| {
+            if let (Some(info), Some(id)) = (info, id) {
+                if info == "top 250 rank" {
+                    Some(id)
+                } else {
+                    None
+                }
+            } else {
+                None
+            }
+        })
+        .collect();
+
+    let mc_s: HashSet<i32> = mc
+        .column("note")?
+        .str()?
+        .into_iter()
+        .zip(mc.column("company_type_id")?.i32()?.into_iter())
+        .zip(mc.column("movie_id")?.i32()?.into_iter())
+        .filter_map(|((note, company_type_id), movie_id)| {
+            if let (Some(note), Some(company_type_id), Some(movie_id)) = (note, company_type_id, movie_id) {
+                if !note.contains("(as Metro-Goldwyn-Mayer Pictures)")
+                    && (note.contains("(co-production)") || note.contains("(presents)"))
+                    && ct_s.contains(&company_type_id)
+                {
+                    Some(movie_id)
+                } else {
+                    None
+                }
+            } else {
+                None
+            }
+        })
+        .collect();
 
     let mut mi_idx_s: HashSet<i32> = HashSet::default();
 
@@ -51,21 +81,6 @@ pub fn q1a() -> Result<(), PolarsError> {
         if let (Some(movie_id), Some(info_type_id)) = (x, y) {
             if it_s.contains(&info_type_id) {
                 mi_idx_s.insert(movie_id);
-            }
-        }
-    }
-
-    let mut mc_s: HashSet<i32> = HashSet::default();
-
-    for (x, y) in mc
-        .column("company_type_id")?
-        .i32()?
-        .into_iter()
-        .zip(mc.column("movie_id")?.i32()?.into_iter())
-    {
-        if let (Some(company_type_id), Some(movie_id)) = (x, y) {
-            if ct_s.contains(&company_type_id) {
-                mc_s.insert(movie_id);
             }
         }
     }

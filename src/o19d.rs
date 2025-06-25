@@ -2,19 +2,19 @@ use ahash::HashMap;
 use ahash::HashSet;
 use polars::prelude::*;
 use std::time::Instant;
+use crate::data::ImdbData;
 
-pub fn q19d() -> Result<(), PolarsError> {
-    let an = LazyFrame::scan_parquet("imdb/aka_name.parquet", Default::default())?.collect()?;
-    let chn = LazyFrame::scan_parquet("imdb/char_name.parquet", Default::default())?.collect()?;
-    let ci = LazyFrame::scan_parquet("imdb/cast_info.parquet", Default::default())?.collect()?;
-    let cn = LazyFrame::scan_parquet("imdb/company_name.parquet", Default::default())?.collect()?;
-    let it = LazyFrame::scan_parquet("imdb/info_type.parquet", Default::default())?.collect()?;
-    let mc =
-        LazyFrame::scan_parquet("imdb/movie_companies.parquet", Default::default())?.collect()?;
-    let mi = LazyFrame::scan_parquet("imdb/movie_info.parquet", Default::default())?.collect()?;
-    let n = LazyFrame::scan_parquet("imdb/name.parquet", Default::default())?.collect()?;
-    let rt = LazyFrame::scan_parquet("imdb/role_type.parquet", Default::default())?.collect()?;
-    let t = LazyFrame::scan_parquet("imdb/title.parquet", Default::default())?.collect()?;
+pub fn q19d(db: &ImdbData) -> Result<(), PolarsError> {
+    let an = &db.an;
+    let chn = &db.chn;
+    let ci = &db.ci;
+    let cn = &db.cn;
+    let it = &db.it;
+    let mc = &db.mc;
+    let mi = &db.mi;
+    let n = &db.n;
+    let rt = &db.rt;
+    let t = &db.t;
 
     let chn_s = chn
         .column("id")?
@@ -25,52 +25,39 @@ pub fn q19d() -> Result<(), PolarsError> {
 
     let start = Instant::now();
 
-    let s = Series::new(
-        "x".into(),
-        [
-            "(voice)",
-            "(voice: Japanese version)",
-            "(voice) (uncredited)",
-            "(voice: English version)",
-        ],
-    );
-
-    let ci = ci
-        .lazy()
-        .filter(col("note").is_in(lit(s).implode(), false))
-        .collect()?;
-
-    let cn = cn
-        .lazy()
-        .filter(col("country_code").eq(lit("[us]")))
-        .collect()?;
-
-    let it = it
-        .lazy()
-        .filter(col("info").eq(lit("release dates")))
-        .collect()?;
-
-    let n = n.lazy().filter(col("gender").eq(lit("f"))).collect()?;
-
-    let rt = rt.lazy().filter(col("role").eq(lit("actress"))).collect()?;
-
-    let t = t
-        .lazy()
-        .filter(col("production_year").gt(lit(2000)))
-        .collect()?;
-
-    let cn_s = cn
-        .column("id")?
-        .i32()?
+    let cn_s = cn.column("country_code")?
+        .str()?
         .into_iter()
-        .flatten()
+        .zip(cn.column("id")?.i32()?.into_iter())
+        .filter_map(|(country_code, id)| {
+            if let (Some(country_code), Some(id)) = (country_code, id) {
+                if country_code == "[us]" {
+                    Some(id)
+                } else {
+                    None
+                }
+            } else {
+                None
+            }
+        })
         .collect::<HashSet<_>>();
 
     let it_s = it
-        .column("id")?
-        .i32()?
+        .column("info")?
+        .str()?
         .into_iter()
-        .flatten()
+        .zip(it.column("id")?.i32()?.into_iter())
+        .filter_map(|(info, id)| {
+            if let (Some(info), Some(id)) = (info, id) {
+                if info == "release dates" {
+                    Some(id)
+                } else {
+                    None
+                }
+            } else {
+                None
+            }
+        })
         .collect::<HashSet<_>>();
 
     let an_s = an
@@ -81,22 +68,34 @@ pub fn q19d() -> Result<(), PolarsError> {
         .collect::<HashSet<_>>();
 
     let rt_s = rt
-        .column("id")?
-        .i32()?
+        .column("role")?
+        .str()?
         .into_iter()
-        .flatten()
+        .zip(rt.column("id")?.i32()?.into_iter())
+        .filter_map(|(role, id)| {
+            if let (Some(role), Some(id)) = (role, id) {
+                if role == "actress" {
+                    Some(id)
+                } else {
+                    None
+                }
+            } else {
+                None
+            }
+        })
         .collect::<HashSet<_>>();
 
     let mut n_m: HashMap<i32, Vec<&str>> = HashMap::default();
 
-    for (id, name) in n
+    for ((id, name), gender) in n
         .column("id")?
         .i32()?
         .into_iter()
         .zip(n.column("name")?.str()?.into_iter())
+        .zip(n.column("gender")?.str()?.into_iter())
     {
-        if let (Some(id), Some(name)) = (id, name) {
-            if an_s.contains(&id) {
+        if let (Some(id), Some(name), Some(gender)) = (id, name, gender) {
+            if an_s.contains(&id) && gender == "f" {
                 n_m.entry(id).or_default().push(name);
             }
         }
@@ -134,14 +133,15 @@ pub fn q19d() -> Result<(), PolarsError> {
 
     let mut t_m: HashMap<i32, Vec<&str>> = HashMap::default();
 
-    for (id, title) in t
+    for ((id, title), production_year) in t
         .column("id")?
         .i32()?
         .into_iter()
         .zip(t.column("title")?.str()?.into_iter())
+        .zip(t.column("production_year")?.i32()?.into_iter())
     {
-        if let (Some(id), Some(title)) = (id, title) {
-            if mi_s.contains(&id) && mc_s.contains(&id) {
+        if let (Some(id), Some(title), Some(production_year)) = (id, title, production_year) {
+            if production_year > 2000 && mi_s.contains(&id) && mc_s.contains(&id) {
                 t_m.entry(id).or_default().push(title);
             }
         }
@@ -149,29 +149,40 @@ pub fn q19d() -> Result<(), PolarsError> {
 
     let mut res = None;
 
-    for (((mid, pid), rid), prid) in ci
+    for ((((mid, pid), rid), prid), note) in ci
         .column("movie_id")?
         .i32()?
         .into_iter()
         .zip(ci.column("person_id")?.i32()?.into_iter())
         .zip(ci.column("role_id")?.i32()?.into_iter())
         .zip(ci.column("person_role_id")?.i32()?.into_iter())
+        .zip(ci.column("note")?.str()?.into_iter())
     {
-        if let (Some(mid), Some(pid), Some(rid), Some(prid)) = (mid, pid, rid, prid) {
-            if rt_s.contains(&rid) && chn_s.contains(&prid) {
-                if let Some(titles) = t_m.get(&mid) {
-                    if let Some(names) = n_m.get(&pid) {
-                        for title in titles {
-                            for name in names {
-                                if let Some((old_name, old_title)) = res.as_mut() {
-                                    if name < *old_name {
-                                        *old_name = name;
+        if let (Some(mid), Some(pid), Some(rid), Some(prid), Some(note)) =
+            (mid, pid, rid, prid, note)
+        {
+            if matches!(
+                note,
+                "(voice)"
+                    | "(voice: Japanese version)"
+                    | "(voice) (uncredited)"
+                    | "(voice: English version)"
+            ) {
+                if rt_s.contains(&rid) && chn_s.contains(&prid) {
+                    if let Some(titles) = t_m.get(&mid) {
+                        if let Some(names) = n_m.get(&pid) {
+                            for title in titles {
+                                for name in names {
+                                    if let Some((old_name, old_title)) = res.as_mut() {
+                                        if name < *old_name {
+                                            *old_name = name;
+                                        }
+                                        if title < *old_title {
+                                            *old_title = title;
+                                        }
+                                    } else {
+                                        res = Some((name, title));
                                     }
-                                    if title < *old_title {
-                                        *old_title = title;
-                                    }
-                                } else {
-                                    res = Some((name, title));
                                 }
                             }
                         }
