@@ -1,25 +1,21 @@
 use ahash::{HashMap, HashSet};
 use polars::prelude::*;
 use std::time::Instant;
+use crate::data::ImdbData;
 
-pub fn q30c() -> Result<(), PolarsError> {
-    let cc =
-        LazyFrame::scan_parquet("imdb/complete_cast.parquet", Default::default())?.collect()?;
-    let cct1 =
-        LazyFrame::scan_parquet("imdb/comp_cast_type.parquet", Default::default())?.collect()?;
-    let cct2 =
-        LazyFrame::scan_parquet("imdb/comp_cast_type.parquet", Default::default())?.collect()?;
-    let ci = LazyFrame::scan_parquet("imdb/cast_info.parquet", Default::default())?.collect()?;
-    let it1 = LazyFrame::scan_parquet("imdb/info_type.parquet", Default::default())?.collect()?;
-    let it2 = LazyFrame::scan_parquet("imdb/info_type.parquet", Default::default())?.collect()?;
-    let k = LazyFrame::scan_parquet("imdb/keyword.parquet", Default::default())?.collect()?;
-    let mi = LazyFrame::scan_parquet("imdb/movie_info.parquet", Default::default())?.collect()?;
-    let mi_idx =
-        LazyFrame::scan_parquet("imdb/movie_info_idx.parquet", Default::default())?.collect()?;
-    let mk =
-        LazyFrame::scan_parquet("imdb/movie_keyword.parquet", Default::default())?.collect()?;
-    let n = LazyFrame::scan_parquet("imdb/name.parquet", Default::default())?.collect()?;
-    let t = LazyFrame::scan_parquet("imdb/title.parquet", Default::default())?.collect()?;
+pub fn q30c(db: &ImdbData) -> Result<(), PolarsError> {
+    let cc = &db.cc;
+    let cct1 = &db.cct;
+    let cct2 = &db.cct;
+    let ci = &db.ci;
+    let it1 = &db.it;
+    let it2 = &db.it;
+    let k = &db.k;
+    let mi = &db.mi;
+    let mi_idx = &db.mi_idx;
+    let mk = &db.mk;
+    let n = &db.n;
+    let t = &db.t;
 
     let elapsed = Instant::now();
 

@@ -1,16 +1,16 @@
 use ahash::{HashMap, HashSet};
 use polars::prelude::*;
-// use std::{collections::HashMap, collections::HashSet, time::Instant};
 use std::time::Instant;
+use crate::data::ImdbData;
 
-pub fn q16b() -> Result<(), PolarsError> {
-    let an = LazyFrame::scan_parquet("imdb/aka_name.parquet", Default::default())?.collect()?;
-    let ci = LazyFrame::scan_parquet("imdb/cast_info.parquet", Default::default())?.collect()?;
-    let cn = LazyFrame::scan_parquet("imdb/company_name.parquet", Default::default())?.collect()?;
-    let k = LazyFrame::scan_parquet("imdb/keyword.parquet", Default::default())?.collect()?;
-    let mc = LazyFrame::scan_parquet("imdb/movie_companies.parquet", Default::default())?.collect()?;
-    let mk = LazyFrame::scan_parquet("imdb/movie_keyword.parquet", Default::default())?.collect()?;
-    let t = LazyFrame::scan_parquet("imdb/title.parquet", Default::default())?.collect()?;
+pub fn q16b(db: &ImdbData) -> Result<(), PolarsError> {
+    let an = &db.an;
+    let ci = &db.ci;
+    let cn = &db.cn;
+    let k = &db.k;
+    let mk = &db.mk;
+    let t = &db.t;
+    let mc = &db.mc;
 
     let start = Instant::now();
 

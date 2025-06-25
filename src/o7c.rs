@@ -2,16 +2,17 @@ use ahash::HashMap;
 use ahash::HashSet;
 use polars::prelude::*;
 use std::time::Instant;
+use crate::data::ImdbData;
 
-pub fn q7c() -> Result<(), PolarsError> {
-    let an = LazyFrame::scan_parquet("imdb/aka_name.parquet", Default::default())?.collect()?;
-    let ci = LazyFrame::scan_parquet("imdb/cast_info.parquet", Default::default())?.collect()?;
-    let it = LazyFrame::scan_parquet("imdb/info_type.parquet", Default::default())?.collect()?;
-    let lt = LazyFrame::scan_parquet("imdb/link_type.parquet", Default::default())?.collect()?;
-    let ml = LazyFrame::scan_parquet("imdb/movie_link.parquet", Default::default())?.collect()?;
-    let n = LazyFrame::scan_parquet("imdb/name.parquet", Default::default())?.collect()?;
-    let pi = LazyFrame::scan_parquet("imdb/person_info.parquet", Default::default())?.collect()?;
-    let t = LazyFrame::scan_parquet("imdb/title.parquet", Default::default())?.collect()?;
+pub fn q7c(db: &ImdbData) -> Result<(), PolarsError> {
+    let an = &db.an;
+    let ci = &db.ci;
+    let it = &db.it;
+    let lt = &db.lt;
+    let ml = &db.ml;
+    let n = &db.n;
+    let pi = &db.pi;
+    let t = &db.t;
 
     let start = Instant::now();
 

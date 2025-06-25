@@ -1,15 +1,14 @@
 use ahash::{HashMap, HashSet};
 use polars::prelude::*;
 use std::time::Instant;
+use crate::data::ImdbData;
 
-pub fn q18c() -> Result<(), PolarsError> {
-    let ci = LazyFrame::scan_parquet("imdb/cast_info.parquet", Default::default())?.collect()?;
-    let it = LazyFrame::scan_parquet("imdb/info_type.parquet", Default::default())?.collect()?;
-    let mi = LazyFrame::scan_parquet("imdb/movie_info.parquet", Default::default())?.collect()?;
-    let mi_idx =
-        LazyFrame::scan_parquet("imdb/movie_info_idx.parquet", Default::default())?.collect()?;
-    let n = LazyFrame::scan_parquet("imdb/name.parquet", Default::default())?.collect()?;
-    let t = LazyFrame::scan_parquet("imdb/title.parquet", Default::default())?.collect()?;
+pub fn q18c(db: &ImdbData) -> Result<(), PolarsError> {
+    let it = &db.it;
+    let mi = &db.mi;
+    let mi_idx = &db.mi_idx;
+    let n = &db.n;
+    let t = &db.t;
 
     let start = Instant::now();
 
@@ -110,12 +109,12 @@ pub fn q18c() -> Result<(), PolarsError> {
 
     let mut res: Option<(&str, &str, &str)> = None;
 
-    for ((person_id, movie_id), note) in ci
+    for ((person_id, movie_id), note) in db.ci
         .column("person_id")?
         .i32()?
         .into_iter()
-        .zip(ci.column("movie_id")?.i32()?.into_iter())
-        .zip(ci.column("note")?.str()?.into_iter())
+        .zip(db.ci.column("movie_id")?.i32()?.into_iter())
+        .zip(db.ci.column("note")?.str()?.into_iter())
     {
         if let (Some(person_id), Some(movie_id), Some(note)) = (person_id, movie_id, note) {
             if matches!(

@@ -2,16 +2,16 @@ use ahash::HashMap;
 use ahash::HashSet;
 use polars::prelude::*;
 use std::time::Instant;
+use crate::data::ImdbData;
 
-pub fn q8c() -> Result<(), PolarsError> {
-    let t = LazyFrame::scan_parquet("imdb/title.parquet", Default::default())?.collect()?;
-    let an = LazyFrame::scan_parquet("imdb/aka_name.parquet", Default::default())?.collect()?;
-    let n = LazyFrame::scan_parquet("imdb/name.parquet", Default::default())?.collect()?;
-    let rt = LazyFrame::scan_parquet("imdb/role_type.parquet", Default::default())?.collect()?;
-    let ci = LazyFrame::scan_parquet("imdb/cast_info.parquet", Default::default())?.collect()?;
-    let mc =
-        LazyFrame::scan_parquet("imdb/movie_companies.parquet", Default::default())?.collect()?;
-    let cn = LazyFrame::scan_parquet("imdb/company_name.parquet", Default::default())?.collect()?;
+pub fn q8c(db: &ImdbData) -> Result<(), PolarsError> {
+    let t = &db.t;
+    let an = &db.an;
+    let n = &db.n;
+    let rt = &db.rt;
+    let ci = &db.ci;
+    let mc = &db.mc;
+    let cn = &db.cn;
 
     let n_s: HashSet<i32> = n.column("id")?.i32()?.into_iter().flatten().collect();
 
@@ -74,17 +74,23 @@ pub fn q8c() -> Result<(), PolarsError> {
 
     let start = Instant::now();
 
-    // collect us companies into a hash set
-    let cn_s = cn
-        .lazy()
-        .filter(col("country_code").eq(lit("[us]")))
-        .select([col("id")])
-        .collect()?
-        .column("id")?
-        .i32()?
+    let cn_s: HashSet<i32> = cn
+        .column("country_code")?
+        .str()?
         .into_iter()
-        .flatten()
-        .collect::<HashSet<i32>>();
+        .zip(cn.column("id")?.i32()?.into_iter())
+        .filter_map(|(country_code, id)| {
+            if let (Some(country_code), Some(id)) = (country_code, id) {
+                if country_code == "[us]" {
+                    Some(id)
+                } else {
+                    None
+                }
+            } else {
+                None
+            }
+        })
+        .collect();
 
     let mut res: Option<(&str, &str)> = None;
 

@@ -1,16 +1,16 @@
 use ahash::{HashMap, HashSet};
 use polars::prelude::*;
 use std::time::Instant;
+use crate::data::ImdbData;
 
-pub fn q10c() -> Result<(), PolarsError> {
-    let chn = LazyFrame::scan_parquet("imdb/char_name.parquet", Default::default())?.collect()?;
-    let ci = LazyFrame::scan_parquet("imdb/cast_info.parquet", Default::default())?.collect()?;
-    let cn = LazyFrame::scan_parquet("imdb/company_name.parquet", Default::default())?.collect()?;
-    let ct = LazyFrame::scan_parquet("imdb/company_type.parquet", Default::default())?.collect()?;
-    let mc =
-        LazyFrame::scan_parquet("imdb/movie_companies.parquet", Default::default())?.collect()?;
-    let rt = LazyFrame::scan_parquet("imdb/role_type.parquet", Default::default())?.collect()?;
-    let t = LazyFrame::scan_parquet("imdb/title.parquet", Default::default())?.collect()?;
+pub fn q10c(db: &ImdbData) -> Result<(), PolarsError> {
+    let chn = &db.chn;
+    let ci = &db.ci;
+    let cn = &db.cn;
+    let ct = &db.ct;
+    let mc = &db.mc;
+    let rt = &db.rt;
+    let t = &db.t;
 
     let mut chn_m: HashMap<i32, Vec<&str>> = HashMap::default();
 
