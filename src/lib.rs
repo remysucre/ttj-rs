@@ -5,6 +5,7 @@ pub mod o8c;
 pub mod o10c;
 pub mod o16b;
 pub mod o17f;
+pub mod o18c;
 pub mod o19d;
 pub mod o25a;
 pub mod o25c;
