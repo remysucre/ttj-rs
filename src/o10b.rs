@@ -5,12 +5,12 @@ use polars::error::PolarsError;
 use std::time::Instant;
 
 // imdb.q10b_cast_info(person_id,movie_id,person_role_id,role_id)
-// |imdb.q10b_title(movie_id,kind_id)
 // |imdb_int.char_name(person_role_id)
+// |imdb.q10b_title(movie_id,kind_id)
+// ||imdb_int.movie_companies(movie_id,company_id,company_type_id)
+// |||imdb.q10b_company_name(company_id)
+// |||imdb_int.company_type(company_type_id)
 // |imdb.q10b_role_type(role_id)
-// |imdb_int.movie_companies(movie_id,company_id,company_type_id)
-// ||imdb.q10b_company_name(company_id)
-// ||imdb_int.company_type(company_type_id)
 pub fn q10b(db: &ImdbData) -> Result<Option<(&str, &str)>, PolarsError> {
     let chn = &db.chn;
     let ci = &db.ci;
