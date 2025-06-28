@@ -20,7 +20,7 @@ fn main() -> Result<(), polars::prelude::PolarsError> {
     // o11a::q11a(&db)?;
     // o12a::q12a(&db)?;
     // o13a::q13a(&db)?;
-    o14a::q14a(&db)?;
+    // o14a::q14a(&db)?;
     // o16b::q16b(&db)?;
     // o17a::q17a(&db)?;
     // o17f::q17f(&db)?;
@@ -28,6 +28,8 @@ fn main() -> Result<(), polars::prelude::PolarsError> {
     // o19d::q19d(&db)?;
     // o21a::q21a(&db)?;
     // o23a::q23a(&db)?;
+    o20a::q20a(&db)?;
+    // o25c::q25c(&db)?;
     // o25a::q25a(&db)?;
     // o27a::q27a(&db)?;
     // o29a::q29a(&db)?;
