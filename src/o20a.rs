@@ -46,7 +46,7 @@ pub fn q20a(db: &ImdbData) -> Result<Option<&str>, PolarsError> {
         .column("id")?
         .i32()?
         .into_iter()
-        .zip(cct1.column("kind")?.str()?.into_iter())
+        .zip(cct2.column("kind")?.str()?.into_iter())
         .filter_map(|(id, kind)| {
             if let (Some(id), Some(kind)) = (id, kind) {
                 if kind.contains("complete") {
@@ -170,12 +170,12 @@ pub fn q20a(db: &ImdbData) -> Result<Option<&str>, PolarsError> {
             acc
         });
 
-    let n_s = chn
-        .column("id")?
-        .i32()?
-        .into_iter()
-        .flatten()
-        .collect::<HashSet<_>>();
+    // let n_s = n
+    //     .column("id")?
+    //     .i32()?
+    //     .into_iter()
+    //     .flatten()
+    //     .collect::<HashSet<_>>();
 
     let mk_s = mk
         .column("keyword_id")?
@@ -208,7 +208,7 @@ pub fn q20a(db: &ImdbData) -> Result<Option<&str>, PolarsError> {
             (movie_id, person_id, person_role_id)
         {
             if chn_s.contains(&person_role_id)
-                && n_s.contains(&person_id)
+                // && n_s.contains(&person_id)
                 && cc_s.contains(&movie_id)
                 && mk_s.contains(&movie_id)
             {
