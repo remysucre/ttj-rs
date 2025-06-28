@@ -8,7 +8,8 @@ fn main() -> Result<(), polars::prelude::PolarsError> {
     // o8c::q8c(&db)?;
     // o10c::q10c(&db)?;
     // o11a::q11a(&db)?;
-    o13a::q13a(&db)?;
+    // o13a::q13a(&db)?;
+    o15a::q15a(&db)?;
     // o16b::q16b(&db)?;
     // o17f::q17f(&db)?;
     // o18c::q18c(&db)?;
