@@ -119,8 +119,9 @@ pub fn q24a(db: &ImdbData) -> Result<Option<(&str, &str, &str)>, PolarsError> {
         .filter_map(|((movie_id, info), info_type_id)| {
             if let (Some(movie_id), Some(info), Some(info_type_id)) = (movie_id, info, info_type_id)
             {
-                if it_s.contains(&movie_id) && (info.starts_with("Japan:") && info.contains("201"))
-                    || (info.starts_with("USA:") && info.contains("201"))
+                if it_s.contains(&info_type_id)
+                    && ((info.starts_with("Japan:") && info.contains("201"))
+                        || (info.starts_with("USA:") && info.contains("201")))
                 {
                     Some(movie_id)
                 } else {
@@ -212,15 +213,12 @@ pub fn q24a(db: &ImdbData) -> Result<Option<(&str, &str, &str)>, PolarsError> {
         .collect::<HashSet<_>>();
 
     let mc_s: HashSet<i32> = mc
-        .column("company_type_id")?
+        .column("company_id")?
         .i32()?
         .into_iter()
-        .zip(mc.column("company_id")?.i32()?.into_iter())
         .zip(mc.column("movie_id")?.i32()?.into_iter())
-        .filter_map(|((company_type_id, company_id), movie_id)| {
-            if let (Some(company_type_id), Some(company_id), Some(movie_id)) =
-                (company_type_id, company_id, movie_id)
-            {
+        .filter_map(|(company_id, movie_id)| {
+            if let (Some(company_id), Some(movie_id)) = (company_id, movie_id) {
                 if cn_s.contains(&company_id) {
                     Some(movie_id)
                 } else {
