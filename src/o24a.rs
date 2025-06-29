@@ -175,11 +175,8 @@ pub fn q24a(db: &ImdbData) -> Result<Option<(&str, &str, &str)>, PolarsError> {
         .into_iter()
         .zip(t.column("title")?.str()?.into_iter())
         .zip(t.column("production_year")?.i32()?.into_iter())
-        .zip(t.column("kind_id")?.i32()?.into_iter())
-        .filter_map(|(((id, title), production_year), kind_id)| {
-            if let (Some(id), Some(title), Some(production_year), Some(kind_id)) =
-                (id, title, production_year, kind_id)
-            {
+        .filter_map(|((id, title), production_year)| {
+            if let (Some(id), Some(title), Some(production_year)) = (id, title, production_year) {
                 if production_year > 2010 {
                     Some((id, title))
                 } else {
