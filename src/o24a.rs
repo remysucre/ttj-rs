@@ -110,7 +110,7 @@ pub fn q24a(db: &ImdbData) -> Result<Option<(&str, &str, &str)>, PolarsError> {
         })
         .collect::<HashSet<_>>();
 
-    let mi_m: HashSet<i32> = mi
+    let mi_s: HashSet<i32> = mi
         .column("movie_id")?
         .i32()?
         .into_iter()
@@ -230,6 +230,14 @@ pub fn q24a(db: &ImdbData) -> Result<Option<(&str, &str, &str)>, PolarsError> {
         })
         .collect();
 
+    let valid_movie_ids: HashSet<i32> = mi_s
+        .intersection(&mc_s)
+        .cloned()
+        .collect::<HashSet<_>>()
+        .intersection(&mk_s)
+        .cloned()
+        .collect();
+
     let mut res = None;
 
     for ((((movie_id, person_id), person_role_id), role_id), note) in ci
@@ -252,9 +260,7 @@ pub fn q24a(db: &ImdbData) -> Result<Option<(&str, &str, &str)>, PolarsError> {
                         | "(voice) (uncredited)"
                         | "(voice: English version)"
                 )
-                && mi_m.contains(&movie_id)
-                && mc_s.contains(&movie_id)
-                && mk_s.contains(&movie_id)
+                && valid_movie_ids.contains(&movie_id)
             {
                 if let (Some(titles), Some(names), Some(char_names)) = (
                     t_m.get(&movie_id),
