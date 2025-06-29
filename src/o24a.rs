@@ -12,10 +12,10 @@ use std::time::Instant;
 //  |imdb_int.char_name(person_role_id)
 //  |imdb.q24a_movie_info(movie_id,info_type_id)
 //  ||imdb.q24a_info_type(info_type_id)
-//  |imdb_int.movie_companies(movie_id,company_id,company_type_id)
-//  ||imdb.q24a_company_name(company_id)
-//  |imdb_int.movie_keyword(movie_id,keyword_id)
-//  ||imdb.q24a_keyword(keyword_id)
+//  ||imdb_int.movie_keyword(movie_id,keyword_id)
+//  |||imdb.q24a_keyword(keyword_id)
+//  ||imdb_int.movie_companies(movie_id,company_id,company_type_id)
+//  |||imdb.q24a_company_name(company_id)
 pub fn q24a(db: &ImdbData) -> Result<Option<(&str, &str, &str)>, PolarsError> {
     let ci = &db.ci;
     let t = &db.t;
