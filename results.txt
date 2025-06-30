@@ -1,0 +1,276 @@
+[src/o1a.rs:113:5] res = Some(
+    (
+        "A Clockwork Orange",
+        1934,
+    ),
+)
+[src/o1a.rs:116:5] duration = 140.447328ms
+[src/o3a.rs:104:5] "total elapsed" = "total elapsed"
+[src/o3a.rs:105:5] duration = 180.715819ms
+[src/o3a.rs:107:5] res = Some(
+    "2 Days in New York",
+)
+[src/o5a.rs:105:5] "total elapsed" = "total elapsed"
+[src/o5a.rs:106:5] duration = 200.937008ms
+[src/o5a.rs:108:5] res = None
+[src/o6f.rs:127:5] res = Some(
+    (
+        "\"Steff\", Stefanie Oxmann Mcgaha",
+        "based-on-comic",
+        "& Teller 2",
+    ),
+)
+[src/o6f.rs:130:5] "total elapsed" = "total elapsed"
+[src/o6f.rs:131:5] duration = 606.961267ms
+[src/o7c.rs:40:5] "built lt_s" = "built lt_s"
+[src/o7c.rs:41:5] start.elapsed() = 27.32µs
+[src/o7c.rs:61:5] "built it_s" = "built it_s"
+[src/o7c.rs:62:5] start.elapsed() = 49.61µs
+[src/o7c.rs:82:5] "built ml_s" = "built ml_s"
+[src/o7c.rs:83:5] start.elapsed() = 523.644174ms
+[src/o7c.rs:107:5] "built pi_m" = "built pi_m"
+[src/o7c.rs:108:5] pi_m.len() = 82301
+[src/o7c.rs:109:5] start.elapsed() = 576.416413ms
+[src/o7c.rs:124:5] "built t_s" = "built t_s"
+[src/o7c.rs:125:5] t_s.len() = 8007
+[src/o7c.rs:126:5] start.elapsed() = 601.925543ms
+[src/o7c.rs:152:5] "built n_m" = "built n_m"
+[src/o7c.rs:153:5] n_m.len() = 12733
+[src/o7c.rs:154:5] start.elapsed() = 697.739611ms
+[src/o7c.rs:169:5] "built an_s" = "built an_s"
+[src/o7c.rs:170:5] an_s.len() = 6485
+[src/o7c.rs:171:5] start.elapsed() = 710.588576ms
+[src/o7c.rs:206:5] res = Some(
+    (
+        "50 Cent",
+        "\"Boo\" Arnold was born Earl Arnold in Hattiesburg, Mississippi in 1966. His father gave him the nickname 'Boo' early in life and it stuck through grade school, high school, and college. He is still known as \"Boo\" to family and friends.  Raised in central Texas, Arnold played baseball at Texas Tech University where he graduated with a BA in Advertising and Marketing. While at Texas Tech he was also a member of the Texas Epsilon chapter of Phi Delta Theta fraternity. After college he worked with Young Life, an outreach to high school students, in San Antonio, Texas.  While with Young Life Arnold began taking extension courses through Fuller Theological Seminary and ultimately went full-time to Gordon-Conwell Theological Seminary in Boston, Massachusetts. At Gordon-Conwell he completed a Master's Degree in Divinity studying Theology, Philosophy, Church History, Biblical Languages (Hebrew & Greek), and Exegetical Methods. Following seminary he was involved with reconciliation efforts in the former Yugoslavia shortly after the war ended there in1995.  Arnold started acting in his early thirties in Texas. After an encouraging visit to Los Angeles where he spent time with childhood friend George Eads (of CSI Las Vegas) he decided to move to Los Angeles in 2001 to pursue acting full-time. While in Los Angeles he has studied acting with Judith Weston at Judith Weston Studio for Actors and Directors.  Arnold's acting career has been one of steady development, booking co-star and guest-star roles in nighttime television. He guest-starred opposite of Jane Seymour on the night time television drama Justice. He played the lead, Michael Hollister, in the film The Seer, written and directed by Patrick Masset (Friday Night Lights).  He was nominated Best Actor in the168 Film Festival for the role of Phil Stevens in the short-film Useless. In Useless he played a US Marshal who must choose between mercy and justice as he confronts the man who murdered his father. Arnold's performance in Useless confirmed his ability to carry lead roles, and he continues to work toward solidifying himself as a male lead in film and television.  Arnold married fellow Texan Stacy Rudd of San Antonio in 2003 and they are now raising their three children in the Los Angeles area.",
+    ),
+)
+[src/o7c.rs:209:5] "total elapsed" = "total elapsed"
+[src/o7c.rs:210:5] duration = 993.873454ms
+Some(("\"A.J.\"", "#1 Cheerleader Camp"))
+[src/o8c.rs:179:5] duration = 384.241779ms
+[src/o9a.rs:186:5] "total elapsed" = "total elapsed"
+[src/o9a.rs:187:5] duration = 956.537622ms
+[src/o9a.rs:189:5] res = Some(
+    (
+        "AJ",
+        "Airport Announcer",
+        "Blue Harvest",
+    ),
+)
+[src/o10a.rs:148:5] res = Some(
+    (
+        "Actor",
+        "12 Rounds",
+    ),
+)
+[src/o10a.rs:149:5] "total elapsed" = "total elapsed"
+[src/o10a.rs:150:5] duration = 625.212889ms
+[src/o10c.rs:132:5] res = Some(
+    (
+        "Himself",
+        "Evil Eyes: Behind the Scenes",
+    ),
+)
+[src/o10c.rs:135:5] "total elapsed" = "total elapsed"
+[src/o10c.rs:136:5] duration = 665.591279ms
+[src/o11a.rs:35:5] "cn_m len" = "cn_m len"
+[src/o11a.rs:36:5] cn_m.len() = 48302
+[src/o11a.rs:56:5] "ct_s len" = "ct_s len"
+[src/o11a.rs:57:5] ct_s.len() = 1
+[src/o11a.rs:185:5] res = Some(
+    (
+        "Churchill Films",
+        "Batman Beyond",
+        "followed by",
+    ),
+)
+[src/o11a.rs:188:5] "total elapsed" = "total elapsed"
+[src/o11a.rs:189:5] duration = 501.048081ms
+[src/o13a.rs:199:5] "total elapsed" = "total elapsed"
+[src/o13a.rs:200:5] duration = 751.876039ms
+[src/o13a.rs:202:5] res = Some(
+    (
+        "&Me",
+        "1.0",
+        "Afghanistan:24 June 2012",
+    ),
+)
+[src/o15a.rs:167:5] "total elapsed" = "total elapsed"
+[src/o15a.rs:168:5] duration = 354.392228ms
+[src/o15a.rs:170:5] res = Some(
+    (
+        "Battlestar Galactica: The Resistance",
+        "USA:1 June 2007",
+    ),
+)
+[src/o10a.rs:148:5] res = Some(
+    (
+        "Actor",
+        "12 Rounds",
+    ),
+)
+[src/o10a.rs:149:5] "total elapsed" = "total elapsed"
+[src/o10a.rs:150:5] duration = 625.310477ms
+[src/o10b.rs:148:5] res = None
+[src/o10b.rs:149:5] "total elapsed: {:?}" = "total elapsed: {:?}"
+[src/o10b.rs:149:5] duration = 592.350973ms
+[src/o10c.rs:132:5] res = Some(
+    (
+        "Himself",
+        "Evil Eyes: Behind the Scenes",
+    ),
+)
+[src/o10c.rs:135:5] "total elapsed" = "total elapsed"
+[src/o10c.rs:136:5] duration = 662.591242ms
+[src/o11a.rs:35:5] "cn_m len" = "cn_m len"
+[src/o11a.rs:36:5] cn_m.len() = 48302
+[src/o11a.rs:56:5] "ct_s len" = "ct_s len"
+[src/o11a.rs:57:5] ct_s.len() = 1
+[src/o11a.rs:185:5] res = Some(
+    (
+        "Churchill Films",
+        "Batman Beyond",
+        "followed by",
+    ),
+)
+[src/o11a.rs:188:5] "total elapsed" = "total elapsed"
+[src/o11a.rs:189:5] duration = 490.176331ms
+[src/o12a.rs:185:5] res = Some(
+    (
+        "3:20",
+        "10th Grade Reunion Films",
+        "8.1",
+    ),
+)
+[src/o12a.rs:186:5] "total elapsed" = "total elapsed"
+[src/o12a.rs:187:5] duration = 327.082881ms
+[src/o13a.rs:199:5] "total elapsed" = "total elapsed"
+[src/o13a.rs:200:5] duration = 775.387494ms
+[src/o13a.rs:202:5] res = Some(
+    (
+        "&Me",
+        "1.0",
+        "Afghanistan:24 June 2012",
+    ),
+)
+[src/o14a.rs:202:5] "total elapsed" = "total elapsed"
+[src/o14a.rs:203:5] duration = 245.849055ms
+[src/o16b.rs:140:5] res = Some(
+    (
+        "!!!, Toy",
+        "& Teller",
+    ),
+)
+[src/o16b.rs:142:5] duration = 618.639806ms
+[src/o17a.rs:136:5] res = Some(
+    "B, Khaz",
+)
+Elapsed time: 477.158786ms
+[src/o17f.rs:90:5] res = Some(
+    "'El Galgo PornoStar', Blanquito",
+)
+Elapsed time: 488.728732ms
+[src/o18c.rs:157:5] res = Some(
+    (
+        "#PostModem",
+        "Action",
+        "10",
+    ),
+)
+[src/o18c.rs:159:5] duration = 833.741689ms
+Some(("Aaron, Caroline", "$9.99"))
+[src/o19d.rs:197:5] duration = 1.106674213s
+[src/o21a.rs:215:5] res = Some(
+    (
+        "Det Danske Filminstitut",
+        "followed by",
+        "Der Serienkiller - Klinge des Todes",
+    ),
+)
+[src/o21a.rs:217:5] duration = 227.149313ms
+[src/o23a.rs:392:5] res = Some(
+    (
+        "movie",
+        "The Analysts",
+    ),
+)
+[src/o23a.rs:394:5] duration = 317.164086ms
+[src/o20a.rs:231:5] duration = 616.712591ms
+[src/o20a.rs:231:5] duration = 614.969594ms
+[src/o24a.rs:290:5] duration = 1.084962074s
+[src/o25c.rs:211:5] res = Some(
+    (
+        "Aakeson, Kim Fupz",
+        "$",
+        "Action",
+        "10",
+    ),
+)
+[src/o25c.rs:213:5] duration = 1.046998533s
+[src/o25a.rs:203:5] res = Some(
+    (
+        "Abdallah, Damon",
+        "-- And Now the Screaming Starts!",
+        "Horror",
+        "10",
+    ),
+)
+[src/o25a.rs:204:5] duration = 1.020297572s
+[src/o27a.rs:259:5] res = Some(
+    (
+        "Det Danske Filminstitut",
+        "followed by",
+        "Spår i mörker",
+    ),
+)
+[src/o27a.rs:261:5] duration = 535.542553ms
+[src/o29a.rs:354:5] res = Some(
+    (
+        "Andrews, Julie",
+        "Queen",
+        "Shrek 2",
+    ),
+)
+[src/o29a.rs:356:5] duration = 1.036118433s
+[src/o25c.rs:211:5] res = Some(
+    (
+        "Aakeson, Kim Fupz",
+        "$",
+        "Action",
+        "10",
+    ),
+)
+[src/o25c.rs:213:5] duration = 1.051723777s
+[src/o30c.rs:282:5] res = Some(
+    (
+        "Abernathy, Lewis",
+        "Action",
+        "100356",
+        "$",
+    ),
+)
+[src/o30c.rs:283:5] "total elapsed" = "total elapsed"
+[src/o30c.rs:284:5] elapsed.elapsed() = 1.029308536s
+[src/o31a.rs:256:5] res = Some(
+    (
+        "Agnew, Jim",
+        "Horror",
+        "1040",
+        "2001 Maniacs",
+    ),
+)
+[src/o31a.rs:257:5] "total elapsed" = "total elapsed"
+[src/o31a.rs:258:5] elapsed.elapsed() = 1.047129091s
+[src/o33a.rs:309:5] res = Some(
+    (
+        "495 Productions",
+        "495 Productions",
+        "3.3",
+        "2.7",
+        "A Double Shot at Love",
+        "A Shot at Love with Tila Tequila",
+    ),
+)
+[src/o33a.rs:310:5] start.elapsed() = 350.146128ms
