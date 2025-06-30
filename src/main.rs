@@ -4,12 +4,12 @@ fn main() -> Result<(), polars::prelude::PolarsError> {
     let db = data::ImdbData::new();
     // o1a::q1a(&db)?;
     // o3a::q3a(&db)?;
-    o5a::q5a(&db)?;
+    // o5a::q5a(&db)?;
     // o6f::q6f(&db)?;
     // o7c::q7c(&db)?;
     // o8c::q8c(&db)?;
-    o9a::q9a(&db)?;
-    o10a::q10a(&db)?;
+    // o9a::q9a(&db)?;
+    // o10a::q10a(&db)?;
     // o10c::q10c(&db)?;
     // o11a::q11a(&db)?;
     // o13a::q13a(&db)?;
@@ -28,7 +28,7 @@ fn main() -> Result<(), polars::prelude::PolarsError> {
     // o19d::q19d(&db)?;
     // o21a::q21a(&db)?;
     // o23a::q23a(&db)?;
-    o20a::q20a(&db)?;
+    // o20a::q20a(&db)?;
     // o20a::q20a(&db)?;
     o24a::q24a(&db)?;
     // o25c::q25c(&db)?;

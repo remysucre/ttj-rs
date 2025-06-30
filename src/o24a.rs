@@ -227,36 +227,30 @@ pub fn q24a(db: &ImdbData) -> Result<Option<(&str, &str, &str)>, PolarsError> {
         })
         .collect();
 
-    let voice_notes = Series::new(
-        "target_note".into(),
-        &[
-            "(voice)",
-            "(voice: Japanese version)",
-            "(voice) (uncredited)",
-            "(voice: English version)",
-        ],
-    );
-
-    let ci_filtered = ci
-        .clone()
-        .lazy()
-        .filter(col("note").is_in(lit(voice_notes).implode(), true))
-        .collect()?;
-
     let mut res = None;
 
-    for (((movie_id, person_id), person_role_id), role_id) in ci_filtered
+    for ((((movie_id, person_id), person_role_id), role_id), note) in ci
         .column("movie_id")?
         .i32()?
         .into_iter()
-        .zip(ci_filtered.column("person_id")?.i32()?.into_iter())
-        .zip(ci_filtered.column("person_role_id")?.i32()?.into_iter())
-        .zip(ci_filtered.column("role_id")?.i32()?.into_iter())
+        .zip(ci.column("person_id")?.i32()?.into_iter())
+        .zip(ci.column("person_role_id")?.i32()?.into_iter())
+        .zip(ci.column("role_id")?.i32()?.into_iter())
+        .zip(ci.column("note")?.str()?.into_iter())
     {
-        if let (Some(role_id), Some(movie_id), Some(person_id), Some(person_role_id)) =
-            (role_id, movie_id, person_id, person_role_id)
+        if let (Some(role_id), Some(movie_id), Some(person_id), Some(person_role_id), Some(note)) =
+            (role_id, movie_id, person_id, person_role_id, note)
         {
-            if rt_s.contains(&role_id) && mc_s.contains(&movie_id) {
+            if rt_s.contains(&role_id)
+                && matches!(
+                    note,
+                    "(voice)"
+                        | "(voice: Japanese version)"
+                        | "(voice) (uncredited)"
+                        | "(voice: English version)"
+                )
+                && mc_s.contains(&movie_id)
+            {
                 if let (Some(titles), Some(names), Some(char_names)) = (
                     t_m.get(&movie_id),
                     n_m.get(&person_id),
