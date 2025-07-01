@@ -229,14 +229,10 @@ pub fn q26a(db: &ImdbData) -> Result<Option<(&str, &str, &str, &str)>, PolarsErr
                 None
             }
         })
-        .fold(
-            HashMap::default(),
-            |mut acc: std::collections::HashMap<i32, Vec<&str>, ahash::RandomState>,
-             (id, title)| {
-                acc.entry(id).or_default().push(title);
-                acc
-            },
-        );
+        .fold(HashMap::default(), |mut acc, (id, title)| {
+            acc.entry(id).or_default().push(title);
+            acc
+        });
 
     let mut res: Option<(&str, &str, &str, &str)> = None;
 
