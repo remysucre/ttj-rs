@@ -76,11 +76,7 @@ pub fn q14a(db: &ImdbData) -> Result<Option<(&str, &str)>, PolarsError> {
         .zip(kt.column("id")?.i32()?.into_iter())
         .filter_map(|(kind, id)| {
             if let (Some(kind), Some(id)) = (kind, id) {
-                if matches!(kind, "movie") {
-                    Some(id)
-                } else {
-                    None
-                }
+                if kind == "movie" { Some(id) } else { None }
             } else {
                 None
             }

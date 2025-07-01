@@ -30,9 +30,10 @@ fn main() -> Result<(), polars::prelude::PolarsError> {
     // o23a::q23a(&db)?;
     // o20a::q20a(&db)?;
     // o20a::q20a(&db)?;
-    o24a::q24a(&db)?;
+    // o24a::q24a(&db)?;
     // o25c::q25c(&db)?;
     // o25a::q25a(&db)?;
+    o26a::q26a(&db)?;
     // o27a::q27a(&db)?;
     // o29a::q29a(&db)?;
     // o25c::q25c(&db)?;
