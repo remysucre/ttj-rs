@@ -3,6 +3,7 @@ use lfj::*;
 fn main() -> Result<(), polars::prelude::PolarsError> {
     let db = data::ImdbData::new();
     // o1a::q1a(&db)?;
+    let _ = o2a::q2a(&db);
     // o3a::q3a(&db)?;
     // o5a::q5a(&db)?;
     // o6f::q6f(&db)?;
@@ -40,7 +41,7 @@ fn main() -> Result<(), polars::prelude::PolarsError> {
     // o25c::q25c(&db)?;
     // o30c::q30c(&db)?;
     // o31a::q31a(&db)?;
-    let _ = o32a::q32a(&db);
+    // let _ = o32a::q32a(&db);
     // o33a::q33a(&db)?;
     Ok(())
 }
