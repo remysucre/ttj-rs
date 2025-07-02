@@ -2,3 +2,4 @@
 /imdb/*.csv
 /imdb/*.parquet
 /imdb/queries
+.idea

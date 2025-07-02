@@ -25,6 +25,7 @@ pub mod o28a;
 pub mod o29a;
 pub mod o30c;
 pub mod o31a;
+pub mod o32a;
 pub mod o33a;
 pub mod o3a;
 pub mod o5a;
