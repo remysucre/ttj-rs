@@ -8,7 +8,7 @@ use std::time::Instant;
 // |imdb_int.title(movie_id,kind_id)
 // |imdb_int.movie_keyword(movie_id,keyword_id)
 // ||imdb.q2b_keyword(keyword_id)
-pub fn q2a(db: &ImdbData) -> Result<Option<(&str)>, PolarsError> {
+pub fn q2a(db: &ImdbData) -> Result<Option<&str>, PolarsError> {
     let cn = &db.cn;
     let k = &db.k;
     let mc = &db.mc;
@@ -83,7 +83,7 @@ pub fn q2a(db: &ImdbData) -> Result<Option<(&str)>, PolarsError> {
         })
         .collect::<HashSet<_>>();
 
-    let mut res: Option<(&str)> = None;
+    let mut res: Option<&str> = None;
 
     for (movie_id, company_id) in mc
         .column("movie_id")?

@@ -1,9 +1,9 @@
 use crate::data::ImdbData;
-use ahash::{HashMap, HashSet};
+use ahash::HashSet;
 use polars::prelude::*;
 use std::time::Instant;
 
-pub fn q3a(db: &ImdbData) -> Result<(), PolarsError> {
+pub fn q3a(db: &ImdbData) -> Result<Option<&str>, PolarsError> {
     let k = &db.k;
     let mi = &db.mi;
     let mk = &db.mk;
@@ -99,14 +99,10 @@ pub fn q3a(db: &ImdbData) -> Result<(), PolarsError> {
         }
     }
 
-
     let duration = start.elapsed();
-    dbg!("total elapsed");
     dbg!(duration);
 
-    dbg!(res);
-
-    Ok(())
+    Ok(res)
 }
 
 // SELECT MIN(t.title) AS movie_title
@@ -128,3 +124,16 @@ pub fn q3a(db: &ImdbData) -> Result<(), PolarsError> {
 //   AND t.id = mk.movie_id
 //   AND mk.movie_id = mi.movie_id
 //   AND k.id = mk.keyword_id;
+#[cfg(test)]
+mod test_3a {
+    use super::*;
+    use crate::data::ImdbData;
+
+    #[test]
+    fn test_q3a() -> Result<(), PolarsError> {
+        let db = ImdbData::new();
+        let res = q3a(&db)?;
+        assert_eq!(res, Some("2 Days in New York"));
+        Ok(())
+    }
+}
