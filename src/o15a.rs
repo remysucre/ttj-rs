@@ -70,7 +70,6 @@ pub fn q15a(db: &ImdbData) -> Result<Option<(&str, &str)>, PolarsError> {
         .filter_map(|(info, id)| {
             if let (Some(info), Some(id)) = (info, id) {
                 if info == "release dates" {
-                    //TODO: is this correct?
                     Some(id)
                 } else {
                     None
