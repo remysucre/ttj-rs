@@ -3,12 +3,12 @@ use ahash::{HashMap, HashSet};
 use polars::prelude::*;
 use std::time::Instant;
 
-// imdb.q1b_movie_companies(movie_id,company_id,company_type_id)
-// |imdb.q1b_title(movie_id,kind_id)
-// ||imdb_int.movie_info_idx(movie_id,info_type_id)
-// |||imdb.q1b_info_type(info_type_id)
-// |imdb.q1b_company_type(company_type_id)
-pub fn q1b(db: &ImdbData) -> Result<Option<(&str, &str, i32)>, PolarsError> {
+// imdb.q1c_movie_companies(movie_id,company_id,company_type_id)
+// |imdb.q1c_title(movie_id,kind_id)
+// |imdb.q1c_company_type(company_type_id)
+// |imdb_int.movie_info_idx(movie_id,info_type_id)
+// ||imdb.q1c_info_type(info_type_id)
+pub fn q1c(db: &ImdbData) -> Result<Option<(&str, &str, i32)>, PolarsError> {
     let ct = &db.ct;
     let it = &db.it;
     let mc = &db.mc;
@@ -24,7 +24,7 @@ pub fn q1b(db: &ImdbData) -> Result<Option<(&str, &str, i32)>, PolarsError> {
         .zip(it.column("id")?.i32()?.into_iter())
         .filter_map(|(info, id)| {
             if let (Some(info), Some(id)) = (info, id) {
-                if info == "bottom 10 rank" {
+                if info == "top 250 rank" {
                     Some(id)
                 } else {
                     None
@@ -79,7 +79,7 @@ pub fn q1b(db: &ImdbData) -> Result<Option<(&str, &str, i32)>, PolarsError> {
         .zip(t.column("production_year")?.i32()?.into_iter())
         .filter_map(|((id, title), production_year)| {
             if let (Some(id), Some(title), Some(production_year)) = (id, title, production_year) {
-                if mi_idx_s.contains(&id) && production_year >= 2005 && production_year <= 2010 {
+                if production_year > 2010 {
                     Some((id, title, production_year))
                 } else {
                     None
@@ -109,7 +109,9 @@ pub fn q1b(db: &ImdbData) -> Result<Option<(&str, &str, i32)>, PolarsError> {
             (note, company_type_id, movie_id)
         {
             if !note.contains("(as Metro-Goldwyn-Mayer Pictures)")
+                && note.contains("(co-production)")
                 && ct_s.contains(&company_type_id)
+                && mi_idx_s.contains(&movie_id)
             {
                 if let Some(tuples) = t_m.get(&movie_id) {
                     for (title, production_year) in tuples {
@@ -138,7 +140,7 @@ pub fn q1b(db: &ImdbData) -> Result<Option<(&str, &str, i32)>, PolarsError> {
     Ok(res)
 }
 
-// -- JOB 1b.sql
+// 1c.sql
 // SELECT MIN(mc.note) AS production_note,
 // MIN(t.title) AS movie_title,
 // MIN(t.production_year) AS movie_year
@@ -148,33 +150,24 @@ pub fn q1b(db: &ImdbData) -> Result<Option<(&str, &str, i32)>, PolarsError> {
 // movie_info_idx AS mi_idx,
 // title AS t
 // WHERE ct.kind = 'production companies'
-// AND it.info = 'bottom 10 rank'
+// AND it.info = 'top 250 rank'
 // AND mc.note NOT LIKE '%(as Metro-Goldwyn-Mayer Pictures)%'
-// AND t.production_year BETWEEN 2005 AND 2010
+// AND (mc.note LIKE '%(co-production)%')
+// AND t.production_year >2010
 // AND ct.id = mc.company_type_id
 // AND t.id = mc.movie_id
 // AND t.id = mi_idx.movie_id
 // AND mc.movie_id = mi_idx.movie_id
 // AND it.id = mi_idx.info_type_id;
 #[cfg(test)]
-mod test_1b {
+mod test_1c {
     use super::*;
     use crate::data::ImdbData;
 
     #[test]
-    fn test_q1b() -> Result<(), PolarsError> {
+    fn test_q1c() -> Result<(), PolarsError> {
         let db = ImdbData::new();
-        let res = q1b(&db)?;
-
-        // The expected tuple should match the SQL SELECT order:
-        // (production_note, movie_title, movie_year)
-        let expected = Some((
-            "(Set Decoration Rentals) (uncredited)",
-            "Disaster Movie",
-            2008,
-        ));
-
-        assert_eq!(res, expected);
+        assert_eq!(q1c(&db)?, Some(("(co-production)", "Intouchables", 2011)));
         Ok(())
     }
 }

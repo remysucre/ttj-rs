@@ -1,10 +1,9 @@
 use crate::data::ImdbData;
-use ahash::{HashMap, HashSet};
+use ahash::HashSet;
 use polars::prelude::*;
 use std::time::Instant;
 
 pub fn q5a(db: &ImdbData) -> Result<(), PolarsError> {
-
     let ct = &db.ct;
     let it = &db.it;
     let mc = &db.mc;
@@ -38,8 +37,13 @@ pub fn q5a(db: &ImdbData) -> Result<(), PolarsError> {
         .zip(mc.column("movie_id")?.i32()?.into_iter())
         .zip(mc.column("company_type_id")?.i32()?.into_iter())
         .filter_map(|((note, movie_id), company_type_id)| {
-            if let (Some(note), Some(movie_id), Some(company_type_id)) = (note, movie_id, company_type_id) {
-                if note.contains("(theatrical)") && note.contains("(France)") && ct_s.contains(&company_type_id) {
+            if let (Some(note), Some(movie_id), Some(company_type_id)) =
+                (note, movie_id, company_type_id)
+            {
+                if note.contains("(theatrical)")
+                    && note.contains("(France)")
+                    && ct_s.contains(&company_type_id)
+                {
                     Some(movie_id)
                 } else {
                     None
@@ -77,7 +81,6 @@ pub fn q5a(db: &ImdbData) -> Result<(), PolarsError> {
             }
         })
         .collect();
-
 
     let mut res: Option<&str> = None;
 
