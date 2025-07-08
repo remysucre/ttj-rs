@@ -15,6 +15,7 @@ pub mod o19d;
 pub mod o1a;
 pub mod o1b;
 pub mod o1c;
+pub mod o1d;
 pub mod o20a;
 pub mod o21a;
 pub mod o22a;
