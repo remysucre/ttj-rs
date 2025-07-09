@@ -15,8 +15,9 @@ fn main() -> Result<(), polars::prelude::PolarsError> {
     // let _ = o3c::q3c(&db);
     // let _ = o4a::q4a(&db);
     // let _ = o4b::q4b(&db);
-    let _ = o4c::q4c(&db);
+    // let _ = o4c::q4c(&db);
     // o5a::q5a(&db)?;
+    let _ = o5b::q5b(&db);
     // o6f::q6f(&db)?;
     // o7c::q7c(&db)?;
     // o8c::q8c(&db)?;
