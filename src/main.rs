@@ -11,7 +11,8 @@ fn main() -> Result<(), polars::prelude::PolarsError> {
     // let _ = o2c::q2c(&db);
     // let _ = o2d::q2d(&db);
     // o3a::q3a(&db)?;
-    let _ = o3b::q3b(&db);
+    // let _ = o3b::q3b(&db);
+    let _ = o3c::q3c(&db);
     // let _ = o4a::q4a(&db);
     // o5a::q5a(&db)?;
     // o6f::q6f(&db)?;
