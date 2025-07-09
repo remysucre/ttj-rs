@@ -1,9 +1,9 @@
+use crate::data::ImdbData;
 use ahash::{HashMap, HashSet};
 use polars::prelude::*;
 use std::time::Instant;
-use crate::data::ImdbData;
 
-pub fn q10c(db: &ImdbData) -> Result<(), PolarsError> {
+pub fn q10c(db: &ImdbData) -> Result<Option<(&str, &str)>, PolarsError> {
     let chn = &db.chn;
     let ci = &db.ci;
     let cn = &db.cn;
@@ -25,10 +25,13 @@ pub fn q10c(db: &ImdbData) -> Result<(), PolarsError> {
         }
     }
 
+    // Due to ct and mc form a PK-FK join and there are no selection predicates on ct, we can drop
+    // ct from the join.
+    // let ct_s: Vec<i32> = ct.column("id")?.i32()?.into_iter().flatten().collect();
+
     let start = Instant::now();
 
-    let ct_s: Vec<i32> = ct.column("id")?.i32()?.into_iter().flatten().collect();
-
+    // Technically, we can drop cn as this doesn't impact query results.
     let cn_s: HashSet<i32> = cn
         .column("country_code")?
         .str()?
@@ -69,12 +72,13 @@ pub fn q10c(db: &ImdbData) -> Result<(), PolarsError> {
         })
         .collect();
 
-    let rt_s: HashSet<i32> = rt
-        .column("id")?
-        .i32()?
-        .into_iter()
-        .filter_map(|id| id)
-        .collect();
+    // PK (rt) - FK (ci)
+    // let rt_s: HashSet<i32> = rt
+    //     .column("id")?
+    //     .i32()?
+    //     .into_iter()
+    //     .filter_map(|id| id)
+    //     .collect();
 
     let mut t_m: HashMap<i32, Vec<&str>> = HashMap::default();
 
@@ -129,13 +133,9 @@ pub fn q10c(db: &ImdbData) -> Result<(), PolarsError> {
         }
     }
 
-    dbg!(res);
+    dbg!(start.elapsed());
 
-    let duration = start.elapsed();
-    dbg!("total elapsed");
-    dbg!(duration);
-
-    Ok(())
+    Ok(res)
 }
 
 // -- JOB Query 10c
@@ -143,8 +143,7 @@ pub fn q10c(db: &ImdbData) -> Result<(), PolarsError> {
 // FROM char_name AS chn, cast_info AS ci, company_name AS cn, company_type AS ct, movie_companies AS mc, role_type AS rt, title AS t
 // WHERE ci.note like '%(producer)%'
 // AND cn.country_code = '[us]'
-// AND t.production_year
-// > 1990
+// AND t.production_year > 1990
 // AND t.id = mc.movie_id
 // AND t.id = ci.movie_id
 // AND ci.movie_id = mc.movie_id
@@ -152,3 +151,19 @@ pub fn q10c(db: &ImdbData) -> Result<(), PolarsError> {
 // AND rt.id = ci.role_id
 // AND cn.id = mc.company_id
 // AND ct.id = mc.company_type_id;
+#[cfg(test)]
+mod test_10c {
+    use super::*;
+    use crate::data::ImdbData;
+
+    #[test]
+    fn test_q10c() -> Result<(), PolarsError> {
+        let db = ImdbData::new();
+
+        assert_eq!(
+            q10c(&db)?,
+            Some(("Himself", "Evil Eyes: Behind the Scenes"))
+        );
+        Ok(())
+    }
+}
