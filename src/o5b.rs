@@ -5,7 +5,7 @@ use std::time::Instant;
 
 pub fn q5b(db: &ImdbData) -> Result<Option<&str>, PolarsError> {
     let ct = &db.ct;
-    let it = &db.it;
+    // let it = &db.it;
     let mc = &db.mc;
     let mi = &db.mi;
     let t = &db.t;
