@@ -19,16 +19,17 @@ fn main() -> Result<(), polars::prelude::PolarsError> {
     // o5a::q5a(&db)?;
     // o5b::q5b(&db)?;
     // o5c::q5c(&db)?;
-    o6a::q6a(&db)?;
+    // o6a::q6a(&db)?;
+    o6b::q6b(&db)?;
     // o6f::q6f(&db)?;
     // o7c::q7c(&db)?;
     // o8c::q8c(&db)?;
     // o9a::q9a(&db)?;
     // o10a::q10a(&db)?;
-    // let _ = o10c::q10c(&db)?;
+    // o10c::q10c(&db)?;
     // o11a::q11a(&db)?;
     // o13a::q13a(&db)?;
-    // let _ = o15a::q15a(&db)?;
+    // o15a::q15a(&db)?;
     // o10a::q10a(&db)?;
     // o10b::q10b(&db)?;
     // o10c::q10c(&db)?;
@@ -45,18 +46,18 @@ fn main() -> Result<(), polars::prelude::PolarsError> {
     // o23a::q23a(&db)?;
     // o20a::q20a(&db)?;
     // o20a::q20a(&db)?;
-    // let _ = o22a::q22a(&db)?;
+    // o22a::q22a(&db)?;
     // o24a::q24a(&db)?;
     // o25c::q25c(&db)?;
     // o25a::q25a(&db)?;
     // o26a::q26a(&db)?;
     // o27a::q27a(&db)?;
-    // let _ = o28a::q28a(&db);
+    // o28a::q28a(&db)?;
     // o29a::q29a(&db)?;
     // o25c::q25c(&db)?;
     // o30c::q30c(&db)?;
     // o31a::q31a(&db)?;
-    // let _ = o32a::q32a(&db);
+    // o32a::q32a(&db)?;
     // o33a::q33a(&db)?;
     Ok(())
 }
