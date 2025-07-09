@@ -57,7 +57,7 @@ pub fn q10c(db: &ImdbData) -> Result<Option<(&str, &str)>, PolarsError> {
         .zip(mc.column("company_id")?.i32()?.into_iter())
         .zip(mc.column("movie_id")?.i32()?.into_iter())
         .filter_map(|((company_type_id, company_id), movie_id)| {
-            if let (Some(company_type_id), Some(company_id), Some(movie_id)) =
+            if let (Some(_), Some(company_id), Some(movie_id)) =
                 (company_type_id, company_id, movie_id)
             {
                 // if ct_s.contains(&company_type_id) && cn_s.contains(&company_id) {
