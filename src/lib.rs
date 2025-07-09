@@ -48,6 +48,7 @@ pub mod o6a;
 pub mod o6b;
 pub mod o6c;
 pub mod o6d;
+pub mod o6e;
 pub mod o6f;
 pub mod o7c;
 pub mod o8c;
