@@ -31,7 +31,7 @@ pub fn q22a(db: &ImdbData) -> Result<Option<(&str, &str, &str)>, PolarsError> {
 
     let start = Instant::now();
 
-    let mut cn_m: HashMap<i32, Vec<&str>> = cn
+    let cn_m: HashMap<i32, Vec<&str>> = cn
         .column("id")?
         .i32()?
         .into_iter()
@@ -182,7 +182,7 @@ pub fn q22a(db: &ImdbData) -> Result<Option<(&str, &str, &str)>, PolarsError> {
         })
         .collect();
 
-    let mut mi_idx_m: HashMap<i32, Vec<&str>> = mi_idx
+    let mi_idx_m: HashMap<i32, Vec<&str>> = mi_idx
         .column("movie_id")?
         .i32()?
         .into_iter()
