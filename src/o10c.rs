@@ -7,9 +7,9 @@ pub fn q10c(db: &ImdbData) -> Result<Option<(&str, &str)>, PolarsError> {
     let chn = &db.chn;
     let ci = &db.ci;
     let cn = &db.cn;
-    let ct = &db.ct;
+    // let ct = &db.ct;
     let mc = &db.mc;
-    let rt = &db.rt;
+    // let rt = &db.rt;
     let t = &db.t;
 
     let mut chn_m: HashMap<i32, Vec<&str>> = HashMap::default();
@@ -106,7 +106,7 @@ pub fn q10c(db: &ImdbData) -> Result<Option<(&str, &str)>, PolarsError> {
         .zip(ci.column("role_id")?.i32()?.into_iter())
         .zip(ci.column("note")?.str()?.into_iter())
     {
-        if let (Some(mid), Some(person_role_id), Some(role_id), Some(note)) =
+        if let (Some(mid), Some(person_role_id), Some(_), Some(note)) =
             (mid, person_role_id, role_id, note)
         {
             // if note.contains("(producer)") && rt_s.contains(&role_id) {
