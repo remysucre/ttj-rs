@@ -109,7 +109,7 @@ pub fn q7a(db: &ImdbData) -> Result<Option<(&str, &str)>, PolarsError> {
             acc
         });
 
-    let mut n_m: HashMap<i32, Vec<&str>> = n
+    let n_m: HashMap<i32, Vec<&str>> = n
         .column("id")?
         .i32()?
         .into_iter()
@@ -137,7 +137,7 @@ pub fn q7a(db: &ImdbData) -> Result<Option<(&str, &str)>, PolarsError> {
             acc
         });
 
-    let mut an_s: HashSet<i32> = an
+    let an_s: HashSet<i32> = an
         .column("person_id")?
         .i32()?
         .into_iter()

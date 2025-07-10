@@ -109,7 +109,7 @@ pub fn q7b(db: &ImdbData) -> Result<Option<(&str, &str)>, PolarsError> {
             acc
         });
 
-    let mut n_m: HashMap<i32, Vec<&str>> = n
+    let n_m: HashMap<i32, Vec<&str>> = n
         .column("id")?
         .i32()?
         .into_iter()
@@ -120,7 +120,7 @@ pub fn q7b(db: &ImdbData) -> Result<Option<(&str, &str)>, PolarsError> {
             if let (Some(id), Some(name), Some(name_pcode), Some(gender)) =
                 (id, name, name_pcode, gender)
             {
-                if pi_s.contains(&id) && name.starts_with('D') && gender == "m" {
+                if pi_s.contains(&id) && name_pcode.starts_with('D') && gender == "m" {
                     Some((id, name))
                 } else {
                     None
@@ -134,7 +134,7 @@ pub fn q7b(db: &ImdbData) -> Result<Option<(&str, &str)>, PolarsError> {
             acc
         });
 
-    let mut an_s: HashSet<i32> = an
+    let an_s: HashSet<i32> = an
         .column("person_id")?
         .i32()?
         .into_iter()
