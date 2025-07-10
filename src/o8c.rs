@@ -1,10 +1,10 @@
+use crate::data::ImdbData;
 use ahash::HashMap;
 use ahash::HashSet;
 use polars::prelude::*;
 use std::time::Instant;
-use crate::data::ImdbData;
 
-pub fn q8c(db: &ImdbData) -> Result<(), PolarsError> {
+pub fn q8c(db: &ImdbData) -> Result<Option<(&str, &str)>, PolarsError> {
     let t = &db.t;
     let an = &db.an;
     let n = &db.n;
@@ -173,30 +173,43 @@ pub fn q8c(db: &ImdbData) -> Result<(), PolarsError> {
         }
     }
 
-    println!("{:?}", res);
+    dbg!(start.elapsed());
 
-    let duration = start.elapsed();
-    dbg!(duration);
-
-    Ok(())
+    Ok(res)
 }
 
-// 1a.sql
-// SELECT MIN(mc.note) AS production_note,
-//        MIN(t.title) AS movie_title,
-//        MIN(t.production_year) AS movie_year
-// FROM company_type AS ct,
-//      info_type AS it,
-//      movie_companies AS mc,
-//      movie_info_idx AS mi_idx,
-//      title AS t
-// WHERE ct.kind = 'production companies'
-//   AND it.info = 'top 250 rank'
-//   AND mc.note NOT LIKE '%(as Metro-Goldwyn-Mayer Pictures)%'
-//   AND (mc.note LIKE '%(co-production)%'
-//        OR mc.note LIKE '%(presents)%')
-//   AND ct.id = mc.company_type_id
-//   AND t.id = mc.movie_id
-//   AND t.id = mi_idx.movie_id
-//   AND mc.movie_id = mi_idx.movie_id
-//   AND it.id = mi_idx.info_type_id;
+// -- JOB Query 8d
+// SELECT MIN(an1.name) AS costume_designer_pseudo, MIN(t.title) AS movie_with_costumes
+// FROM aka_name AS an1,
+// cast_info AS ci,
+// company_name AS cn,
+// movie_companies AS mc,
+// name AS n1,
+// role_type AS rt,
+// title AS t
+// WHERE cn.country_code = '[us]'
+// AND rt.role = 'costume designer'
+// AND an1.person_id = n1.id
+// AND n1.id = ci.person_id
+// AND ci.movie_id = t.id
+// AND t.id = mc.movie_id
+// AND mc.company_id = cn.id
+// AND ci.role_id = rt.id
+// AND an1.person_id = ci.person_id
+// AND ci.movie_id = mc.movie_id;
+#[cfg(test)]
+mod test_8c {
+    use super::*;
+    use crate::data::ImdbData;
+
+    #[test]
+    fn test_q8b() -> Result<(), PolarsError> {
+        let db = ImdbData::new();
+        let res = q8c(&db)?;
+        assert_eq!(
+            res,
+            Some(("\"Jenny from the Block\"", "#1 Cheerleader Camp"))
+        );
+        Ok(())
+    }
+}
