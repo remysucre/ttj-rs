@@ -3,7 +3,7 @@ use ahash::{HashMap, HashSet};
 use polars::prelude::*;
 use std::time::Instant;
 
-pub fn q9c(db: &ImdbData) -> Result<Option<(&str, &str, &str, &str)>, PolarsError> {
+pub fn q9d(db: &ImdbData) -> Result<Option<(&str, &str, &str, &str)>, PolarsError> {
     let an = &db.an;
     let chn = &db.chn;
     let ci = &db.ci;
@@ -99,7 +99,7 @@ pub fn q9c(db: &ImdbData) -> Result<Option<(&str, &str, &str, &str)>, PolarsErro
         .zip(n.column("name")?.str()?.into_iter())
         .filter_map(|((id, gender), name)| {
             if let (Some(id), Some(gender), Some(name)) = (id, gender, name) {
-                if gender == "f" && name.contains("An") {
+                if gender == "f" {
                     Some((id, name))
                 } else {
                     None
@@ -196,9 +196,9 @@ pub fn q9c(db: &ImdbData) -> Result<Option<(&str, &str, &str, &str)>, PolarsErro
     Ok(res)
 }
 
-// -- JOB Query 9c
+// -- JOB Query 9d
 // SELECT MIN(an.name)  AS alternative_name,
-// MIN(chn.name) AS voiced_character_name,
+// MIN(chn.name) AS voiced_char_name,
 // MIN(n.name)   AS voicing_actress,
 // MIN(t.title)  AS american_movie
 // FROM aka_name AS an,
@@ -212,7 +212,6 @@ pub fn q9c(db: &ImdbData) -> Result<Option<(&str, &str, &str, &str)>, PolarsErro
 // WHERE ci.note in ('(voice)', '(voice: Japanese version)', '(voice) (uncredited)', '(voice: English version)')
 // AND cn.country_code = '[us]'
 // AND n.gender = 'f'
-// and n.name like '%An%'
 // AND rt.role = 'actress'
 // AND ci.movie_id = t.id
 // AND t.id = mc.movie_id
@@ -224,21 +223,21 @@ pub fn q9c(db: &ImdbData) -> Result<Option<(&str, &str, &str, &str)>, PolarsErro
 // AND an.person_id = n.id
 // AND an.person_id = ci.person_id;
 #[cfg(test)]
-mod test_9c {
+mod test_9d {
     use super::*;
     use crate::data::ImdbData;
 
     #[test]
-    fn test_q9c() -> Result<(), PolarsError> {
+    fn test_q9d() -> Result<(), PolarsError> {
         let db = ImdbData::new();
-        let res = q9c(&db)?;
+        let res = q9d(&db)?;
         assert_eq!(
             res,
             Some((
-                "'Annette'",
-                "2nd Balladeer",
-                "Alborg, Ana Esther",
-                "(1975-01-20)"
+                "!!!, Toy",
+                "\"Cockamamie's\" Salesgirl",
+                "Aaron, Caroline",
+                "$15,000.00 Error"
             ))
         );
         Ok(())

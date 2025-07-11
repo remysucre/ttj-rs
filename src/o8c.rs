@@ -203,7 +203,7 @@ mod test_8c {
     use crate::data::ImdbData;
 
     #[test]
-    fn test_q8b() -> Result<(), PolarsError> {
+    fn test_q8c() -> Result<(), PolarsError> {
         let db = ImdbData::new();
         let res = q8c(&db)?;
         assert_eq!(

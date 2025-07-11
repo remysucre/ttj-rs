@@ -84,10 +84,9 @@ pub fn q8d(db: &ImdbData) -> Result<Option<(&str, &str)>, PolarsError> {
         .column("movie_id")?
         .i32()?
         .into_iter()
-        .zip(mc.column("note")?.str()?.into_iter())
         .zip(mc.column("company_id")?.i32()?.into_iter())
-        .filter_map(|((movie_id, note), company_id)| {
-            if let (Some(movie_id), Some(note), Some(company_id)) = (movie_id, note, company_id) {
+        .filter_map(|(movie_id, company_id)| {
+            if let (Some(movie_id), Some(company_id)) = (movie_id, company_id) {
                 if cn_s.contains(&company_id) {
                     Some(movie_id)
                 } else {
@@ -101,17 +100,14 @@ pub fn q8d(db: &ImdbData) -> Result<Option<(&str, &str)>, PolarsError> {
 
     let mut res: Option<(&str, &str)> = None;
 
-    for (((movie_id, person_id), role_id), note) in ci
+    for ((movie_id, person_id), role_id) in ci
         .column("movie_id")?
         .i32()?
         .into_iter()
         .zip(ci.column("person_id")?.i32()?.into_iter())
         .zip(ci.column("role_id")?.i32()?.into_iter())
-        .zip(ci.column("note")?.str()?.into_iter())
     {
-        if let (Some(movie_id), Some(person_id), Some(role_id), Some(note)) =
-            (movie_id, person_id, role_id, note)
-        {
+        if let (Some(movie_id), Some(person_id), Some(role_id)) = (movie_id, person_id, role_id) {
             if rt_s.contains(&role_id) && n_s.contains(&person_id) && mc_s.contains(&movie_id) {
                 if let (Some(name), Some(title)) = (an_m.get(&person_id), t_m.get(&movie_id)) {
                     for name in name {
@@ -163,7 +159,7 @@ mod test_8d {
     use crate::data::ImdbData;
 
     #[test]
-    fn test_q8b() -> Result<(), PolarsError> {
+    fn test_q8d() -> Result<(), PolarsError> {
         let db = ImdbData::new();
         let res = q8d(&db)?;
         assert_eq!(
