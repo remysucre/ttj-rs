@@ -35,10 +35,11 @@ fn main() -> Result<(), polars::prelude::PolarsError> {
     // o9a::q9a(&db)?;
     // o9b::q9b(&db)?;
     // o9c::q9c(&db)?;
-    o9d::q9d(&db)?;
+    // o9d::q9d(&db)?;
     // o10a::q10a(&db)?;
     // o10c::q10c(&db)?;
     // o11a::q11a(&db)?;
+    o11b::q11b(&db)?;
     // o13a::q13a(&db)?;
     // o15a::q15a(&db)?;
     // o10a::q10a(&db)?;
