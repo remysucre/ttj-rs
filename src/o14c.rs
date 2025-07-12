@@ -3,7 +3,7 @@ use ahash::{HashMap, HashSet};
 use polars::prelude::*;
 use std::time::Instant;
 
-pub fn q14b(db: &ImdbData) -> Result<Option<(&str, &str)>, PolarsError> {
+pub fn q14c(db: &ImdbData) -> Result<Option<(&str, &str)>, PolarsError> {
     let it1 = &db.it;
     let it2 = &db.it;
     let k = &db.k;
@@ -50,7 +50,7 @@ pub fn q14b(db: &ImdbData) -> Result<Option<(&str, &str)>, PolarsError> {
         .zip(k.column("id")?.i32()?.into_iter())
         .filter_map(|(keyword, id)| {
             if let (Some(keyword), Some(id)) = (keyword, id) {
-                if matches!(keyword, "murder" | "murder-in-title") {
+                if matches!(keyword, "murder" | "murder-in-title" | "blood" | "violence") {
                     Some(id)
                 } else {
                     None
@@ -68,7 +68,11 @@ pub fn q14b(db: &ImdbData) -> Result<Option<(&str, &str)>, PolarsError> {
         .zip(kt.column("id")?.i32()?.into_iter())
         .filter_map(|(kind, id)| {
             if let (Some(kind), Some(id)) = (kind, id) {
-                if kind == "movie" { Some(id) } else { None }
+                if matches!(kind, "movie" | "episode") {
+                    Some(id)
+                } else {
+                    None
+                }
             } else {
                 None
             }
@@ -91,8 +95,7 @@ pub fn q14b(db: &ImdbData) -> Result<Option<(&str, &str)>, PolarsError> {
                         | "Germany"
                         | "Denmark"
                         | "Swedish"
-                        // query has a typo, which makes this field useless.
-                        // | "Denish"
+                        | "Danish"
                         | "Norwegian"
                         | "German"
                         | "USA"
@@ -138,12 +141,7 @@ pub fn q14b(db: &ImdbData) -> Result<Option<(&str, &str)>, PolarsError> {
             if let (Some(id), Some(title), Some(production_year), Some(kind_id)) =
                 (id, title, production_year, kind_id)
             {
-                if production_year > 2010
-                    && (title.contains("murder")
-                        || title.contains("Murder")
-                        || title.contains("Mord"))
-                    && kt_s.contains(&kind_id)
-                {
+                if production_year > 2005 && kt_s.contains(&kind_id) {
                     Some((id, title))
                 } else {
                     None
@@ -167,21 +165,19 @@ pub fn q14b(db: &ImdbData) -> Result<Option<(&str, &str)>, PolarsError> {
         .zip(mi_idx.column("info")?.str()?.into_iter())
     {
         if let (Some(info_type_id), Some(movie_id), Some(info)) = (info_type_id, movie_id, info) {
-            if it2_s.contains(&info_type_id) && info > "6.0" {
+            if it2_s.contains(&info_type_id) && info < "8.5" {
                 if let Some(titles) = t_m.get(&movie_id) {
-                    if mi_s.contains(&movie_id) {
-                        if mk_s.contains(&movie_id) {
-                            for title in titles {
-                                if let Some((old_info, old_title)) = res.as_mut() {
-                                    if title < old_title {
-                                        *old_title = title;
-                                    }
-                                    if info < *old_info {
-                                        *old_info = info;
-                                    }
-                                } else {
-                                    res = Some((info, title));
+                    if mi_s.contains(&movie_id) && mk_s.contains(&movie_id) {
+                        for title in titles {
+                            if let Some((old_info, old_title)) = res.as_mut() {
+                                if title < old_title {
+                                    *old_title = title;
                                 }
+                                if info < *old_info {
+                                    *old_info = info;
+                                }
+                            } else {
+                                res = Some((info, title));
                             }
                         }
                     }
@@ -195,8 +191,8 @@ pub fn q14b(db: &ImdbData) -> Result<Option<(&str, &str)>, PolarsError> {
     Ok(res)
 }
 
-// -- JOB Query 14b
-// SELECT MIN(mi_idx.info) AS rating, MIN(t.title) AS western_dark_production
+// -- JOB Query 14c
+// SELECT MIN(mi_idx.info) AS rating, MIN(t.title) AS north_european_dark_production
 // FROM info_type AS it1,
 // info_type AS it2,
 // keyword AS k,
@@ -207,13 +203,13 @@ pub fn q14b(db: &ImdbData) -> Result<Option<(&str, &str)>, PolarsError> {
 // title AS t
 // WHERE it1.info = 'countries'
 // AND it2.info = 'rating'
-// AND k.keyword in ('murder', 'murder-in-title')
-// AND kt.kind = 'movie'
+// AND k.keyword is not null
+// and k.keyword in ('murder', 'murder-in-title', 'blood', 'violence')
+// AND kt.kind in ('movie', 'episode')
 // AND mi.info IN
-// ('Sweden', 'Norway', 'Germany', 'Denmark', 'Swedish', 'Denish', 'Norwegian', 'German', 'USA', 'American')
-// AND mi_idx.info > '6.0'
-// AND t.production_year > 2010
-// and (t.title like '%murder%' or t.title like '%Murder%' or t.title like '%Mord%')
+// ('Sweden', 'Norway', 'Germany', 'Denmark', 'Swedish', 'Danish', 'Norwegian', 'German', 'USA', 'American')
+// AND mi_idx.info < '8.5'
+// AND t.production_year > 2005
 // AND kt.id = t.kind_id
 // AND t.id = mi.movie_id
 // AND t.id = mk.movie_id
@@ -225,15 +221,15 @@ pub fn q14b(db: &ImdbData) -> Result<Option<(&str, &str)>, PolarsError> {
 // AND it1.id = mi.info_type_id
 // AND it2.id = mi_idx.info_type_id;
 #[cfg(test)]
-mod test_14b {
+mod test_14c {
     use super::*;
     use crate::data::ImdbData;
 
     #[test]
-    fn test_q14b() -> Result<(), PolarsError> {
+    fn test_q14c() -> Result<(), PolarsError> {
         let db = ImdbData::new();
-        let res = q14b(&db)?;
-        assert_eq!(res, Some(("6.4", "Of Dolls and Murder")));
+        let res = q14c(&db)?;
+        assert_eq!(res, Some(("1.0", "$lowdown")));
         Ok(())
     }
 }
