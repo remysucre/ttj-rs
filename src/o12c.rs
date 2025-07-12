@@ -5,7 +5,7 @@ use polars::error::PolarsError;
 
 use crate::data::ImdbData;
 
-pub fn q12b(db: &ImdbData) -> Result<Option<(&str, &str)>, PolarsError> {
+pub fn q12c(db: &ImdbData) -> Result<Option<(&str, &str, &str)>, PolarsError> {
     let cn = &db.cn;
     let ct = &db.ct;
     let it1 = &db.it;
@@ -17,32 +17,28 @@ pub fn q12b(db: &ImdbData) -> Result<Option<(&str, &str)>, PolarsError> {
 
     let start = Instant::now();
 
-    let it1: HashSet<i32> = it1
+    let it1_s: HashSet<i32> = it1
         .column("info")?
         .str()?
         .into_iter()
         .zip(it1.column("id")?.i32()?.into_iter())
         .filter_map(|(info, id)| {
             if let (Some(info), Some(id)) = (info, id) {
-                if info == "budget" { Some(id) } else { None }
+                if info == "genres" { Some(id) } else { None }
             } else {
                 None
             }
         })
         .collect();
 
-    let it2: HashSet<i32> = it2
+    let it2_s: HashSet<i32> = it2
         .column("info")?
         .str()?
         .into_iter()
         .zip(it2.column("id")?.i32()?.into_iter())
         .filter_map(|(info, id)| {
             if let (Some(info), Some(id)) = (info, id) {
-                if info == "bottom 10 rank" {
-                    Some(id)
-                } else {
-                    None
-                }
+                if info == "rating" { Some(id) } else { None }
             } else {
                 None
             }
@@ -59,7 +55,7 @@ pub fn q12b(db: &ImdbData) -> Result<Option<(&str, &str)>, PolarsError> {
         .zip(mi_idx.column("info_type_id")?.i32()?.into_iter())
     {
         if let (Some(movie_id), Some(info), Some(info_type_id)) = (movie_id, info, info_type_id) {
-            if info > "8.0" && it2.contains(&info_type_id) {
+            if info > "7.0" && it2_s.contains(&info_type_id) {
                 mi_idx_m.entry(movie_id).or_default().push(info);
             }
         }
@@ -75,7 +71,9 @@ pub fn q12b(db: &ImdbData) -> Result<Option<(&str, &str)>, PolarsError> {
         .zip(mi.column("info_type_id")?.i32()?.into_iter())
     {
         if let (Some(movie_id), Some(info), Some(info_type_id)) = (movie_id, info, info_type_id) {
-            if matches!(info, "Drama" | "Horror") && it1.contains(&info_type_id) {
+            if matches!(info, "Drama" | "Horror" | "Western" | "Family")
+                && it1_s.contains(&info_type_id)
+            {
                 mi_s.insert(movie_id);
             }
         }
@@ -88,7 +86,7 @@ pub fn q12b(db: &ImdbData) -> Result<Option<(&str, &str)>, PolarsError> {
         .zip(ct.column("id")?.i32()?.into_iter())
         .filter_map(|(kind, id)| {
             if let (Some(kind), Some(id)) = (kind, id) {
-                if kind == "production companies" || kind == "distributors" {
+                if kind == "production companies" {
                     Some(id)
                 } else {
                     None
@@ -99,15 +97,16 @@ pub fn q12b(db: &ImdbData) -> Result<Option<(&str, &str)>, PolarsError> {
         })
         .collect();
 
-    let cn_s: HashSet<i32> = cn
+    let cn_m: HashMap<i32, Vec<&str>> = cn
         .column("id")?
         .i32()?
         .into_iter()
         .zip(cn.column("country_code")?.str()?.into_iter())
-        .filter_map(|(id, country_code)| {
-            if let (Some(id), Some(country_code)) = (id, country_code) {
+        .zip(cn.column("name")?.str()?.into_iter())
+        .filter_map(|((id, country_code), name)| {
+            if let (Some(id), Some(country_code), Some(name)) = (id, country_code, name) {
                 if country_code == "[us]" {
-                    Some(id)
+                    Some((id, name))
                 } else {
                     None
                 }
@@ -115,7 +114,10 @@ pub fn q12b(db: &ImdbData) -> Result<Option<(&str, &str)>, PolarsError> {
                 None
             }
         })
-        .collect();
+        .fold(HashMap::default(), |mut acc, (id, name)| {
+            acc.entry(id).or_default().push(name);
+            acc
+        });
 
     let mut t_m: HashMap<i32, Vec<&str>> = HashMap::default();
 
@@ -127,14 +129,13 @@ pub fn q12b(db: &ImdbData) -> Result<Option<(&str, &str)>, PolarsError> {
         .zip(t.column("title")?.str()?.into_iter())
     {
         if let (Some(id), Some(production_year), Some(title)) = (id, production_year, title) {
-            if production_year > 2000 && (title.starts_with("Birdemic") || title.contains("Movie"))
-            {
+            if (2000..=2010).contains(&production_year) {
                 t_m.entry(id).or_default().push(title);
             }
         }
     }
 
-    let mut res: Option<(&str, &str)> = None;
+    let mut res: Option<(&str, &str, &str)> = None;
 
     for ((movie_id, company_id), company_type_id) in mc
         .column("movie_id")?
@@ -146,22 +147,28 @@ pub fn q12b(db: &ImdbData) -> Result<Option<(&str, &str)>, PolarsError> {
         if let (Some(movie_id), Some(company_id), Some(company_type_id)) =
             (movie_id, company_id, company_type_id)
         {
-            if cn_s.contains(&company_id)
-                && ct_s.contains(&company_type_id)
-                && mi_s.contains(&movie_id)
-            {
-                if let (Some(titles), Some(info)) = (t_m.get(&movie_id), mi_idx_m.get(&movie_id)) {
+            if ct_s.contains(&company_type_id) && mi_s.contains(&movie_id) {
+                if let (Some(titles), Some(info), Some(name)) = (
+                    t_m.get(&movie_id),
+                    mi_idx_m.get(&movie_id),
+                    cn_m.get(&company_id),
+                ) {
                     for title in titles {
                         for i in info {
-                            if let Some((old_info, old_title)) = res.as_mut() {
-                                if title < old_title {
-                                    *old_title = title;
+                            for name in name {
+                                if let Some((old_name, old_info, old_title)) = res.as_mut() {
+                                    if title < old_title {
+                                        *old_title = title;
+                                    }
+                                    if i < old_info {
+                                        *old_info = i;
+                                    }
+                                    if name < old_name {
+                                        *old_name = name;
+                                    }
+                                } else {
+                                    res = Some((name, i, title));
                                 }
-                                if i < old_info {
-                                    *old_info = i;
-                                }
-                            } else {
-                                res = Some((title, i));
                             }
                         }
                     }
@@ -175,8 +182,8 @@ pub fn q12b(db: &ImdbData) -> Result<Option<(&str, &str)>, PolarsError> {
     Ok(res)
 }
 
-// -- JOB Query 12b
-// SELECT MIN(mi.info) AS budget, MIN(t.title) AS unsuccsessful_movie
+// -- JOB Query 12c
+// SELECT MIN(cn.name) AS movie_company, MIN(mi_idx.info) AS rating, MIN(t.title) AS mainstream_movie
 // FROM company_name AS cn,
 // company_type AS ct,
 // info_type AS it1,
@@ -186,12 +193,12 @@ pub fn q12b(db: &ImdbData) -> Result<Option<(&str, &str)>, PolarsError> {
 // movie_info_idx AS mi_idx,
 // title AS t
 // WHERE cn.country_code = '[us]'
-// AND ct.kind is not NULL
-// and (ct.kind = 'production companies' or ct.kind = 'distributors')
-// AND it1.info = 'budget'
-// AND it2.info = 'bottom 10 rank'
-// AND t.production_year > 2000
-// AND (t.title LIKE 'Birdemic%' OR t.title LIKE '%Movie%')
+// AND ct.kind = 'production companies'
+// AND it1.info = 'genres'
+// AND it2.info = 'rating'
+// AND mi.info in ('Drama', 'Horror', 'Western', 'Family')
+// AND mi_idx.info > '7.0'
+// AND t.production_year between 2000 and 2010
 // AND t.id = mi.movie_id
 // AND t.id = mi_idx.movie_id
 // AND mi.info_type_id = it1.id
@@ -203,15 +210,15 @@ pub fn q12b(db: &ImdbData) -> Result<Option<(&str, &str)>, PolarsError> {
 // AND mc.movie_id = mi_idx.movie_id
 // AND mi.movie_id = mi_idx.movie_id;
 #[cfg(test)]
-mod test_12b {
+mod test_12c {
     use super::*;
     use crate::data::ImdbData;
 
     #[test]
-    fn test_q12b() -> Result<(), PolarsError> {
+    fn test_q12c() -> Result<(), PolarsError> {
         let db = ImdbData::new();
-        let res = q12b(&db)?;
-        assert_eq!(res, Some(("$10,000", "Birdemic: Shock and Terror")));
+        let res = q12c(&db)?;
+        assert_eq!(res, Some(("\"Oh That Gus!\"", "7.1", "$1.11")));
         Ok(())
     }
 }
