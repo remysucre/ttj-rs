@@ -12,6 +12,7 @@ pub mod o12c;
 pub mod o13a;
 pub mod o13b;
 pub mod o13c;
+pub mod o13d;
 pub mod o14a;
 pub mod o15a;
 pub mod o16b;
