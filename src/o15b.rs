@@ -3,7 +3,7 @@ use ahash::{HashMap, HashSet};
 use polars::prelude::*;
 use std::time::Instant;
 
-pub fn q15a(db: &ImdbData) -> Result<Option<(&str, &str)>, PolarsError> {
+pub fn q15b(db: &ImdbData) -> Result<Option<(&str, &str)>, PolarsError> {
     let at = &db.at;
     let cn = &db.cn;
     // let ct = &db.ct;
@@ -23,6 +23,11 @@ pub fn q15a(db: &ImdbData) -> Result<Option<(&str, &str)>, PolarsError> {
 
     let k_s: HashSet<i32> = k.column("id")?.i32()?.into_iter().flatten().collect();
 
+    // Fk-PK optimization
+    // let ct_s: HashSet<i32> = ct.column("id")?.i32()?.into_iter().flatten().collect();
+
+    let start = Instant::now();
+
     let mut mk_s: HashSet<i32> = HashSet::default();
 
     for (movie_id, keyword) in mk
@@ -38,19 +43,15 @@ pub fn q15a(db: &ImdbData) -> Result<Option<(&str, &str)>, PolarsError> {
         }
     }
 
-    // FK-PK optimization
-    // let ct_s: HashSet<i32> = ct.column("id")?.i32()?.into_iter().flatten().collect();
-
-    let start = Instant::now();
-
     let cn_s: HashSet<i32> = cn
         .column("country_code")?
         .str()?
         .into_iter()
         .zip(cn.column("id")?.i32()?.into_iter())
-        .filter_map(|(country_code, id)| {
-            if let (Some(country_code), Some(id)) = (country_code, id) {
-                if country_code == "[us]" {
+        .zip(cn.column("name")?.str()?.into_iter())
+        .filter_map(|((country_code, id), name)| {
+            if let (Some(country_code), Some(id), Some(name)) = (country_code, id, name) {
+                if country_code == "[us]" && name == "YouTube" {
                     Some(id)
                 } else {
                     None
@@ -94,7 +95,7 @@ pub fn q15a(db: &ImdbData) -> Result<Option<(&str, &str)>, PolarsError> {
         {
             if note.contains("internet")
                 && info.starts_with("USA:")
-                && info.contains("200")
+                && info.contains(" 200")
                 && it1_s.contains(&info_type_id)
             {
                 mi_m.entry(movie_id).or_default().push(info);
@@ -112,7 +113,7 @@ pub fn q15a(db: &ImdbData) -> Result<Option<(&str, &str)>, PolarsError> {
         .zip(t.column("title")?.str()?.into_iter())
     {
         if let (Some(id), Some(production_year), Some(title)) = (id, production_year, title) {
-            if production_year > 2000
+            if (2005..=2010).contains(&production_year)
                 && mi_m.contains_key(&id)
                 && at_s.contains(&id)
                 && mk_s.contains(&id)
@@ -137,7 +138,7 @@ pub fn q15a(db: &ImdbData) -> Result<Option<(&str, &str)>, PolarsError> {
                     if let Some(info) = mi_m.get(&mid) {
                         for title in titles {
                             for info in info {
-                                if let Some((old_title, old_info)) = res.as_mut() {
+                                if let Some((old_info, old_title)) = res.as_mut() {
                                     if title < old_title {
                                         *old_title = title;
                                     }
@@ -145,7 +146,7 @@ pub fn q15a(db: &ImdbData) -> Result<Option<(&str, &str)>, PolarsError> {
                                         *old_info = info;
                                     }
                                 } else {
-                                    res = Some((title, info));
+                                    res = Some((info, title));
                                 }
                             }
                         }
@@ -160,25 +161,18 @@ pub fn q15a(db: &ImdbData) -> Result<Option<(&str, &str)>, PolarsError> {
     Ok(res)
 }
 
-// -- JOB 15a
-// SELECT MIN(mi.info) AS release_date,
-// MIN(t.title) AS internet_movie
-// FROM aka_title AS at,
-// company_name AS cn,
-// company_type AS ct,
-// info_type AS it1,
-// keyword AS k,
-// movie_companies AS mc,
-// movie_info AS mi,
-// movie_keyword AS mk,
-// title AS t
+// -- JOB Query 15b
+// SELECT MIN(mi.info) AS release_date, MIN(t.title) AS youtube_movie
+// FROM aka_title AS at, company_name AS cn, company_type AS ct, info_type AS it1, keyword AS k, movie_companies AS mc, movie_info AS mi, movie_keyword AS mk, title AS t
 // WHERE cn.country_code = '[us]'
+// and cn.name = 'YouTube'
 // AND it1.info = 'release dates'
-// AND mc.note LIKE '%(200%)%'
-// AND mc.note LIKE '%(worldwide)%'
-// AND mi.note LIKE '%internet%'
-// AND mi.info LIKE 'USA:% 200%'
-// AND t.production_year > 2000
+// AND mc.note like '%(200%)%'
+// and mc.note like '%(worldwide)%'
+// AND mi.note like '%internet%'
+// AND mi.info like 'USA:% 200%'
+// AND t.production_year between 2005
+// and 2010
 // AND t.id = at.movie_id
 // AND t.id = mi.movie_id
 // AND t.id = mk.movie_id
@@ -194,18 +188,15 @@ pub fn q15a(db: &ImdbData) -> Result<Option<(&str, &str)>, PolarsError> {
 // AND cn.id = mc.company_id
 // AND ct.id = mc.company_type_id;
 #[cfg(test)]
-mod test_15a {
+mod test_15b {
     use super::*;
     use crate::data::ImdbData;
 
     #[test]
-    fn test_q15a() -> Result<(), PolarsError> {
+    fn test_q15b() -> Result<(), PolarsError> {
         let db = ImdbData::new();
-        let res = q15a(&db)?;
-        assert_eq!(
-            res,
-            Some(("Battlestar Galactica: The Resistance", "USA:1 June 2007"))
-        );
+        let res = q15b(&db)?;
+        assert_eq!(res, Some(("USA:27 April 2007", "RoboCop vs Terminator")));
         Ok(())
     }
 }
