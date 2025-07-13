@@ -3,7 +3,7 @@ use ahash::{HashMap, HashSet};
 use polars::prelude::*;
 use std::time::Instant;
 
-pub fn q17a(db: &ImdbData) -> Result<(), PolarsError> {
+pub fn q17b(db: &ImdbData) -> Result<Option<(&str, &str)>, PolarsError> {
     let ci = &db.ci;
     let k = &db.k;
     let mk = &db.mk;
@@ -103,13 +103,13 @@ pub fn q17a(db: &ImdbData) -> Result<(), PolarsError> {
         .zip(n.column("name")?.str()?.into_iter())
     {
         if let (Some(id), Some(name)) = (id, name) {
-            if name.starts_with('B') {
+            if name.starts_with('Z') {
                 n_m.entry(id).or_default().push(name);
             }
         }
     }
 
-    let mut res: Option<&str> = None;
+    let mut res: Option<(&str, &str)> = None;
 
     for (pid, mid) in ci
         .column("person_id")?
@@ -121,12 +121,12 @@ pub fn q17a(db: &ImdbData) -> Result<(), PolarsError> {
             if mk_s.contains(&mid) && mc_s.contains(&mid) {
                 if let Some(names) = n_m.get(&pid) {
                     for name in names {
-                        if let Some(old_name) = res.as_mut() {
+                        if let Some((old_name, _)) = res.as_mut() {
                             if name < old_name {
-                                *old_name = name;
+                                *old_name = *name;
                             }
                         } else {
-                            res = Some(name);
+                            res = Some((name, name));
                         }
                     }
                 }
@@ -134,33 +134,41 @@ pub fn q17a(db: &ImdbData) -> Result<(), PolarsError> {
         }
     }
 
-    dbg!(res);
+    dbg!(start.elapsed());
 
-    let elapsed = start.elapsed();
-    println!("Elapsed time: {:?}", elapsed);
-
-    Ok(())
+    Ok(res)
 }
 
-// -- JOB Query 17a
-// SELECT MIN(n.name) AS member_in_charnamed_american_movie,
-//        MIN(n.name) AS a1
+// -- JOB Query 17b
+// SELECT MIN(n.name) AS member_in_charnamed_movie, MIN(n.name) AS a1
 // FROM cast_info AS ci,
-//      company_name AS cn,
-//      keyword AS k,
-//      movie_companies AS mc,
-//      movie_keyword AS mk,
-//      name AS n,
-//      title AS t
-// WHERE cn.country_code ='[us]'
-//   AND k.keyword ='character-name-in-title'
-//   AND n.name LIKE 'B%'
-//   AND n.id = ci.person_id
-//   AND ci.movie_id = t.id
-//   AND t.id = mk.movie_id
-//   AND mk.keyword_id = k.id
-//   AND t.id = mc.movie_id
-//   AND mc.company_id = cn.id
-//   AND ci.movie_id = mc.movie_id
-//   AND ci.movie_id = mk.movie_id
-//   AND mc.movie_id = mk.movie_id;
+// company_name AS cn,
+// keyword AS k,
+// movie_companies AS mc,
+// movie_keyword AS mk,
+// name AS n,
+// title AS t
+// WHERE k.keyword = 'character-name-in-title'
+// AND n.name LIKE 'Z%'
+// AND n.id = ci.person_id
+// AND ci.movie_id = t.id
+// AND t.id = mk.movie_id
+// AND mk.keyword_id = k.id
+// AND t.id = mc.movie_id
+// AND mc.company_id = cn.id
+// AND ci.movie_id = mc.movie_id
+// AND ci.movie_id = mk.movie_id
+// AND mc.movie_id = mk.movie_id;
+#[cfg(test)]
+mod test_17b {
+    use super::*;
+    use crate::data::ImdbData;
+
+    #[test]
+    fn test_q17b() -> Result<(), PolarsError> {
+        let db = ImdbData::new();
+        let res = q17b(&db)?;
+        assert_eq!(res, Some(("Z'Dar, Robert", "Z'Dar, Robert")));
+        Ok(())
+    }
+}
