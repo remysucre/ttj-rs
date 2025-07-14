@@ -3,7 +3,7 @@ use ahash::{HashMap, HashSet};
 use polars::prelude::*;
 use std::time::Instant;
 
-pub fn q17b(db: &ImdbData) -> Result<Option<(&str, &str)>, PolarsError> {
+pub fn q17c(db: &ImdbData) -> Result<Option<(&str, &str)>, PolarsError> {
     let ci = &db.ci;
     let k = &db.k;
     let mk = &db.mk;
@@ -103,7 +103,7 @@ pub fn q17b(db: &ImdbData) -> Result<Option<(&str, &str)>, PolarsError> {
         .zip(n.column("name")?.str()?.into_iter())
     {
         if let (Some(id), Some(name)) = (id, name) {
-            if name.starts_with('Z') {
+            if name.starts_with('X') {
                 n_m.entry(id).or_default().push(name);
             }
         }
@@ -140,7 +140,7 @@ pub fn q17b(db: &ImdbData) -> Result<Option<(&str, &str)>, PolarsError> {
     Ok(res)
 }
 
-// -- JOB Query 17b
+// -- JOB Query 17c
 // SELECT MIN(n.name) AS member_in_charnamed_movie, MIN(n.name) AS a1
 // FROM cast_info AS ci,
 // company_name AS cn,
@@ -150,7 +150,7 @@ pub fn q17b(db: &ImdbData) -> Result<Option<(&str, &str)>, PolarsError> {
 // name AS n,
 // title AS t
 // WHERE k.keyword = 'character-name-in-title'
-// AND n.name LIKE 'Z%'
+// AND n.name LIKE 'X%'
 // AND n.id = ci.person_id
 // AND ci.movie_id = t.id
 // AND t.id = mk.movie_id
@@ -161,15 +161,15 @@ pub fn q17b(db: &ImdbData) -> Result<Option<(&str, &str)>, PolarsError> {
 // AND ci.movie_id = mk.movie_id
 // AND mc.movie_id = mk.movie_id;
 #[cfg(test)]
-mod test_17b {
+mod test_17c {
     use super::*;
     use crate::data::ImdbData;
 
     #[test]
-    fn test_q17b() -> Result<(), PolarsError> {
+    fn test_q17c() -> Result<(), PolarsError> {
         let db = ImdbData::new();
-        let res = q17b(&db)?;
-        assert_eq!(res, Some(("Z'Dar, Robert", "Z'Dar, Robert")));
+        let res = q17c(&db)?;
+        assert_eq!(res, Some(("X'Volaitis, John", "X'Volaitis, John")));
         Ok(())
     }
 }
