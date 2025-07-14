@@ -30,6 +30,7 @@ pub mod o17c;
 pub mod o17d;
 pub mod o17e;
 pub mod o17f;
+pub mod o18a;
 pub mod o18c;
 pub mod o19d;
 pub mod o1a;
