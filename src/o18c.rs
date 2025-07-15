@@ -1,9 +1,9 @@
+use crate::data::ImdbData;
 use ahash::{HashMap, HashSet};
 use polars::prelude::*;
 use std::time::Instant;
-use crate::data::ImdbData;
 
-pub fn q18c(db: &ImdbData) -> Result<(), PolarsError> {
+pub fn q18c(db: &ImdbData) -> Result<Option<(&str, &str, &str)>, PolarsError> {
     let it = &db.it;
     let mi = &db.mi;
     let mi_idx = &db.mi_idx;
@@ -93,14 +93,13 @@ pub fn q18c(db: &ImdbData) -> Result<(), PolarsError> {
 
     let mut n_s: HashSet<i32> = HashSet::default();
 
-    for ((person_id, name), gender) in n
+    for (person_id, gender) in n
         .column("id")?
         .i32()?
         .into_iter()
-        .zip(n.column("name")?.str()?.into_iter())
         .zip(n.column("gender")?.str()?.into_iter())
     {
-        if let (Some(person_id), Some(name), Some(gender)) = (person_id, name, gender) {
+        if let (Some(person_id), Some(gender)) = (person_id, gender) {
             if gender == "m" {
                 n_s.insert(person_id);
             }
@@ -109,7 +108,8 @@ pub fn q18c(db: &ImdbData) -> Result<(), PolarsError> {
 
     let mut res: Option<(&str, &str, &str)> = None;
 
-    for ((person_id, movie_id), note) in db.ci
+    for ((person_id, movie_id), note) in db
+        .ci
         .column("person_id")?
         .i32()?
         .into_iter()
@@ -123,29 +123,28 @@ pub fn q18c(db: &ImdbData) -> Result<(), PolarsError> {
             ) {
                 if let Some(ts) = t_m.get(&movie_id) {
                     if n_s.contains(&person_id) {
-                        if let Some(info) = mi_m.get(&movie_id) {
-                            if let Some(xinfo) = mi_idx_m.get(&movie_id) {
-                                    for title in ts {
-                                        for i in info {
-                                            for x in xinfo {
-                                                if let Some((old_title, old_info, old_xinfo)) =
-                                                    res.as_mut()
-                                                {
-                                                    if title < old_title {
-                                                        *old_title = title;
-                                                    }
-                                                    if i < old_info {
-                                                        *old_info = i;
-                                                    }
-                                                    if x < old_xinfo {
-                                                        *old_xinfo = x;
-                                                    }
-                                                } else {
-                                                    res = Some((title, i, x));
-                                                }
+                        if let (Some(info), Some(xinfo)) =
+                            (mi_m.get(&movie_id), mi_idx_m.get(&movie_id))
+                        {
+                            for title in ts {
+                                for i in info {
+                                    for x in xinfo {
+                                        if let Some((old_info, old_xinfo, old_title)) = res.as_mut()
+                                        {
+                                            if title < old_title {
+                                                *old_title = title;
                                             }
+                                            if i < old_info {
+                                                *old_info = i;
+                                            }
+                                            if x < old_xinfo {
+                                                *old_xinfo = x;
+                                            }
+                                        } else {
+                                            res = Some((i, x, title));
                                         }
                                     }
+                                }
                             }
                         }
                     }
@@ -154,12 +153,9 @@ pub fn q18c(db: &ImdbData) -> Result<(), PolarsError> {
         }
     }
 
-    dbg!(res);
-    let duration = start.elapsed();
-    dbg!(duration);
+    dbg!(start.elapsed());
 
-
-    Ok(())
+    Ok(res)
 }
 
 // -- JOB Query 18c
@@ -185,3 +181,16 @@ pub fn q18c(db: &ImdbData) -> Result<(), PolarsError> {
 // AND n.id = ci.person_id
 // AND it1.id = mi.info_type_id
 // AND it2.id = mi_idx.info_type_id;
+#[cfg(test)]
+mod test_18c {
+    use super::*;
+    use crate::data::ImdbData;
+
+    #[test]
+    fn test_q18c() -> Result<(), PolarsError> {
+        let db = ImdbData::new();
+        let res = q18c(&db)?;
+        assert_eq!(res, Some(("Action", "10", "#PostModem")));
+        Ok(())
+    }
+}
