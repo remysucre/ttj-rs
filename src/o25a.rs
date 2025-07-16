@@ -1,10 +1,9 @@
+use crate::data::ImdbData;
 use ahash::{HashMap, HashSet};
 use polars::prelude::*;
 use std::time::Instant;
-use crate::data::ImdbData;
 
-pub fn q25a(db: &ImdbData) -> Result<(), PolarsError> {
-    
+pub fn q25a(db: &ImdbData) -> Result<Option<(&str, &str, &str, &str)>, PolarsError> {
     let ci = &db.ci;
     let it = &db.it;
     let k = &db.k;
@@ -157,36 +156,36 @@ pub fn q25a(db: &ImdbData) -> Result<(), PolarsError> {
             ) {
                 if let Some(info) = mi_m.get(&movie_id) {
                     if mk_s.contains(&movie_id) {
-                        if let Some(xinfo) = mi_idx_m.get(&movie_id) {
-                            if let Some(names) = n_m.get(&person_id) {
-                                if let Some(ts) = t_m.get(&movie_id) {
-                                    for name in names {
-                                        for title in ts {
-                                            for i in info {
-                                                for x in xinfo {
-                                                    if let Some((
-                                                        old_name,
-                                                        old_title,
-                                                        old_info,
-                                                        old_xinfo,
-                                                    )) = res.as_mut()
-                                                    {
-                                                        if name < old_name {
-                                                            *old_name = name;
-                                                        }
-                                                        if title < old_title {
-                                                            *old_title = title;
-                                                        }
-                                                        if i < old_info {
-                                                            *old_info = i;
-                                                        }
-                                                        if x < old_xinfo {
-                                                            *old_xinfo = x;
-                                                        }
-                                                    } else {
-                                                        res = Some((name, title, i, x));
-                                                    }
+                        if let (Some(xinfo), Some(names), Some(ts)) = (
+                            mi_idx_m.get(&movie_id),
+                            n_m.get(&person_id),
+                            t_m.get(&movie_id),
+                        ) {
+                            for name in names {
+                                for title in ts {
+                                    for i in info {
+                                        for x in xinfo {
+                                            if let Some((
+                                                old_info,
+                                                old_xinfo,
+                                                old_name,
+                                                old_title,
+                                            )) = res.as_mut()
+                                            {
+                                                if name < old_name {
+                                                    *old_name = name;
                                                 }
+                                                if title < old_title {
+                                                    *old_title = title;
+                                                }
+                                                if i < old_info {
+                                                    *old_info = i;
+                                                }
+                                                if x < old_xinfo {
+                                                    *old_xinfo = x;
+                                                }
+                                            } else {
+                                                res = Some((i, x, name, title));
                                             }
                                         }
                                     }
@@ -199,14 +198,12 @@ pub fn q25a(db: &ImdbData) -> Result<(), PolarsError> {
         }
     }
 
-    let duration = start.elapsed();
-    dbg!(res);
-    dbg!(duration);
+    dbg!(start.elapsed());
 
-    Ok(())
+    Ok(res)
 }
 
-// -- JOB Query 25c
+// -- JOB Query 25a
 // SELECT MIN(mi.info)     AS movie_budget,
 // MIN(mi_idx.info) AS movie_votes,
 // MIN(n.name)      AS male_writer,
@@ -223,8 +220,8 @@ pub fn q25a(db: &ImdbData) -> Result<(), PolarsError> {
 // WHERE ci.note in ('(writer)', '(head writer)', '(written by)', '(story)', '(story editor)')
 // AND it1.info = 'genres'
 // AND it2.info = 'votes'
-// AND k.keyword in ('murder', 'violence', 'blood', 'gore', 'death', 'female-nudity', 'hospital')
-// AND mi.info in ('Horror', 'Action', 'Sci-Fi', 'Thriller', 'Crime', 'War')
+// AND k.keyword in ('murder', 'blood', 'gore', 'death', 'female-nudity')
+// AND mi.info = 'Horror'
 // AND n.gender = 'm'
 // AND t.id = mi.movie_id
 // AND t.id = mi_idx.movie_id
@@ -240,3 +237,24 @@ pub fn q25a(db: &ImdbData) -> Result<(), PolarsError> {
 // AND it1.id = mi.info_type_id
 // AND it2.id = mi_idx.info_type_id
 // AND k.id = mk.keyword_id;
+#[cfg(test)]
+mod test_25a {
+    use super::*;
+    use crate::data::ImdbData;
+
+    #[test]
+    fn test_q25a() -> Result<(), PolarsError> {
+        let db = ImdbData::new();
+        let res = q25a(&db)?;
+        assert_eq!(
+            res,
+            Some((
+                "Horror",
+                "10",
+                "Abdallah, Damon",
+                "-- And Now the Screaming Starts!"
+            ))
+        );
+        Ok(())
+    }
+}
