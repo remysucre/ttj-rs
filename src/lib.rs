@@ -55,6 +55,7 @@ pub mod o23a;
 pub mod o23b;
 pub mod o23c;
 pub mod o24a;
+pub mod o24b;
 pub mod o25a;
 pub mod o25c;
 pub mod o26a;
