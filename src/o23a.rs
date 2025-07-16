@@ -1,14 +1,14 @@
+use crate::data::ImdbData;
 use ahash::{HashMap, HashSet};
 use polars::prelude::*;
 use std::time::Instant;
-use crate::data::ImdbData;
 
 pub fn q23a(db: &ImdbData) -> Result<(), PolarsError> {
-    
     let cc = &db.cc;
     let cct1 = &db.cct;
     let cn = &db.cn;
-    let ct = &db.ct;
+    // FK-PK optimization
+    // let ct = &db.ct;
     let it1 = &db.it;
     let k = &db.k;
     let kt = &db.kt;
@@ -17,12 +17,7 @@ pub fn q23a(db: &ImdbData) -> Result<(), PolarsError> {
     let mk = &db.mk;
     let t = &db.t;
 
-    let k_s: HashSet<i32> = k
-        .column("id")?
-        .i32()?
-        .into_iter()
-        .flatten()
-        .collect();
+    let k_s: HashSet<i32> = k.column("id")?.i32()?.into_iter().flatten().collect();
 
     let mk_s: HashSet<i32> = mk
         .column("keyword_id")?
@@ -31,7 +26,11 @@ pub fn q23a(db: &ImdbData) -> Result<(), PolarsError> {
         .zip(mk.column("movie_id")?.i32()?.into_iter())
         .filter_map(|(keyword_id, movie_id)| {
             if let (Some(keyword_id), Some(movie_id)) = (keyword_id, movie_id) {
-                if k_s.contains(&keyword_id) { Some(movie_id) } else { None }
+                if k_s.contains(&keyword_id) {
+                    Some(movie_id)
+                } else {
+                    None
+                }
             } else {
                 None
             }
@@ -47,7 +46,11 @@ pub fn q23a(db: &ImdbData) -> Result<(), PolarsError> {
         .zip(cct1.column("id")?.i32()?.into_iter())
         .filter_map(|(kind, id)| {
             if let (Some(kind), Some(id)) = (kind, id) {
-                if kind == "complete+verified" { Some(id) } else { None }
+                if kind == "complete+verified" {
+                    Some(id)
+                } else {
+                    None
+                }
             } else {
                 None
             }
@@ -61,7 +64,11 @@ pub fn q23a(db: &ImdbData) -> Result<(), PolarsError> {
         .zip(cc.column("movie_id")?.i32()?.into_iter())
         .filter_map(|(status_id, movie_id)| {
             if let (Some(status_id), Some(movie_id)) = (status_id, movie_id) {
-                if cct1_s.contains(&status_id) { Some(movie_id) } else { None }
+                if cct1_s.contains(&status_id) {
+                    Some(movie_id)
+                } else {
+                    None
+                }
             } else {
                 None
             }
@@ -75,7 +82,11 @@ pub fn q23a(db: &ImdbData) -> Result<(), PolarsError> {
         .zip(cn.column("id")?.i32()?.into_iter())
         .filter_map(|(country_code, id)| {
             if let (Some(country_code), Some(id)) = (country_code, id) {
-                if country_code == "[us]" { Some(id) } else { None }
+                if country_code == "[us]" {
+                    Some(id)
+                } else {
+                    None
+                }
             } else {
                 None
             }
@@ -89,7 +100,11 @@ pub fn q23a(db: &ImdbData) -> Result<(), PolarsError> {
         .zip(mc.column("movie_id")?.i32()?.into_iter())
         .filter_map(|(company_id, movie_id)| {
             if let (Some(company_id), Some(movie_id)) = (company_id, movie_id) {
-                if cn_s.contains(&company_id) { Some(movie_id) } else { None }
+                if cn_s.contains(&company_id) {
+                    Some(movie_id)
+                } else {
+                    None
+                }
             } else {
                 None
             }
@@ -103,7 +118,11 @@ pub fn q23a(db: &ImdbData) -> Result<(), PolarsError> {
         .zip(it1.column("id")?.i32()?.into_iter())
         .filter_map(|(info, id)| {
             if let (Some(info), Some(id)) = (info, id) {
-                if info == "release dates" { Some(id) } else { None }
+                if info == "release dates" {
+                    Some(id)
+                } else {
+                    None
+                }
             } else {
                 None
             }
@@ -121,10 +140,11 @@ pub fn q23a(db: &ImdbData) -> Result<(), PolarsError> {
             if let (Some(note), Some(info), Some(movie_id), Some(info_type_id)) =
                 (note, info, movie_id, info_type_id)
             {
-                if note.contains("internet") && 
-                   ((info.starts_with("USA:") && info.contains(" 199")) ||
-                    (info.starts_with("USA:") && info.contains(" 200"))) && 
-                     it1_s.contains(&info_type_id) {
+                if note.contains("internet")
+                    && ((info.starts_with("USA:") && info.contains(" 199"))
+                        || (info.starts_with("USA:") && info.contains(" 200")))
+                    && it1_s.contains(&info_type_id)
+                {
                     Some(movie_id)
                 } else {
                     None
@@ -163,7 +183,12 @@ pub fn q23a(db: &ImdbData) -> Result<(), PolarsError> {
         if let (Some(kind_id), Some(id), Some(production_year), Some(title)) =
             (kind_id, id, production_year, title)
         {
-            if mi_s.contains(&id) && cc_s.contains(&id) && mc_s.contains(&id) && mk_s.contains(&id) && production_year > 2000 {
+            if mi_s.contains(&id)
+                && cc_s.contains(&id)
+                && mc_s.contains(&id)
+                && mk_s.contains(&id)
+                && production_year > 2000
+            {
                 if let Some(kinds) = kt_m.get(&kind_id) {
                     for kind in kinds {
                         if let Some((old_kind, old_title)) = res.as_mut() {
@@ -181,7 +206,7 @@ pub fn q23a(db: &ImdbData) -> Result<(), PolarsError> {
             }
         }
     }
-    
+
     // let cn = &db.cn;
     // let ct = &db.ct;
     // let k = &db.k;
@@ -387,7 +412,6 @@ pub fn q23a(db: &ImdbData) -> Result<(), PolarsError> {
     // //         }
     // //     }
     // // }
-
 
     dbg!(res);
     let duration = start.elapsed();
