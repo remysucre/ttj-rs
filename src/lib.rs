@@ -48,6 +48,7 @@ pub mod o21a;
 pub mod o21b;
 pub mod o21c;
 pub mod o22a;
+pub mod o22b;
 pub mod o23a;
 pub mod o24a;
 pub mod o25a;
