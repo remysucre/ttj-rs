@@ -80,6 +80,7 @@ pub mod o30b;
 pub mod o30c;
 pub mod o31a;
 pub mod o31b;
+pub mod o31c;
 pub mod o32a;
 pub mod o33a;
 pub mod o3a;
