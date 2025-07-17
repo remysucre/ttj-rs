@@ -1,7 +1,9 @@
 use crate::data::ImdbData;
-use ahash::{HashMap, HashSet};
+// use foldhash::{HashMap, HashSet};
 use polars::prelude::*;
 use std::{time::Instant, vec};
+
+use rustc_hash::{FxHashMap as HashMap, FxHashSet as HashSet};
 
 pub fn q16a(db: &ImdbData) -> Result<Option<(&str, &str)>, PolarsError> {
     let an = &db.an;
@@ -32,7 +34,14 @@ pub fn q16a(db: &ImdbData) -> Result<Option<(&str, &str)>, PolarsError> {
         .column("keyword_id")?
         .i32()?
         .into_iter()
-        .filter_map(|id| if k_s.contains(&id?) { id } else { None })
+        .zip(mk.column("movie_id")?.i32()?.into_iter())
+        .filter_map(|(keyword_id, movie_id)| {
+            if k_s.contains(&keyword_id?) {
+                movie_id
+            } else {
+                None
+            }
+        })
         .collect();
 
     let t_m: HashMap<i32, &str> = t
@@ -112,6 +121,8 @@ pub fn q16a(db: &ImdbData) -> Result<Option<(&str, &str)>, PolarsError> {
     }
 
     dbg!(start.elapsed());
+
+    // dbg!(res);
 
     Ok(res)
 }

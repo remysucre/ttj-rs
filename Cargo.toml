@@ -6,7 +6,8 @@ edition = "2024"
 [dependencies]
 polars = {version = "0.48.1", features = ["lazy", "parquet", "regex", "strings", "is_in", "dtype-i128"]}
 ahash = "0.8.11"
-fastbloom = "0.12.0"
+foldhash = "0.1.5"
+rustc-hash = "2.1.1"
 
 [profile.release]
 debug = true

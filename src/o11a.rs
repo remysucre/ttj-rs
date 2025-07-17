@@ -1,7 +1,9 @@
 use crate::data::ImdbData;
-use ahash::{HashMap, HashSet};
+// use ahash::{HashMap, HashSet};
 use polars::prelude::*;
 use std::time::Instant;
+
+use rustc_hash::{FxHashMap as HashMap, FxHashSet as HashSet};
 
 pub fn q11a(db: &ImdbData) -> Result<(), PolarsError> {
     let cn = &db.cn;
