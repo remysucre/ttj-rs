@@ -1,10 +1,9 @@
+use crate::data::ImdbData;
 use ahash::{HashMap, HashSet};
 use polars::prelude::*;
 use std::time::Instant;
-use crate::data::ImdbData;
 
 pub fn q11a(db: &ImdbData) -> Result<(), PolarsError> {
-
     let cn = &db.cn;
     let ct = &db.ct;
     let k = &db.k;
@@ -16,7 +15,7 @@ pub fn q11a(db: &ImdbData) -> Result<(), PolarsError> {
 
     let start = Instant::now();
 
-    let mut cn_m: HashMap<i32, Vec<&str>> = HashMap::default();
+    let mut cn_m: HashMap<i32, &str> = HashMap::default();
 
     for ((id, name), country_code) in cn
         .column("id")?
@@ -26,14 +25,11 @@ pub fn q11a(db: &ImdbData) -> Result<(), PolarsError> {
         .zip(cn.column("country_code")?.str()?.into_iter())
     {
         if let (Some(id), Some(name), Some(country_code)) = (id, name, country_code) {
-            if country_code != "[pl]" && (name.contains("Film") || name.contains("Warner")) {
-                cn_m.entry(id).or_default().push(name);
+            if (name.contains("Film") || name.contains("Warner")) && country_code != "[pl]" {
+                cn_m.insert(id, name);
             }
         }
     }
-
-    dbg!("cn_m len");
-    dbg!(cn_m.len());
 
     let ct_s: HashSet<i32> = ct
         .column("id")?
@@ -53,9 +49,6 @@ pub fn q11a(db: &ImdbData) -> Result<(), PolarsError> {
         })
         .collect();
 
-    dbg!("ct_s len");
-    dbg!(ct_s.len());
-
     let k_s: HashSet<i32> = k
         .column("id")?
         .i32()?
@@ -63,11 +56,7 @@ pub fn q11a(db: &ImdbData) -> Result<(), PolarsError> {
         .zip(k.column("keyword")?.str()?.into_iter())
         .filter_map(|(id, keyword)| {
             if let (Some(id), Some(keyword)) = (id, keyword) {
-                if keyword == "sequel" {
-                    Some(id)
-                } else {
-                    None
-                }
+                if keyword == "sequel" { Some(id) } else { None }
             } else {
                 None
             }
@@ -92,7 +81,7 @@ pub fn q11a(db: &ImdbData) -> Result<(), PolarsError> {
         })
         .collect();
 
-    let mut lt_m: HashMap<i32, Vec<&str>> = HashMap::default();
+    let mut lt_m: HashMap<i32, &str> = HashMap::default();
 
     for (id, link) in lt
         .column("id")?
@@ -102,12 +91,12 @@ pub fn q11a(db: &ImdbData) -> Result<(), PolarsError> {
     {
         if let (Some(id), Some(link)) = (id, link) {
             if link.contains("follow") {
-                lt_m.entry(id).or_default().push(link);
+                lt_m.insert(id, link);
             }
         }
     }
 
-    let mut ml_m: HashMap<i32, Vec<i32>> = HashMap::default();
+    let mut ml_m: HashMap<i32, Vec<&str>> = HashMap::default();
 
     for (mid, lt_id) in ml
         .column("movie_id")?
@@ -116,11 +105,13 @@ pub fn q11a(db: &ImdbData) -> Result<(), PolarsError> {
         .zip(ml.column("link_type_id")?.i32()?)
     {
         if let (Some(mid), Some(lt_id)) = (mid, lt_id) {
-            ml_m.entry(mid).or_default().push(lt_id);
+            if let Some(link) = lt_m.get(&lt_id) {
+                ml_m.entry(mid).or_default().push(link);
+            }
         }
     }
 
-    let mut t_m: HashMap<i32, Vec<&str>> = HashMap::default();
+    let mut t_m: HashMap<i32, &str> = HashMap::default();
 
     for ((id, title), production_year) in t
         .column("id")?
@@ -130,8 +121,12 @@ pub fn q11a(db: &ImdbData) -> Result<(), PolarsError> {
         .zip(t.column("production_year")?.i32()?.into_iter())
     {
         if let (Some(id), Some(title), Some(production_year)) = (id, title, production_year) {
-            if mk_s.contains(&id) && ml_m.contains_key(&id) && production_year >= 1950 && production_year <= 2000 {
-                t_m.entry(id).or_default().push(title);
+            if mk_s.contains(&id)
+                && ml_m.contains_key(&id)
+                && production_year >= 1950
+                && production_year <= 2000
+            {
+                t_m.insert(id, title);
             }
         }
     }
@@ -148,31 +143,22 @@ pub fn q11a(db: &ImdbData) -> Result<(), PolarsError> {
     {
         if let (Some(mid), Some(cid), Some(ct_id), None) = (mid, cid, ct_id, note) {
             if ct_s.contains(&ct_id) {
-                if let Some(names) = cn_m.get(&cid) {
-                    if let Some(titles) = t_m.get(&mid) {
-                        if let Some(ltids) = ml_m.get(&mid) {
-                            for lt_id in ltids {
-                                if let Some(links) = lt_m.get(lt_id) {
-                                    for name in names {
-                                        for title in titles {
-                                            if let Some((old_name, old_title, old_link)) = res.as_mut() {
-                                                if name < old_name {
-                                                    *old_name = name;
-                                                }
-                                                if title < old_title {
-                                                    *old_title = title;
-                                                }
-                                                if let Some(link) = links.first() {
-                                                    if link < old_link {
-                                                        *old_link = link;
-                                                    }
-                                                }
-                                            } else {
-                                                let link = links.first().unwrap_or(&"");
-                                                res = Some((name, title, link));
-                                            }
-                                        }
+                if let Some(name) = cn_m.get(&cid) {
+                    if let Some(title) = t_m.get(&mid) {
+                        if let Some(links) = ml_m.get(&mid) {
+                            for link in links {
+                                if let Some((old_name, old_title, old_link)) = res.as_mut() {
+                                    if name < old_name {
+                                        *old_name = name;
                                     }
+                                    if title < old_title {
+                                        *old_title = title;
+                                    }
+                                    if link < old_link {
+                                        *old_link = link;
+                                    }
+                                } else {
+                                    res = Some((name, title, link));
                                 }
                             }
                         }
@@ -182,11 +168,11 @@ pub fn q11a(db: &ImdbData) -> Result<(), PolarsError> {
         }
     }
 
-    dbg!(res);
-
     let duration = start.elapsed();
     dbg!("total elapsed");
     dbg!(duration);
+
+    println!("Result: {:?}", res);
 
     Ok(())
 }
