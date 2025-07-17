@@ -1,7 +1,7 @@
 use crate::data::ImdbData;
 // use foldhash::{HashMap, HashSet};
 use polars::prelude::*;
-use std::{time::Instant, vec};
+use std::time::Instant;
 
 use rustc_hash::{FxHashMap as HashMap, FxHashSet as HashSet};
 

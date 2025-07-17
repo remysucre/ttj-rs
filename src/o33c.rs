@@ -1,15 +1,16 @@
 use crate::data::ImdbData;
-use ahash::{HashMap, HashSet};
+// use ahash::{HashMap, HashSet};
+// use foldhash::{HashMap, HashSet};
 use polars::prelude::*;
 use std::time::Instant;
+
+use rustc_hash::{FxHashMap as HashMap, FxHashSet as HashSet};
 
 pub fn q33c(db: &ImdbData) -> Result<Option<(&str, &str, &str, &str, &str, &str)>, PolarsError> {
     let cn1 = &db.cn;
     let cn2 = &db.cn;
     let it1 = &db.it;
-    let it2 = &db.it;
     let kt1 = &db.kt;
-    let kt2 = &db.kt;
     let lt = &db.lt;
     let mc1 = &db.mc;
     let mc2 = &db.mc;
@@ -147,20 +148,26 @@ pub fn q33c(db: &ImdbData) -> Result<Option<(&str, &str, &str, &str, &str, &str)
         })
         .collect();
 
-    let mut mc1_m: HashMap<i32, Vec<&str>> = HashMap::default();
-
-    for (company_id, movie_id) in mc1
+    let mc1_m: HashMap<i32, Vec<&str>> = mc1
         .column("company_id")?
         .i32()?
         .into_iter()
         .zip(mc1.column("movie_id")?.i32()?)
-    {
-        if let (Some(company_id), Some(movie_id)) = (company_id, movie_id) {
-            if let Some(name) = cn1_m.get(&company_id) {
-                mc1_m.entry(movie_id).or_default().push(name);
+        .filter_map(|(company_id, movie_id)| {
+            if let (Some(company_id), Some(movie_id)) = (company_id, movie_id) {
+                if let Some(name) = cn1_m.get(&company_id) {
+                    Some((movie_id, name))
+                } else {
+                    None
+                }
+            } else {
+                None
             }
-        }
-    }
+        })
+        .fold(HashMap::default(), |mut acc, (movie_id, name)| {
+            acc.entry(movie_id).or_default().push(name);
+            acc
+        });
 
     let t1_m: HashMap<i32, &str> = t1
         .column("id")?
@@ -247,9 +254,9 @@ pub fn q33c(db: &ImdbData) -> Result<Option<(&str, &str, &str, &str, &str, &str)
                             if let Some(t2) = t2_m.get(&linked_movie_id) {
                                 if let Some(c1ids) = mc1_m.get(&movie_id) {
                                     if let Some(c2ids) = mc2_m.get(&linked_movie_id) {
-                                        for n1 in c1ids {
-                                            for c2 in c2ids {
-                                                if let Some(n2) = cn2_m.get(&c2) {
+                                        for c2 in c2ids {
+                                            if let Some(n2) = cn2_m.get(&c2) {
+                                                for n1 in c1ids {
                                                     for r1 in mi_idx1_info {
                                                         for r2 in mi_idx2_info {
                                                             if let Some((
