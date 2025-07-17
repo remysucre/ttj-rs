@@ -19,49 +19,57 @@ pub fn q33c(db: &ImdbData) -> Result<Option<(&str, &str, &str, &str, &str, &str)
     let t1 = &db.t;
     let t2 = &db.t;
 
-    let mut cn2_m: HashMap<i32, Vec<&str>> = HashMap::default();
-
-    for (id, name) in cn2
+    let cn2_m: HashMap<i32, &str> = cn2
         .column("id")?
         .i32()?
         .into_iter()
         .zip(cn2.column("name")?.str()?.into_iter())
-    {
-        if let (Some(id), Some(name)) = (id, name) {
-            cn2_m.entry(id).or_default().push(name);
-        }
-    }
+        .filter_map(|(id, name)| {
+            if let (Some(id), Some(name)) = (id, name) {
+                Some((id, name))
+            } else {
+                None
+            }
+        })
+        .collect();
 
-    let mut mc2_m: HashMap<i32, Vec<i32>> = HashMap::default();
-
-    for (company_id, movie_id) in mc2
+    let mc2_m: HashMap<i32, Vec<i32>> = mc2
         .column("company_id")?
         .i32()?
         .into_iter()
         .zip(mc2.column("movie_id")?.i32()?)
-    {
-        if let (Some(company_id), Some(movie_id)) = (company_id, movie_id) {
-            mc2_m.entry(movie_id).or_default().push(company_id);
-        }
-    }
+        .filter_map(|(company_id, movie_id)| {
+            if let (Some(company_id), Some(movie_id)) = (company_id, movie_id) {
+                Some((movie_id, company_id))
+            } else {
+                None
+            }
+        })
+        .fold(HashMap::default(), |mut acc, (movie_id, company_id)| {
+            acc.entry(movie_id).or_default().push(company_id);
+            acc
+        });
 
     let start = Instant::now();
 
-    let mut cn1_m: HashMap<i32, Vec<&str>> = HashMap::default();
-
-    for ((id, name), country_code) in cn1
+    let cn1_m: HashMap<i32, &str> = cn1
         .column("id")?
         .i32()?
         .into_iter()
         .zip(cn1.column("name")?.str()?.into_iter())
         .zip(cn1.column("country_code")?.str()?.into_iter())
-    {
-        if let (Some(id), Some(name), Some(country_code)) = (id, name, country_code) {
-            if country_code != "[us]" {
-                cn1_m.entry(id).or_default().push(name);
+        .filter_map(|((id, name), country_code)| {
+            if let (Some(id), Some(name), Some(country_code)) = (id, name, country_code) {
+                if country_code != "[us]" {
+                    Some((id, name))
+                } else {
+                    None
+                }
+            } else {
+                None
             }
-        }
-    }
+        })
+        .collect();
 
     let it1_s: HashSet<i32> = it1
         .column("id")?
@@ -77,51 +85,49 @@ pub fn q33c(db: &ImdbData) -> Result<Option<(&str, &str, &str, &str, &str, &str)
         })
         .collect();
 
-    let mut mi_idx1_m: HashMap<i32, Vec<&str>> = HashMap::default();
-
-    for ((it_id, info), movie_id) in mi_idx1
+    let mi_idx1_m: HashMap<i32, Vec<&str>> = mi_idx1
         .column("info_type_id")?
         .i32()?
         .into_iter()
         .zip(mi_idx1.column("info")?.str()?.into_iter())
         .zip(mi_idx1.column("movie_id")?.i32()?)
-    {
-        if let (Some(it_id), Some(info), Some(movie_id)) = (it_id, info, movie_id) {
-            if it1_s.contains(&it_id) {
-                mi_idx1_m.entry(movie_id).or_default().push(info);
-            }
-        }
-    }
-
-    let it2_s: HashSet<i32> = it2
-        .column("id")?
-        .i32()?
-        .into_iter()
-        .zip(it2.column("info")?.str()?.into_iter())
-        .filter_map(|(id, info)| {
-            if let (Some(id), Some(info)) = (id, info) {
-                if info == "rating" { Some(id) } else { None }
+        .filter_map(|((it_id, info), movie_id)| {
+            if let (Some(it_id), Some(info), Some(movie_id)) = (it_id, info, movie_id) {
+                if it1_s.contains(&it_id) {
+                    Some((movie_id, info))
+                } else {
+                    None
+                }
             } else {
                 None
             }
         })
-        .collect();
+        .fold(HashMap::default(), |mut acc, (movie_id, info)| {
+            acc.entry(movie_id).or_default().push(info);
+            acc
+        });
 
-    let mut mi_idx2_m: HashMap<i32, Vec<&str>> = HashMap::default();
-
-    for ((it_id, info), movie_id) in mi_idx2
+    let mi_idx2_m: HashMap<i32, Vec<&str>> = mi_idx2
         .column("info_type_id")?
         .i32()?
         .into_iter()
         .zip(mi_idx2.column("info")?.str()?.into_iter())
         .zip(mi_idx2.column("movie_id")?.i32()?)
-    {
-        if let (Some(it_id), Some(info), Some(movie_id)) = (it_id, info, movie_id) {
-            if it2_s.contains(&it_id) {
-                mi_idx2_m.entry(movie_id).or_default().push(info);
+        .filter_map(|((it_id, info), movie_id)| {
+            if let (Some(it_id), Some(info), Some(movie_id)) = (it_id, info, movie_id) {
+                if it1_s.contains(&it_id) && info < "3.5" {
+                    Some((movie_id, info))
+                } else {
+                    None
+                }
+            } else {
+                None
             }
-        }
-    }
+        })
+        .fold(HashMap::default(), |mut acc, (movie_id, info)| {
+            acc.entry(movie_id).or_default().push(info);
+            acc
+        });
 
     let kt1_s: HashSet<i32> = kt1
         .column("id")?
@@ -141,31 +147,34 @@ pub fn q33c(db: &ImdbData) -> Result<Option<(&str, &str, &str, &str, &str, &str)
         })
         .collect();
 
-    let mut t1_m: HashMap<i32, Vec<&str>> = HashMap::default();
+    let mut mc1_m: HashMap<i32, Vec<&str>> = HashMap::default();
 
-    for ((id, kind_id), title) in t1
+    for (company_id, movie_id) in mc1
+        .column("company_id")?
+        .i32()?
+        .into_iter()
+        .zip(mc1.column("movie_id")?.i32()?)
+    {
+        if let (Some(company_id), Some(movie_id)) = (company_id, movie_id) {
+            if let Some(name) = cn1_m.get(&company_id) {
+                mc1_m.entry(movie_id).or_default().push(name);
+            }
+        }
+    }
+
+    let t1_m: HashMap<i32, &str> = t1
         .column("id")?
         .i32()?
         .into_iter()
         .zip(t1.column("kind_id")?.i32()?)
         .zip(t1.column("title")?.str()?.into_iter())
-    {
-        if let (Some(id), Some(kind_id), Some(title)) = (id, kind_id, title) {
-            if kt1_s.contains(&kind_id) {
-                t1_m.entry(id).or_default().push(title);
-            }
-        }
-    }
-
-    let kt2_s: HashSet<i32> = kt2
-        .column("id")?
-        .i32()?
-        .into_iter()
-        .zip(kt2.column("kind")?.str()?.into_iter())
-        .filter_map(|(id, kind)| {
-            if let (Some(id), Some(kind)) = (id, kind) {
-                if matches!(kind, "tv series" | "episode") {
-                    Some(id)
+        .filter_map(|((id, kind_id), title)| {
+            if let (Some(id), Some(kind_id), Some(title)) = (id, kind_id, title) {
+                if kt1_s.contains(&kind_id)
+                    && mi_idx1_m.contains_key(&id)
+                    && mc1_m.contains_key(&id)
+                {
+                    Some((id, title))
                 } else {
                     None
                 }
@@ -175,24 +184,31 @@ pub fn q33c(db: &ImdbData) -> Result<Option<(&str, &str, &str, &str, &str, &str)
         })
         .collect();
 
-    let mut t2_m: HashMap<i32, Vec<&str>> = HashMap::default();
-
-    for (((id, kind_id), title), production_year) in t2
+    let t2_m: HashMap<i32, &str> = t2
         .column("id")?
         .i32()?
         .into_iter()
         .zip(t2.column("kind_id")?.i32()?)
         .zip(t2.column("title")?.str()?.into_iter())
         .zip(t2.column("production_year")?.i32()?)
-    {
-        if let (Some(id), Some(kind_id), Some(title), Some(production_year)) =
-            (id, kind_id, title, production_year)
-        {
-            if kt2_s.contains(&kind_id) && (2000..=2010).contains(&production_year) {
-                t2_m.entry(id).or_default().push(title);
+        .filter_map(|(((id, kind_id), title), production_year)| {
+            if let (Some(id), Some(kind_id), Some(title), Some(production_year)) =
+                (id, kind_id, title, production_year)
+            {
+                if kt1_s.contains(&kind_id)
+                    && (2000..=2010).contains(&production_year)
+                    && mi_idx2_m.contains_key(&id)
+                    && mc2_m.contains_key(&id)
+                {
+                    Some((id, title))
+                } else {
+                    None
+                }
+            } else {
+                None
             }
-        }
-    }
+        })
+        .collect();
 
     let lt_s: HashSet<i32> = lt
         .column("id")?
@@ -212,37 +228,6 @@ pub fn q33c(db: &ImdbData) -> Result<Option<(&str, &str, &str, &str, &str, &str)
         })
         .collect();
 
-    let mut mi_idx2_m: HashMap<i32, Vec<&str>> = HashMap::default();
-
-    for ((it_id, info), movie_id) in mi_idx2
-        .column("info_type_id")?
-        .i32()?
-        .into_iter()
-        .zip(mi_idx2.column("info")?.str()?.into_iter())
-        .zip(mi_idx2.column("movie_id")?.i32()?)
-    {
-        if let (Some(it_id), Some(info), Some(movie_id)) = (it_id, info, movie_id) {
-            if it2_s.contains(&it_id) && info < "3.5" {
-                mi_idx2_m.entry(movie_id).or_default().push(info);
-            }
-        }
-    }
-
-    let mut mc1_m: HashMap<i32, Vec<i32>> = HashMap::default();
-
-    for (company_id, movie_id) in mc1
-        .column("company_id")?
-        .i32()?
-        .into_iter()
-        .zip(mc1.column("movie_id")?.i32()?)
-    {
-        if let (Some(company_id), Some(movie_id)) = (company_id, movie_id) {
-            if cn1_m.contains_key(&company_id) {
-                mc1_m.entry(movie_id).or_default().push(company_id);
-            }
-        }
-    }
-
     let mut res: Option<(&str, &str, &str, &str, &str, &str)> = None;
 
     for ((link_type_id, movie_id), linked_movie_id) in ml
@@ -258,63 +243,45 @@ pub fn q33c(db: &ImdbData) -> Result<Option<(&str, &str, &str, &str, &str, &str)
             if lt_s.contains(&link_type_id) {
                 if let Some(mi_idx1_info) = mi_idx1_m.get(&movie_id) {
                     if let Some(mi_idx2_info) = mi_idx2_m.get(&linked_movie_id) {
-                        if let Some(t1_title) = t1_m.get(&movie_id) {
-                            if let Some(t2_title) = t2_m.get(&linked_movie_id) {
+                        if let Some(t1) = t1_m.get(&movie_id) {
+                            if let Some(t2) = t2_m.get(&linked_movie_id) {
                                 if let Some(c1ids) = mc1_m.get(&movie_id) {
                                     if let Some(c2ids) = mc2_m.get(&linked_movie_id) {
-                                        for c1 in c1ids {
-                                            if let Some(c1_names) = cn1_m.get(&c1) {
-                                                for c2 in c2ids {
-                                                    if let Some(c2_names) = cn2_m.get(&c2) {
-                                                        for n1 in c1_names {
-                                                            for n2 in c2_names {
-                                                                for r1 in mi_idx1_info {
-                                                                    for r2 in mi_idx2_info {
-                                                                        for t1 in t1_title {
-                                                                            for t2 in t2_title {
-                                                                                if let Some((
-                                                                                    old_n1,
-                                                                                    old_n2,
-                                                                                    old_r1,
-                                                                                    old_r2,
-                                                                                    old_t1,
-                                                                                    old_t2,
-                                                                                )) = res.as_mut()
-                                                                                {
-                                                                                    if n1 < old_n1 {
-                                                                                        *old_n1 =
-                                                                                            n1;
-                                                                                    }
-                                                                                    if n2 < old_n2 {
-                                                                                        *old_n2 =
-                                                                                            n2;
-                                                                                    }
-                                                                                    if r1 < old_r1 {
-                                                                                        *old_r1 =
-                                                                                            r1;
-                                                                                    }
-                                                                                    if r2 < old_r2 {
-                                                                                        *old_r2 =
-                                                                                            r2;
-                                                                                    }
-                                                                                    if t1 < old_t1 {
-                                                                                        *old_t1 =
-                                                                                            t1;
-                                                                                    }
-                                                                                    if t2 < old_t2 {
-                                                                                        *old_t2 =
-                                                                                            t2;
-                                                                                    }
-                                                                                } else {
-                                                                                    res = Some((
-                                                                                        n1, n2, r1,
-                                                                                        r2, t1, t2,
-                                                                                    ));
-                                                                                }
-                                                                            }
-                                                                        }
-                                                                    }
+                                        for n1 in c1ids {
+                                            for c2 in c2ids {
+                                                if let Some(n2) = cn2_m.get(&c2) {
+                                                    for r1 in mi_idx1_info {
+                                                        for r2 in mi_idx2_info {
+                                                            if let Some((
+                                                                old_n1,
+                                                                old_n2,
+                                                                old_r1,
+                                                                old_r2,
+                                                                old_t1,
+                                                                old_t2,
+                                                            )) = res.as_mut()
+                                                            {
+                                                                if n1 < old_n1 {
+                                                                    *old_n1 = n1;
                                                                 }
+                                                                if n2 < old_n2 {
+                                                                    *old_n2 = n2;
+                                                                }
+                                                                if r1 < old_r1 {
+                                                                    *old_r1 = r1;
+                                                                }
+                                                                if r2 < old_r2 {
+                                                                    *old_r2 = r2;
+                                                                }
+                                                                if t1 < old_t1 {
+                                                                    *old_t1 = t1;
+                                                                }
+                                                                if t2 < old_t2 {
+                                                                    *old_t2 = t2;
+                                                                }
+                                                            } else {
+                                                                res =
+                                                                    Some((n1, n2, r1, r2, t1, t2));
                                                             }
                                                         }
                                                     }
@@ -332,6 +299,7 @@ pub fn q33c(db: &ImdbData) -> Result<Option<(&str, &str, &str, &str, &str, &str)
     }
 
     dbg!(start.elapsed());
+    dbg!(res);
 
     Ok(res)
 }
