@@ -23,7 +23,7 @@ pub fn q30c(db: &ImdbData) -> Result<(), PolarsError> {
         .column("kind")?
         .str()?
         .into_iter()
-        .zip(cct1.column("id")?.i32()?.into_iter())
+        .zip(cct1.column("id")?.i32()?)
         .filter_map(|(kind, id)| {
             if let (Some(kind), Some(id)) = (kind, id) {
                 if kind == "cast" { Some(id) } else { None }
@@ -37,7 +37,7 @@ pub fn q30c(db: &ImdbData) -> Result<(), PolarsError> {
         .column("kind")?
         .str()?
         .into_iter()
-        .zip(cct2.column("id")?.i32()?.into_iter())
+        .zip(cct2.column("id")?.i32()?)
         .filter_map(|(kind, id)| {
             if let (Some(kind), Some(id)) = (kind, id) {
                 if kind == "complete+verified" {
@@ -55,8 +55,8 @@ pub fn q30c(db: &ImdbData) -> Result<(), PolarsError> {
         .column("movie_id")?
         .i32()?
         .into_iter()
-        .zip(cc.column("subject_id")?.i32()?.into_iter())
-        .zip(cc.column("status_id")?.i32()?.into_iter())
+        .zip(cc.column("subject_id")?.i32()?)
+        .zip(cc.column("status_id")?.i32()?)
         .filter_map(|((movie_id, subject_id), status_id)| {
             if let (Some(movie_id), Some(subject_id), Some(status_id)) =
                 (movie_id, subject_id, status_id)
@@ -76,7 +76,7 @@ pub fn q30c(db: &ImdbData) -> Result<(), PolarsError> {
         .column("keyword")?
         .str()?
         .into_iter()
-        .zip(k.column("id")?.i32()?.into_iter())
+        .zip(k.column("id")?.i32()?)
         .filter_map(|(keyword, id)| {
             if let (Some(keyword), Some(id)) = (keyword, id) {
                 if matches!(
@@ -103,7 +103,7 @@ pub fn q30c(db: &ImdbData) -> Result<(), PolarsError> {
         .column("movie_id")?
         .i32()?
         .into_iter()
-        .zip(mk.column("keyword_id")?.i32()?.into_iter())
+        .zip(mk.column("keyword_id")?.i32()?)
         .filter_map(|(movie_id, keyword_id)| {
             if let (Some(movie_id), Some(keyword_id)) = (movie_id, keyword_id) {
                 if k_s.contains(&keyword_id) {
@@ -121,7 +121,7 @@ pub fn q30c(db: &ImdbData) -> Result<(), PolarsError> {
         .column("info")?
         .str()?
         .into_iter()
-        .zip(it1.column("id")?.i32()?.into_iter())
+        .zip(it1.column("id")?.i32()?)
         .filter_map(|(info, id)| {
             if let (Some(info), Some(id)) = (info, id) {
                 if info == "genres" { Some(id) } else { None }
@@ -157,7 +157,7 @@ pub fn q30c(db: &ImdbData) -> Result<(), PolarsError> {
         .column("info")?
         .str()?
         .into_iter()
-        .zip(it2.column("id")?.i32()?.into_iter())
+        .zip(it2.column("id")?.i32()?)
         .filter_map(|(info, id)| {
             if let (Some(info), Some(id)) = (info, id) {
                 if info == "votes" { Some(id) } else { None }

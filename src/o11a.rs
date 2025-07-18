@@ -21,8 +21,8 @@ pub fn q11a(db: &ImdbData) -> Result<Option<(&str, &str, &str)>, PolarsError> {
         .column("id")?
         .i32()?
         .into_iter()
-        .zip(cn.column("name")?.str()?.into_iter())
-        .zip(cn.column("country_code")?.str()?.into_iter())
+        .zip(cn.column("name")?.str()?)
+        .zip(cn.column("country_code")?.str()?)
         .filter_map(|((id, name), country_code)| {
             if let (Some(id), Some(name), Some(country_code)) = (id, name, country_code) {
                 if (name.contains("Film") || name.contains("Warner")) && country_code != "[pl]" {
@@ -40,7 +40,7 @@ pub fn q11a(db: &ImdbData) -> Result<Option<(&str, &str, &str)>, PolarsError> {
         .column("id")?
         .i32()?
         .into_iter()
-        .zip(ct.column("kind")?.str()?.into_iter())
+        .zip(ct.column("kind")?.str()?)
         .filter_map(|(id, kind)| {
             if let (Some(id), Some(kind)) = (id, kind) {
                 if kind == "production companies" {
@@ -58,7 +58,7 @@ pub fn q11a(db: &ImdbData) -> Result<Option<(&str, &str, &str)>, PolarsError> {
         .column("id")?
         .i32()?
         .into_iter()
-        .zip(k.column("keyword")?.str()?.into_iter())
+        .zip(k.column("keyword")?.str()?)
         .filter_map(|(id, keyword)| {
             if let (Some(id), Some(keyword)) = (id, keyword) {
                 if keyword == "sequel" { Some(id) } else { None }
@@ -90,7 +90,7 @@ pub fn q11a(db: &ImdbData) -> Result<Option<(&str, &str, &str)>, PolarsError> {
         .column("id")?
         .i32()?
         .into_iter()
-        .zip(lt.column("link")?.str()?.into_iter())
+        .zip(lt.column("link")?.str()?)
         .filter_map(|(id, link)| {
             if let (Some(id), Some(link)) = (id, link) {
                 if link.contains("follow") {
@@ -125,14 +125,13 @@ pub fn q11a(db: &ImdbData) -> Result<Option<(&str, &str, &str)>, PolarsError> {
         .column("id")?
         .i32()?
         .into_iter()
-        .zip(t.column("title")?.str()?.into_iter())
-        .zip(t.column("production_year")?.i32()?.into_iter())
+        .zip(t.column("title")?.str()?)
+        .zip(t.column("production_year")?.i32()?)
         .filter_map(|((id, title), production_year)| {
             if let (Some(id), Some(title), Some(production_year)) = (id, title, production_year) {
                 if mk_s.contains(&id)
                     && ml_m.contains_key(&id)
-                    && production_year >= 1950
-                    && production_year <= 2000
+                    && (1950..=2000).contains(&production_year)
                 {
                     Some((id, title))
                 } else {

@@ -20,7 +20,7 @@ pub fn q16a(db: &ImdbData) -> Result<Option<(&str, &str)>, PolarsError> {
         .column("id")?
         .i32()?
         .into_iter()
-        .zip(k.column("keyword")?.str()?.into_iter())
+        .zip(k.column("keyword")?.str()?)
         .filter_map(|(id, keyword)| {
             if keyword? == "character-name-in-title" {
                 id
@@ -34,7 +34,7 @@ pub fn q16a(db: &ImdbData) -> Result<Option<(&str, &str)>, PolarsError> {
         .column("keyword_id")?
         .i32()?
         .into_iter()
-        .zip(mk.column("movie_id")?.i32()?.into_iter())
+        .zip(mk.column("movie_id")?.i32()?)
         .filter_map(|(keyword_id, movie_id)| {
             if k_s.contains(&keyword_id?) {
                 movie_id
@@ -48,8 +48,8 @@ pub fn q16a(db: &ImdbData) -> Result<Option<(&str, &str)>, PolarsError> {
         .column("id")?
         .i32()?
         .into_iter()
-        .zip(t.column("title")?.str()?.into_iter())
-        .zip(t.column("episode_nr")?.i32()?.into_iter())
+        .zip(t.column("title")?.str()?)
+        .zip(t.column("episode_nr")?.i32()?)
         .filter_map(|((movie_id, title), episode_nr)| {
             if mk_s.contains(&movie_id?) && (50..100).contains(&episode_nr?) {
                 Some((movie_id?, title?))
@@ -63,7 +63,7 @@ pub fn q16a(db: &ImdbData) -> Result<Option<(&str, &str)>, PolarsError> {
         .column("id")?
         .i32()?
         .into_iter()
-        .zip(cn.column("country_code")?.str()?.into_iter())
+        .zip(cn.column("country_code")?.str()?)
         .filter_map(|(id, country_code)| if country_code? == "[us]" { id } else { None })
         .collect();
 
@@ -71,7 +71,7 @@ pub fn q16a(db: &ImdbData) -> Result<Option<(&str, &str)>, PolarsError> {
         .column("company_id")?
         .i32()?
         .into_iter()
-        .zip(mc.column("movie_id")?.i32()?.into_iter())
+        .zip(mc.column("movie_id")?.i32()?)
         .filter_map(|(company_id, movie_id)| {
             if t_m.contains_key(&movie_id?) && cn_s.contains(&company_id?) {
                 movie_id
@@ -85,7 +85,7 @@ pub fn q16a(db: &ImdbData) -> Result<Option<(&str, &str)>, PolarsError> {
         .column("person_id")?
         .i32()?
         .into_iter()
-        .zip(an.column("name")?.str()?.into_iter())
+        .zip(an.column("name")?.str()?)
         .filter_map(|(person_id, name)| Some((person_id?, name?)))
         .fold(HashMap::default(), |mut acc, (person_id, name)| {
             acc.entry(person_id).or_default().push(name);

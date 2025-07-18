@@ -41,7 +41,7 @@ pub fn q10b(db: &ImdbData) -> Result<Option<(&str, &str)>, PolarsError> {
         .column("country_code")?
         .str()?
         .into_iter()
-        .zip(cn.column("id")?.i32()?.into_iter())
+        .zip(cn.column("id")?.i32()?)
         .filter_map(|(country_code, id)| {
             if let (Some(country_code), Some(id)) = (country_code, id) {
                 if country_code == "[ru]" {
@@ -59,8 +59,8 @@ pub fn q10b(db: &ImdbData) -> Result<Option<(&str, &str)>, PolarsError> {
         .column("company_type_id")?
         .i32()?
         .into_iter()
-        .zip(mc.column("company_id")?.i32()?.into_iter())
-        .zip(mc.column("movie_id")?.i32()?.into_iter())
+        .zip(mc.column("company_id")?.i32()?)
+        .zip(mc.column("movie_id")?.i32()?)
         .filter_map(|((company_type_id, company_id), movie_id)| {
             if let (Some(company_type_id), Some(company_id), Some(movie_id)) =
                 (company_type_id, company_id, movie_id)
@@ -80,7 +80,7 @@ pub fn q10b(db: &ImdbData) -> Result<Option<(&str, &str)>, PolarsError> {
         .column("id")?
         .i32()?
         .into_iter()
-        .zip(rt.column("role")?.str()?.into_iter())
+        .zip(rt.column("role")?.str()?)
         .filter_map(|(id, role)| {
             if let (Some(id), Some(role)) = (id, role) {
                 if role == "actor" { Some(id) } else { None }
@@ -122,7 +122,7 @@ pub fn q10b(db: &ImdbData) -> Result<Option<(&str, &str)>, PolarsError> {
             if note.contains("(producer)") {
                 if let Some(names) = chn_m.get(&person_role_id) {
                     if let Some(titles) = t_m.get(&mid) {
-                        if let Some(_) = rt_s.get(&role_id) {
+                        if rt_s.contains(&role_id) {
                             for name in names {
                                 for title in titles {
                                     if let Some((old_name, old_title)) = res.as_mut() {
@@ -146,7 +146,7 @@ pub fn q10b(db: &ImdbData) -> Result<Option<(&str, &str)>, PolarsError> {
 
     let duration = start.elapsed().as_secs_f32();
     // println!("{:}", res);
-    println!("{:}", duration);
+    println!("{duration:}");
 
     Ok(res)
 }

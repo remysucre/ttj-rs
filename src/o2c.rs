@@ -19,7 +19,7 @@ pub fn q2c(db: &ImdbData) -> Result<Option<&str>, PolarsError> {
         .column("id")?
         .i32()?
         .into_iter()
-        .zip(t.column("title")?.str()?.into_iter())
+        .zip(t.column("title")?.str()?)
         .fold(HashMap::default(), |mut acc, (id, title)| {
             if let (Some(id), Some(title)) = (id, title) {
                 acc.entry(id).or_default().push(title);
@@ -33,7 +33,7 @@ pub fn q2c(db: &ImdbData) -> Result<Option<&str>, PolarsError> {
         .column("country_code")?
         .str()?
         .into_iter()
-        .zip(cn.column("id")?.i32()?.into_iter())
+        .zip(cn.column("id")?.i32()?)
         .filter_map(|(country_code, id)| {
             if let (Some(country_code), Some(id)) = (country_code, id) {
                 if country_code == "[sm]" {
@@ -51,7 +51,7 @@ pub fn q2c(db: &ImdbData) -> Result<Option<&str>, PolarsError> {
         .column("keyword")?
         .str()?
         .into_iter()
-        .zip(k.column("id")?.i32()?.into_iter())
+        .zip(k.column("id")?.i32()?)
         .filter_map(|(keyword, id)| {
             if let (Some(keyword), Some(id)) = (keyword, id) {
                 if keyword == "character-name-in-title" {
@@ -69,7 +69,7 @@ pub fn q2c(db: &ImdbData) -> Result<Option<&str>, PolarsError> {
         .column("keyword_id")?
         .i32()?
         .into_iter()
-        .zip(mk.column("movie_id")?.i32()?.into_iter())
+        .zip(mk.column("movie_id")?.i32()?)
         .filter_map(|(keyword_id, movie_id)| {
             if let (Some(keyword_id), Some(movie_id)) = (keyword_id, movie_id) {
                 if k_s.contains(&keyword_id) {

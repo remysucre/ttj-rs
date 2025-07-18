@@ -127,7 +127,7 @@ pub fn q6f(db: &ImdbData) -> Result<(), PolarsError> {
     // println!("{:}", res);
 
     let duration = start.elapsed().as_secs_f32();
-    println!("{:}", duration);
+    println!("{duration:}");
 
     Ok(())
 }

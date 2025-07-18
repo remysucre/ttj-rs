@@ -36,7 +36,7 @@ pub fn q10c(db: &ImdbData) -> Result<Option<(&str, &str)>, PolarsError> {
         .column("country_code")?
         .str()?
         .into_iter()
-        .zip(cn.column("id")?.i32()?.into_iter())
+        .zip(cn.column("id")?.i32()?)
         .filter_map(|(country_code, id)| {
             if let (Some(country_code), Some(id)) = (country_code, id) {
                 if country_code == "[us]" {
@@ -54,8 +54,8 @@ pub fn q10c(db: &ImdbData) -> Result<Option<(&str, &str)>, PolarsError> {
         .column("company_type_id")?
         .i32()?
         .into_iter()
-        .zip(mc.column("company_id")?.i32()?.into_iter())
-        .zip(mc.column("movie_id")?.i32()?.into_iter())
+        .zip(mc.column("company_id")?.i32()?)
+        .zip(mc.column("movie_id")?.i32()?)
         .filter_map(|((company_type_id, company_id), movie_id)| {
             if let (Some(_), Some(company_id), Some(movie_id)) =
                 (company_type_id, company_id, movie_id)

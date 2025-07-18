@@ -19,7 +19,7 @@ pub fn q8c(db: &ImdbData) -> Result<Option<(&str, &str)>, PolarsError> {
         .column("id")?
         .i32()?
         .into_iter()
-        .zip(t.column("title")?.str()?.into_iter())
+        .zip(t.column("title")?.str()?)
         .filter_map(|(id, title)| {
             if let (Some(id), Some(title)) = (id, title) {
                 Some((id, title))
@@ -78,7 +78,7 @@ pub fn q8c(db: &ImdbData) -> Result<Option<(&str, &str)>, PolarsError> {
         .column("country_code")?
         .str()?
         .into_iter()
-        .zip(cn.column("id")?.i32()?.into_iter())
+        .zip(cn.column("id")?.i32()?)
         .filter_map(|(country_code, id)| {
             if let (Some(country_code), Some(id)) = (country_code, id) {
                 if country_code == "[us]" {

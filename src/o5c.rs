@@ -16,7 +16,7 @@ pub fn q5c(db: &ImdbData) -> Result<Option<&str>, PolarsError> {
         .column("kind")?
         .str()?
         .into_iter()
-        .zip(ct.column("id")?.i32()?.into_iter())
+        .zip(ct.column("id")?.i32()?)
         .filter_map(|(kind, id)| {
             if let (Some(kind), Some(id)) = (kind, id) {
                 if kind == "production companies" {
@@ -34,8 +34,8 @@ pub fn q5c(db: &ImdbData) -> Result<Option<&str>, PolarsError> {
         .column("note")?
         .str()?
         .into_iter()
-        .zip(mc.column("movie_id")?.i32()?.into_iter())
-        .zip(mc.column("company_type_id")?.i32()?.into_iter())
+        .zip(mc.column("movie_id")?.i32()?)
+        .zip(mc.column("company_type_id")?.i32()?)
         .filter_map(|((note, movie_id), company_type_id)| {
             if let (Some(note), Some(movie_id), Some(company_type_id)) =
                 (note, movie_id, company_type_id)
@@ -58,7 +58,7 @@ pub fn q5c(db: &ImdbData) -> Result<Option<&str>, PolarsError> {
         .column("info")?
         .str()?
         .into_iter()
-        .zip(mi.column("movie_id")?.i32()?.into_iter())
+        .zip(mi.column("movie_id")?.i32()?)
         .filter_map(|(info, movie_id)| {
             if let (Some(info), Some(movie_id)) = (info, movie_id) {
                 if matches!(

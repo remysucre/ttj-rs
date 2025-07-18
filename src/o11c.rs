@@ -40,7 +40,7 @@ pub fn q11c(db: &ImdbData) -> Result<Option<(&str, &str, &str)>, PolarsError> {
         .column("id")?
         .i32()?
         .into_iter()
-        .zip(ct.column("kind")?.str()?.into_iter())
+        .zip(ct.column("kind")?.str()?)
         .filter_map(|(id, kind)| {
             if let (Some(id), Some(kind)) = (id, kind) {
                 if kind != "production companies" {
@@ -58,7 +58,7 @@ pub fn q11c(db: &ImdbData) -> Result<Option<(&str, &str, &str)>, PolarsError> {
         .column("id")?
         .i32()?
         .into_iter()
-        .zip(k.column("keyword")?.str()?.into_iter())
+        .zip(k.column("keyword")?.str()?)
         .filter_map(|(id, keyword)| {
             if let (Some(id), Some(keyword)) = (id, keyword) {
                 if matches!(keyword, "sequel" | "revenge" | "based-on-novel") {

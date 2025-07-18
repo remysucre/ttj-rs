@@ -35,7 +35,7 @@ pub fn q31c(db: &ImdbData) -> Result<Option<(&str, &str, &str, &str)>, PolarsErr
         .column("name")?
         .str()?
         .into_iter()
-        .zip(cn.column("id")?.i32()?.into_iter())
+        .zip(cn.column("id")?.i32()?)
         .filter_map(|(name, id)| {
             if let (Some(name), Some(id)) = (name, id) {
                 if name.starts_with("Lionsgate") {
@@ -53,7 +53,7 @@ pub fn q31c(db: &ImdbData) -> Result<Option<(&str, &str, &str, &str)>, PolarsErr
         .column("company_id")?
         .i32()?
         .into_iter()
-        .zip(mc.column("movie_id")?.i32()?.into_iter())
+        .zip(mc.column("movie_id")?.i32()?)
         .filter_map(|(company_id, movie_id)| {
             if let (Some(company_id), Some(movie_id)) = (company_id, movie_id) {
                 if cn_s.contains(&company_id) {
@@ -71,7 +71,7 @@ pub fn q31c(db: &ImdbData) -> Result<Option<(&str, &str, &str, &str)>, PolarsErr
         .column("info")?
         .str()?
         .into_iter()
-        .zip(it1.column("id")?.i32()?.into_iter())
+        .zip(it1.column("id")?.i32()?)
         .filter_map(|(info, id)| {
             if let (Some(info), Some(id)) = (info, id) {
                 if info == "genres" { Some(id) } else { None }
@@ -105,7 +105,7 @@ pub fn q31c(db: &ImdbData) -> Result<Option<(&str, &str, &str, &str)>, PolarsErr
         .column("info")?
         .str()?
         .into_iter()
-        .zip(it2.column("id")?.i32()?.into_iter())
+        .zip(it2.column("id")?.i32()?)
         .filter_map(|(info, id)| {
             if let (Some(info), Some(id)) = (info, id) {
                 if info == "votes" { Some(id) } else { None }
@@ -135,7 +135,7 @@ pub fn q31c(db: &ImdbData) -> Result<Option<(&str, &str, &str, &str)>, PolarsErr
         .column("keyword")?
         .str()?
         .into_iter()
-        .zip(k.column("id")?.i32()?.into_iter())
+        .zip(k.column("id")?.i32()?)
         .filter_map(|(keyword, id)| {
             if let (Some(keyword), Some(id)) = (keyword, id) {
                 if matches!(
@@ -162,7 +162,7 @@ pub fn q31c(db: &ImdbData) -> Result<Option<(&str, &str, &str, &str)>, PolarsErr
         .column("movie_id")?
         .i32()?
         .into_iter()
-        .zip(mk.column("keyword_id")?.i32()?.into_iter())
+        .zip(mk.column("keyword_id")?.i32()?)
         .filter_map(|(movie_id, keyword_id)| {
             if let (Some(movie_id), Some(keyword_id)) = (movie_id, keyword_id) {
                 if k_s.contains(&keyword_id) {

@@ -21,7 +21,7 @@ pub fn q13a(db: &ImdbData) -> Result<(), PolarsError> {
         .column("info")?
         .str()?
         .into_iter()
-        .zip(it1.column("id")?.i32()?.into_iter())
+        .zip(it1.column("id")?.i32()?)
         .filter_map(|(info, id)| {
             if let (Some(info), Some(id)) = (info, id) {
                 if info == "rating" {
@@ -55,7 +55,7 @@ pub fn q13a(db: &ImdbData) -> Result<(), PolarsError> {
         .column("info")?
         .str()?
         .into_iter()
-        .zip(it2.column("id")?.i32()?.into_iter())
+        .zip(it2.column("id")?.i32()?)
         .filter_map(|(info, id)| {
             if let (Some(info), Some(id)) = (info, id) {
                 if info == "release dates" {
@@ -89,7 +89,7 @@ pub fn q13a(db: &ImdbData) -> Result<(), PolarsError> {
         .column("kind")?
         .str()?
         .into_iter()
-        .zip(kt.column("id")?.i32()?.into_iter())
+        .zip(kt.column("id")?.i32()?)
         .filter_map(|(kind, id)| {
             if let (Some(kind), Some(id)) = (kind, id) {
                 if kind == "movie" {
@@ -123,7 +123,7 @@ pub fn q13a(db: &ImdbData) -> Result<(), PolarsError> {
         .column("country_code")?
         .str()?
         .into_iter()
-        .zip(cn.column("id")?.i32()?.into_iter())
+        .zip(cn.column("id")?.i32()?)
         .filter_map(|(country_code, id)| {
             if let (Some(country_code), Some(id)) = (country_code, id) {
                 if country_code == "[de]" {
@@ -141,7 +141,7 @@ pub fn q13a(db: &ImdbData) -> Result<(), PolarsError> {
         .column("kind")?
         .str()?
         .into_iter()
-        .zip(ct.column("id")?.i32()?.into_iter())
+        .zip(ct.column("id")?.i32()?)
         .filter_map(|(kind, id)| {
             if let (Some(kind), Some(id)) = (kind, id) {
                 if kind == "production companies" {
@@ -196,7 +196,7 @@ pub fn q13a(db: &ImdbData) -> Result<(), PolarsError> {
     }
 
     let duration = start.elapsed().as_secs_f32();
-    println!("{:}", duration);
+    println!("{duration:}");
 
     // println!("{:}", res);
 

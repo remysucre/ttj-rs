@@ -20,7 +20,7 @@ pub fn q25c(db: &ImdbData) -> Result<(), PolarsError> {
         .column("id")?
         .i32()?
         .into_iter()
-        .zip(it.column("info")?.str()?.into_iter())
+        .zip(it.column("info")?.str()?)
         .filter_map(|(id, info)| {
             if let (Some(id), Some(info)) = (id, info) {
                 if info == "genres" { Some(id) } else { None }
@@ -54,7 +54,7 @@ pub fn q25c(db: &ImdbData) -> Result<(), PolarsError> {
         .column("id")?
         .i32()?
         .into_iter()
-        .zip(it.column("info")?.str()?.into_iter())
+        .zip(it.column("info")?.str()?)
         .filter_map(|(id, info)| {
             if let (Some(id), Some(info)) = (id, info) {
                 if info == "votes" { Some(id) } else { None }
@@ -84,7 +84,7 @@ pub fn q25c(db: &ImdbData) -> Result<(), PolarsError> {
         .column("id")?
         .i32()?
         .into_iter()
-        .zip(k.column("keyword")?.str()?.into_iter())
+        .zip(k.column("keyword")?.str()?)
         .filter_map(|(id, keyword)| {
             if let (Some(id), Some(keyword)) = (id, keyword) {
                 if matches!(
@@ -210,7 +210,7 @@ pub fn q25c(db: &ImdbData) -> Result<(), PolarsError> {
 
     // println!("{:}", res);
     let duration = start.elapsed().as_secs_f32();
-    println!("{:}", duration);
+    println!("{duration:}");
 
     Ok(())
 }

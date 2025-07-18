@@ -35,7 +35,7 @@ pub fn q26a(db: &ImdbData) -> Result<Option<(&str, &str, &str, &str)>, PolarsErr
         .into_iter()
         .zip(n.column("name")?.str()?)
         .fold(
-            HashMap::with_capacity_and_hasher(n.height(), FxBuildHasher::default()),
+            HashMap::with_capacity_and_hasher(n.height(), FxBuildHasher),
             |mut acc, (id, name)| {
                 if let (Some(id), Some(name)) = (id, name) {
                     acc.insert(id, name);
@@ -78,7 +78,7 @@ pub fn q26a(db: &ImdbData) -> Result<Option<(&str, &str, &str, &str)>, PolarsErr
         })
         .collect();
 
-    let mut cc_s = HashSet::with_capacity_and_hasher(cc.height(), FxBuildHasher::default());
+    let mut cc_s = HashSet::with_capacity_and_hasher(cc.height(), FxBuildHasher);
 
     cc.column("movie_id")?
         .i32()?
@@ -137,14 +137,14 @@ pub fn q26a(db: &ImdbData) -> Result<Option<(&str, &str, &str, &str)>, PolarsErr
             }
         })
         .fold(
-            HashMap::with_capacity_and_hasher(t.height(), FxBuildHasher::default()),
+            HashMap::with_capacity_and_hasher(t.height(), FxBuildHasher),
             |mut acc, (id, title)| {
                 acc.insert(id, title);
                 acc
             },
         );
 
-    let mut chn_m = HashMap::with_capacity_and_hasher(chn.height(), FxBuildHasher::default());
+    let mut chn_m = HashMap::with_capacity_and_hasher(chn.height(), FxBuildHasher);
 
     chn.column("name")?
         .str()?
@@ -209,7 +209,7 @@ pub fn q26a(db: &ImdbData) -> Result<Option<(&str, &str, &str, &str)>, PolarsErr
         })
         .collect::<HashSet<_>>();
 
-    let mut mk_s = HashSet::with_capacity_and_hasher(mk.height(), FxBuildHasher::default());
+    let mut mk_s = HashSet::with_capacity_and_hasher(mk.height(), FxBuildHasher);
 
     mk.column("keyword_id")?
         .i32()?
@@ -249,7 +249,7 @@ pub fn q26a(db: &ImdbData) -> Result<Option<(&str, &str, &str, &str)>, PolarsErr
             }
         })
         .fold(
-            HashMap::with_capacity_and_hasher(mi_idx.height(), FxBuildHasher::default()),
+            HashMap::with_capacity_and_hasher(mi_idx.height(), FxBuildHasher),
             |mut acc, (movie_id, info)| {
                 acc.entry(movie_id).or_default().push(info);
                 acc

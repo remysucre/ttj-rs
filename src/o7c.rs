@@ -20,7 +20,7 @@ pub fn q7c(db: &ImdbData) -> Result<(), PolarsError> {
         .column("id")?
         .i32()?
         .into_iter()
-        .zip(lt.column("link")?.str()?.into_iter())
+        .zip(lt.column("link")?.str()?)
         .filter_map(|(id, link)| {
             if let (Some(id), Some(link)) = (id, link) {
                 if matches!(
@@ -41,7 +41,7 @@ pub fn q7c(db: &ImdbData) -> Result<(), PolarsError> {
         .column("id")?
         .i32()?
         .into_iter()
-        .zip(it.column("info")?.str()?.into_iter())
+        .zip(it.column("info")?.str()?)
         .filter_map(|(id, info)| {
             if let (Some(id), Some(info)) = (id, info) {
                 if info == "mini biography" {
@@ -59,7 +59,7 @@ pub fn q7c(db: &ImdbData) -> Result<(), PolarsError> {
         .column("linked_movie_id")?
         .i32()?
         .into_iter()
-        .zip(ml.column("link_type_id")?.i32()?.into_iter())
+        .zip(ml.column("link_type_id")?.i32()?)
         .filter_map(|(id, link_type_id)| {
             if let (Some(id), Some(link_type_id)) = (id, link_type_id) {
                 if lt_s.contains(&link_type_id) {
@@ -102,7 +102,7 @@ pub fn q7c(db: &ImdbData) -> Result<(), PolarsError> {
 
     for (id, production_year) in t_id_col.into_iter().zip(t_year_col.into_iter()) {
         if let (Some(id), Some(production_year)) = (id, production_year) {
-            if production_year >= 1980 && production_year <= 2010 && ml_s.contains(&id) {
+            if (1980..=2010).contains(&production_year) && ml_s.contains(&id) {
                 t_s.insert(id);
             }
         }
@@ -124,7 +124,7 @@ pub fn q7c(db: &ImdbData) -> Result<(), PolarsError> {
             (id, name, name_pcode, gender)
         {
             if pi_m.contains_key(&id)
-                && ((name_pcode >= "A" && name_pcode <= "F") && gender == "m"
+                && (("A"..="F").contains(&name_pcode) && gender == "m"
                     || gender == "f" && name.starts_with('A'))
             {
                 n_m.entry(id).or_default().push(name);
@@ -181,7 +181,7 @@ pub fn q7c(db: &ImdbData) -> Result<(), PolarsError> {
     // println!("{:}", res);
 
     let duration = start.elapsed().as_secs_f32();
-    println!("{:}", duration);
+    println!("{duration:}");
 
     Ok(())
 }

@@ -24,6 +24,12 @@ pub struct ImdbData {
     pub t: DataFrame,
 }
 
+impl Default for ImdbData {
+    fn default() -> Self {
+        Self::new()
+    }
+}
+
 impl ImdbData {
     pub fn new() -> Self {
         let an = ParquetReader::new(std::fs::File::open("imdb/aka_name.parquet").unwrap())

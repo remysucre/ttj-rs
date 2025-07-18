@@ -45,7 +45,7 @@ pub fn q9a(db: &ImdbData) -> Result<(), PolarsError> {
         .column("country_code")?
         .str()?
         .into_iter()
-        .zip(cn.column("id")?.i32()?.into_iter())
+        .zip(cn.column("id")?.i32()?)
         .filter_map(|(country_code, id)| {
             if let (Some(country_code), Some(id)) = (country_code, id) {
                 if country_code == "[us]" {
@@ -63,8 +63,8 @@ pub fn q9a(db: &ImdbData) -> Result<(), PolarsError> {
         .column("note")?
         .str()?
         .into_iter()
-        .zip(mc.column("movie_id")?.i32()?.into_iter())
-        .zip(mc.column("company_id")?.i32()?.into_iter())
+        .zip(mc.column("movie_id")?.i32()?)
+        .zip(mc.column("company_id")?.i32()?)
         .filter_map(|((note, movie_id), company_id)| {
             if let (Some(note), Some(movie_id), Some(company_id)) = (note, movie_id, company_id) {
                 if cn_s.contains(&company_id)
@@ -84,8 +84,8 @@ pub fn q9a(db: &ImdbData) -> Result<(), PolarsError> {
         .column("id")?
         .i32()?
         .into_iter()
-        .zip(n.column("gender")?.str()?.into_iter())
-        .zip(n.column("name")?.str()?.into_iter())
+        .zip(n.column("gender")?.str()?)
+        .zip(n.column("name")?.str()?)
         .filter_map(|((id, gender), name)| {
             if let (Some(id), Some(gender), Some(name)) = (id, gender, name) {
                 if gender == "f" && name.contains("Ang") {
@@ -103,7 +103,7 @@ pub fn q9a(db: &ImdbData) -> Result<(), PolarsError> {
         .column("role")?
         .str()?
         .into_iter()
-        .zip(rt.column("id")?.i32()?.into_iter())
+        .zip(rt.column("id")?.i32()?)
         .filter_map(|(role, id)| {
             if let (Some(role), Some(id)) = (role, id) {
                 if role == "actress" { Some(id) } else { None }
@@ -123,7 +123,7 @@ pub fn q9a(db: &ImdbData) -> Result<(), PolarsError> {
         .zip(t.column("title")?.str()?.into_iter())
     {
         if let (Some(id), Some(production_year), Some(title)) = (id, production_year, title) {
-            if production_year >= 2005 && production_year <= 2015 {
+            if (2005..=2015).contains(&production_year) {
                 t_m.entry(id).or_default().push(title);
             }
         }
@@ -183,7 +183,7 @@ pub fn q9a(db: &ImdbData) -> Result<(), PolarsError> {
     }
 
     let duration = start.elapsed().as_secs_f32();
-    println!("{:}", duration);
+    println!("{duration:}");
 
     // println!("{:}", res);
 

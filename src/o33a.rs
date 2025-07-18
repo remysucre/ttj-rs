@@ -67,7 +67,7 @@ pub fn q33a(db: &ImdbData) -> Result<(), PolarsError> {
         .column("id")?
         .i32()?
         .into_iter()
-        .zip(it1.column("info")?.str()?.into_iter())
+        .zip(it1.column("info")?.str()?)
         .filter_map(|(id, info)| {
             if let (Some(id), Some(info)) = (id, info) {
                 if info == "rating" { Some(id) } else { None }
@@ -97,7 +97,7 @@ pub fn q33a(db: &ImdbData) -> Result<(), PolarsError> {
         .column("id")?
         .i32()?
         .into_iter()
-        .zip(it2.column("info")?.str()?.into_iter())
+        .zip(it2.column("info")?.str()?)
         .filter_map(|(id, info)| {
             if let (Some(id), Some(info)) = (id, info) {
                 if info == "rating" { Some(id) } else { None }
@@ -127,7 +127,7 @@ pub fn q33a(db: &ImdbData) -> Result<(), PolarsError> {
         .column("id")?
         .i32()?
         .into_iter()
-        .zip(kt1.column("kind")?.str()?.into_iter())
+        .zip(kt1.column("kind")?.str()?)
         .filter_map(|(id, kind)| {
             if let (Some(id), Some(kind)) = (id, kind) {
                 if kind == "tv series" { Some(id) } else { None }
@@ -157,7 +157,7 @@ pub fn q33a(db: &ImdbData) -> Result<(), PolarsError> {
         .column("id")?
         .i32()?
         .into_iter()
-        .zip(kt2.column("kind")?.str()?.into_iter())
+        .zip(kt2.column("kind")?.str()?)
         .filter_map(|(id, kind)| {
             if let (Some(id), Some(kind)) = (id, kind) {
                 if kind == "tv series" { Some(id) } else { None }
@@ -190,7 +190,7 @@ pub fn q33a(db: &ImdbData) -> Result<(), PolarsError> {
         .column("id")?
         .i32()?
         .into_iter()
-        .zip(lt.column("link")?.str()?.into_iter())
+        .zip(lt.column("link")?.str()?)
         .filter_map(|(id, link)| {
             if let (Some(id), Some(link)) = (id, link) {
                 if link == "sequel" || link == "follows" || link == "followed by" {
@@ -255,9 +255,9 @@ pub fn q33a(db: &ImdbData) -> Result<(), PolarsError> {
                                 if let Some(c1ids) = mc1_m.get(&movie_id) {
                                     if let Some(c2ids) = mc2_m.get(&linked_movie_id) {
                                         for c1 in c1ids {
-                                            if let Some(c1_names) = cn1_m.get(&c1) {
+                                            if let Some(c1_names) = cn1_m.get(c1) {
                                                 for c2 in c2ids {
-                                                    if let Some(c2_names) = cn2_m.get(&c2) {
+                                                    if let Some(c2_names) = cn2_m.get(c2) {
                                                         for n1 in c1_names {
                                                             for n2 in c2_names {
                                                                 for r1 in mi_idx1_info {

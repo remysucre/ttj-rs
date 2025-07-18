@@ -15,7 +15,7 @@ pub fn q17f(db: &ImdbData) -> Result<(), PolarsError> {
         .column("keyword")?
         .str()?
         .into_iter()
-        .zip(k.column("id")?.i32()?.into_iter())
+        .zip(k.column("id")?.i32()?)
         .filter_map(|(keyword, id)| {
             if let (Some(keyword), Some(id)) = (keyword, id) {
                 if keyword == "character-name-in-title" {
@@ -33,7 +33,7 @@ pub fn q17f(db: &ImdbData) -> Result<(), PolarsError> {
         .column("keyword_id")?
         .i32()?
         .into_iter()
-        .zip(mk.column("movie_id")?.i32()?.into_iter())
+        .zip(mk.column("movie_id")?.i32()?)
         .filter_map(|(keyword_id, movie_id)| {
             if let (Some(keyword_id), Some(movie_id)) = (keyword_id, movie_id) {
                 if k_s.contains(&keyword_id) {

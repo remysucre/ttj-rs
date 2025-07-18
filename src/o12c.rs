@@ -21,7 +21,7 @@ pub fn q12c(db: &ImdbData) -> Result<Option<(&str, &str, &str)>, PolarsError> {
         .column("info")?
         .str()?
         .into_iter()
-        .zip(it1.column("id")?.i32()?.into_iter())
+        .zip(it1.column("id")?.i32()?)
         .filter_map(|(info, id)| {
             if let (Some(info), Some(id)) = (info, id) {
                 if info == "genres" { Some(id) } else { None }
@@ -35,7 +35,7 @@ pub fn q12c(db: &ImdbData) -> Result<Option<(&str, &str, &str)>, PolarsError> {
         .column("info")?
         .str()?
         .into_iter()
-        .zip(it2.column("id")?.i32()?.into_iter())
+        .zip(it2.column("id")?.i32()?)
         .filter_map(|(info, id)| {
             if let (Some(info), Some(id)) = (info, id) {
                 if info == "rating" { Some(id) } else { None }
@@ -83,7 +83,7 @@ pub fn q12c(db: &ImdbData) -> Result<Option<(&str, &str, &str)>, PolarsError> {
         .column("kind")?
         .str()?
         .into_iter()
-        .zip(ct.column("id")?.i32()?.into_iter())
+        .zip(ct.column("id")?.i32()?)
         .filter_map(|(kind, id)| {
             if let (Some(kind), Some(id)) = (kind, id) {
                 if kind == "production companies" {
@@ -101,8 +101,8 @@ pub fn q12c(db: &ImdbData) -> Result<Option<(&str, &str, &str)>, PolarsError> {
         .column("id")?
         .i32()?
         .into_iter()
-        .zip(cn.column("country_code")?.str()?.into_iter())
-        .zip(cn.column("name")?.str()?.into_iter())
+        .zip(cn.column("country_code")?.str()?)
+        .zip(cn.column("name")?.str()?)
         .filter_map(|((id, country_code), name)| {
             if let (Some(id), Some(country_code), Some(name)) = (id, country_code, name) {
                 if country_code == "[us]" {

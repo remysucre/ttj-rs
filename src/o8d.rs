@@ -30,7 +30,7 @@ pub fn q8d(db: &ImdbData) -> Result<Option<(&str, &str)>, PolarsError> {
         .column("id")?
         .i32()?
         .into_iter()
-        .zip(t.column("title")?.str()?.into_iter())
+        .zip(t.column("title")?.str()?)
         .fold(HashMap::default(), |mut acc, (id, title)| {
             if let (Some(id), Some(title)) = (id, title) {
                 acc.entry(id).or_default().push(title);
@@ -48,7 +48,7 @@ pub fn q8d(db: &ImdbData) -> Result<Option<(&str, &str)>, PolarsError> {
         .column("role")?
         .str()?
         .into_iter()
-        .zip(rt.column("id")?.i32()?.into_iter())
+        .zip(rt.column("id")?.i32()?)
         .filter_map(|(role, id)| {
             if let (Some(role), Some(id)) = (role, id) {
                 if role == "costume designer" {
@@ -66,7 +66,7 @@ pub fn q8d(db: &ImdbData) -> Result<Option<(&str, &str)>, PolarsError> {
         .column("country_code")?
         .str()?
         .into_iter()
-        .zip(cn.column("id")?.i32()?.into_iter())
+        .zip(cn.column("id")?.i32()?)
         .filter_map(|(country_code, id)| {
             if let (Some(country_code), Some(id)) = (country_code, id) {
                 if country_code == "[us]" {
@@ -84,7 +84,7 @@ pub fn q8d(db: &ImdbData) -> Result<Option<(&str, &str)>, PolarsError> {
         .column("movie_id")?
         .i32()?
         .into_iter()
-        .zip(mc.column("company_id")?.i32()?.into_iter())
+        .zip(mc.column("company_id")?.i32()?)
         .filter_map(|(movie_id, company_id)| {
             if let (Some(movie_id), Some(company_id)) = (movie_id, company_id) {
                 if cn_s.contains(&company_id) {

@@ -72,15 +72,7 @@ pub fn q17c(db: &ImdbData) -> Result<Option<(&str, &str)>, PolarsError> {
         .i32()?
         .into_iter()
         .filter_map(|movie_id| {
-            if let Some(movie_id) = movie_id {
-                if mk_s.contains(&movie_id) {
-                    Some(movie_id)
-                } else {
-                    None
-                }
-            } else {
-                None
-            }
+            movie_id.filter(|&movie_id| mk_s.contains(&movie_id))
         })
         .collect();
 

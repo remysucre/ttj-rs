@@ -25,7 +25,7 @@ pub fn q23c(db: &ImdbData) -> Result<Option<(&str, &str)>, PolarsError> {
         .column("keyword_id")?
         .i32()?
         .into_iter()
-        .zip(mk.column("movie_id")?.i32()?.into_iter())
+        .zip(mk.column("movie_id")?.i32()?)
         .filter_map(|(keyword_id, movie_id)| {
             if let (Some(keyword_id), Some(movie_id)) = (keyword_id, movie_id) {
                 if k_s.contains(&keyword_id) {
@@ -43,7 +43,7 @@ pub fn q23c(db: &ImdbData) -> Result<Option<(&str, &str)>, PolarsError> {
         .column("kind")?
         .str()?
         .into_iter()
-        .zip(cct1.column("id")?.i32()?.into_iter())
+        .zip(cct1.column("id")?.i32()?)
         .filter_map(|(kind, id)| {
             if let (Some(kind), Some(id)) = (kind, id) {
                 if kind == "complete+verified" {
@@ -61,7 +61,7 @@ pub fn q23c(db: &ImdbData) -> Result<Option<(&str, &str)>, PolarsError> {
         .column("status_id")?
         .i32()?
         .into_iter()
-        .zip(cc.column("movie_id")?.i32()?.into_iter())
+        .zip(cc.column("movie_id")?.i32()?)
         .filter_map(|(status_id, movie_id)| {
             if let (Some(status_id), Some(movie_id)) = (status_id, movie_id) {
                 if cct1_s.contains(&status_id) {
@@ -79,7 +79,7 @@ pub fn q23c(db: &ImdbData) -> Result<Option<(&str, &str)>, PolarsError> {
         .column("country_code")?
         .str()?
         .into_iter()
-        .zip(cn.column("id")?.i32()?.into_iter())
+        .zip(cn.column("id")?.i32()?)
         .filter_map(|(country_code, id)| {
             if let (Some(country_code), Some(id)) = (country_code, id) {
                 if country_code == "[us]" {
@@ -97,7 +97,7 @@ pub fn q23c(db: &ImdbData) -> Result<Option<(&str, &str)>, PolarsError> {
         .column("company_id")?
         .i32()?
         .into_iter()
-        .zip(mc.column("movie_id")?.i32()?.into_iter())
+        .zip(mc.column("movie_id")?.i32()?)
         .filter_map(|(company_id, movie_id)| {
             if let (Some(company_id), Some(movie_id)) = (company_id, movie_id) {
                 if cn_s.contains(&company_id) {
@@ -115,7 +115,7 @@ pub fn q23c(db: &ImdbData) -> Result<Option<(&str, &str)>, PolarsError> {
         .column("info")?
         .str()?
         .into_iter()
-        .zip(it1.column("id")?.i32()?.into_iter())
+        .zip(it1.column("id")?.i32()?)
         .filter_map(|(info, id)| {
             if let (Some(info), Some(id)) = (info, id) {
                 if info == "release dates" {
@@ -133,9 +133,9 @@ pub fn q23c(db: &ImdbData) -> Result<Option<(&str, &str)>, PolarsError> {
         .column("note")?
         .str()?
         .into_iter()
-        .zip(mi.column("info")?.str()?.into_iter())
-        .zip(mi.column("movie_id")?.i32()?.into_iter())
-        .zip(mi.column("info_type_id")?.i32()?.into_iter())
+        .zip(mi.column("info")?.str()?)
+        .zip(mi.column("movie_id")?.i32()?)
+        .zip(mi.column("info_type_id")?.i32()?)
         .filter_map(|(((note, info), movie_id), info_type_id)| {
             if let (Some(note), Some(info), Some(movie_id), Some(info_type_id)) =
                 (note, info, movie_id, info_type_id)

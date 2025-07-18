@@ -20,7 +20,7 @@ pub fn q7b(db: &ImdbData) -> Result<Option<(&str, &str)>, PolarsError> {
         .column("id")?
         .i32()?
         .into_iter()
-        .zip(lt.column("link")?.str()?.into_iter())
+        .zip(lt.column("link")?.str()?)
         .filter_map(|(id, link)| {
             if let (Some(id), Some(link)) = (id, link) {
                 if link == "features" { Some(id) } else { None }
@@ -34,7 +34,7 @@ pub fn q7b(db: &ImdbData) -> Result<Option<(&str, &str)>, PolarsError> {
         .column("id")?
         .i32()?
         .into_iter()
-        .zip(it.column("info")?.str()?.into_iter())
+        .zip(it.column("info")?.str()?)
         .filter_map(|(id, info)| {
             if let (Some(id), Some(info)) = (id, info) {
                 if info == "mini biography" {
@@ -52,7 +52,7 @@ pub fn q7b(db: &ImdbData) -> Result<Option<(&str, &str)>, PolarsError> {
         .column("linked_movie_id")?
         .i32()?
         .into_iter()
-        .zip(ml.column("link_type_id")?.i32()?.into_iter())
+        .zip(ml.column("link_type_id")?.i32()?)
         .filter_map(|(id, link_type_id)| {
             if let (Some(id), Some(link_type_id)) = (id, link_type_id) {
                 if lt_s.contains(&link_type_id) {
@@ -70,8 +70,8 @@ pub fn q7b(db: &ImdbData) -> Result<Option<(&str, &str)>, PolarsError> {
         .column("person_id")?
         .i32()?
         .into_iter()
-        .zip(pi.column("info_type_id")?.i32()?.into_iter())
-        .zip(pi.column("note")?.str()?.into_iter())
+        .zip(pi.column("info_type_id")?.i32()?)
+        .zip(pi.column("note")?.str()?)
         .filter_map(|((person_id, info_type_id), note)| {
             if let (Some(person_id), Some(info_type_id), Some(note)) =
                 (person_id, info_type_id, note)
@@ -91,11 +91,11 @@ pub fn q7b(db: &ImdbData) -> Result<Option<(&str, &str)>, PolarsError> {
         .column("id")?
         .i32()?
         .into_iter()
-        .zip(t.column("production_year")?.i32()?.into_iter())
-        .zip(t.column("title")?.str()?.into_iter())
+        .zip(t.column("production_year")?.i32()?)
+        .zip(t.column("title")?.str()?)
         .filter_map(|((id, production_year), title)| {
             if let (Some(id), Some(production_year), Some(title)) = (id, production_year, title) {
-                if production_year >= 1980 && production_year <= 1984 && ml_s.contains(&id) {
+                if (1980..=1984).contains(&production_year) && ml_s.contains(&id) {
                     Some((id, title))
                 } else {
                     None
@@ -113,9 +113,9 @@ pub fn q7b(db: &ImdbData) -> Result<Option<(&str, &str)>, PolarsError> {
         .column("id")?
         .i32()?
         .into_iter()
-        .zip(n.column("name")?.str()?.into_iter())
-        .zip(n.column("name_pcode_cf")?.str()?.into_iter())
-        .zip(n.column("gender")?.str()?.into_iter())
+        .zip(n.column("name")?.str()?)
+        .zip(n.column("name_pcode_cf")?.str()?)
+        .zip(n.column("gender")?.str()?)
         .filter_map(|(((id, name), name_pcode), gender)| {
             if let (Some(id), Some(name), Some(name_pcode), Some(gender)) =
                 (id, name, name_pcode, gender)
@@ -138,7 +138,7 @@ pub fn q7b(db: &ImdbData) -> Result<Option<(&str, &str)>, PolarsError> {
         .column("person_id")?
         .i32()?
         .into_iter()
-        .zip(an.column("name")?.str()?.into_iter())
+        .zip(an.column("name")?.str()?)
         .filter_map(|(id, name)| {
             if let (Some(id), Some(name)) = (id, name) {
                 if n_m.contains_key(&id) && name.contains('a') {

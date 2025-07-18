@@ -16,7 +16,7 @@ pub fn q6b(db: &ImdbData) -> Result<Option<(&str, &str, &str)>, PolarsError> {
         .column("id")?
         .i32()?
         .into_iter()
-        .zip(n.column("name")?.str()?.into_iter())
+        .zip(n.column("name")?.str()?)
         .filter_map(|(id, name)| {
             if let (Some(id), Some(name)) = (id, name) {
                 if name.contains("Downey") && name.contains("Robert") {

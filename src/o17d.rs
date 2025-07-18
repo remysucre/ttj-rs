@@ -10,7 +10,7 @@ pub fn q17d(db: &ImdbData) -> Result<Option<&str>, PolarsError> {
     let k = &db.k;
     let mk = &db.mk;
     let n = &db.n;
-    let cn = &db.cn;
+    // let cn = &db.cn;
     let mc = &db.mc;
     // let t = &db.t;
 
@@ -30,7 +30,7 @@ pub fn q17d(db: &ImdbData) -> Result<Option<&str>, PolarsError> {
         .column("keyword")?
         .str()?
         .into_iter()
-        .zip(k.column("id")?.i32()?.into_iter())
+        .zip(k.column("id")?.i32()?)
         .filter_map(|(keyword, id)| {
             if let (Some(keyword), Some(id)) = (keyword, id) {
                 if keyword == "character-name-in-title" {
@@ -48,7 +48,7 @@ pub fn q17d(db: &ImdbData) -> Result<Option<&str>, PolarsError> {
         .column("keyword_id")?
         .i32()?
         .into_iter()
-        .zip(mk.column("movie_id")?.i32()?.into_iter())
+        .zip(mk.column("movie_id")?.i32()?)
         .filter_map(|(keyword_id, movie_id)| {
             if let (Some(keyword_id), Some(movie_id)) = (keyword_id, movie_id) {
                 if k_s.contains(&keyword_id) {
@@ -79,7 +79,7 @@ pub fn q17d(db: &ImdbData) -> Result<Option<&str>, PolarsError> {
         .column("id")?
         .i32()?
         .into_iter()
-        .zip(n.column("name")?.str()?.into_iter())
+        .zip(n.column("name")?.str()?)
         .filter_map(|(id, name)| {
             if let (Some(id), Some(name)) = (id, name) {
                 if name.contains("Bert") {

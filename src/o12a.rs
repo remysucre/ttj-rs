@@ -29,7 +29,7 @@ pub fn q12a(db: &ImdbData) -> Result<Option<(&str, &str, &str)>, PolarsError> {
         .column("info")?
         .str()?
         .into_iter()
-        .zip(it1.column("id")?.i32()?.into_iter())
+        .zip(it1.column("id")?.i32()?)
         .filter_map(|(info, id)| {
             if let (Some(info), Some(id)) = (info, id) {
                 if info == "genres" { Some(id) } else { None }
@@ -43,7 +43,7 @@ pub fn q12a(db: &ImdbData) -> Result<Option<(&str, &str, &str)>, PolarsError> {
         .column("info")?
         .str()?
         .into_iter()
-        .zip(it2.column("id")?.i32()?.into_iter())
+        .zip(it2.column("id")?.i32()?)
         .filter_map(|(info, id)| {
             if let (Some(info), Some(id)) = (info, id) {
                 if info == "rating" { Some(id) } else { None }
@@ -89,7 +89,7 @@ pub fn q12a(db: &ImdbData) -> Result<Option<(&str, &str, &str)>, PolarsError> {
         .column("kind")?
         .str()?
         .into_iter()
-        .zip(ct.column("id")?.i32()?.into_iter())
+        .zip(ct.column("id")?.i32()?)
         .filter_map(|(kind, id)| {
             if let (Some(kind), Some(id)) = (kind, id) {
                 if kind == "production companies" {
@@ -129,7 +129,7 @@ pub fn q12a(db: &ImdbData) -> Result<Option<(&str, &str, &str)>, PolarsError> {
         .zip(t.column("title")?.str()?.into_iter())
     {
         if let (Some(id), Some(production_year), Some(title)) = (id, production_year, title) {
-            if production_year <= 2008 && production_year >= 2005 {
+            if (2005..=2008).contains(&production_year) {
                 t_m.entry(id).or_default().push(title);
             }
         }
@@ -149,8 +149,8 @@ pub fn q12a(db: &ImdbData) -> Result<Option<(&str, &str, &str)>, PolarsError> {
         {
             if let Some(titles) = t_m.get(&movie_id) {
                 if let Some(names) = cn_m.get(&company_id) {
-                    if let Some(_) = ct_s.get(&company_type_id) {
-                        if let Some(_) = mi_s.get(&movie_id) {
+                    if ct_s.contains(&company_type_id)
+                        && mi_s.contains(&movie_id) {
                             if let Some(info) = mi_idx_m.get(&movie_id) {
                                 for title in titles {
                                     for name in names {
@@ -175,7 +175,6 @@ pub fn q12a(db: &ImdbData) -> Result<Option<(&str, &str, &str)>, PolarsError> {
                                 }
                             }
                         }
-                    }
                 }
             }
         }
@@ -183,7 +182,7 @@ pub fn q12a(db: &ImdbData) -> Result<Option<(&str, &str, &str)>, PolarsError> {
 
     let duration = start.elapsed().as_secs_f32();
     // println!("{:}", res);
-    println!("{:}", duration);
+    println!("{duration:}");
 
     Ok(res)
 }

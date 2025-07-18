@@ -20,7 +20,7 @@ pub fn q20c(db: &ImdbData) -> Result<Option<(&str, &str)>, PolarsError> {
         .column("id")?
         .i32()?
         .into_iter()
-        .zip(n.column("name")?.str()?.into_iter())
+        .zip(n.column("name")?.str()?)
         .fold(HashMap::default(), |mut acc, (id, name)| {
             if let (Some(id), Some(name)) = (id, name) {
                 acc.entry(id).or_default().push(name);
@@ -36,7 +36,7 @@ pub fn q20c(db: &ImdbData) -> Result<Option<(&str, &str)>, PolarsError> {
         .column("id")?
         .i32()?
         .into_iter()
-        .zip(cct1.column("kind")?.str()?.into_iter())
+        .zip(cct1.column("kind")?.str()?)
         .filter_map(|(id, kind)| {
             if let (Some(id), Some(kind)) = (id, kind) {
                 if kind == "cast" { Some(id) } else { None }
@@ -50,7 +50,7 @@ pub fn q20c(db: &ImdbData) -> Result<Option<(&str, &str)>, PolarsError> {
         .column("id")?
         .i32()?
         .into_iter()
-        .zip(cct2.column("kind")?.str()?.into_iter())
+        .zip(cct2.column("kind")?.str()?)
         .filter_map(|(id, kind)| {
             if let (Some(id), Some(kind)) = (id, kind) {
                 if kind.contains("complete") {
@@ -68,8 +68,8 @@ pub fn q20c(db: &ImdbData) -> Result<Option<(&str, &str)>, PolarsError> {
         .column("subject_id")?
         .i32()?
         .into_iter()
-        .zip(cc.column("status_id")?.i32()?.into_iter())
-        .zip(cc.column("movie_id")?.i32()?.into_iter())
+        .zip(cc.column("status_id")?.i32()?)
+        .zip(cc.column("movie_id")?.i32()?)
         .filter_map(|((subject_id, status_id), movie_id)| {
             if let (Some(subject_id), Some(status_id), Some(movie_id)) =
                 (subject_id, status_id, movie_id)
@@ -89,7 +89,7 @@ pub fn q20c(db: &ImdbData) -> Result<Option<(&str, &str)>, PolarsError> {
         .column("name")?
         .str()?
         .into_iter()
-        .zip(chn.column("id")?.i32()?.into_iter())
+        .zip(chn.column("id")?.i32()?)
         .filter_map(|(name, id)| {
             if let (Some(name), Some(id)) = (name, id) {
                 if name.contains("man") || name.contains("Man") {
@@ -107,7 +107,7 @@ pub fn q20c(db: &ImdbData) -> Result<Option<(&str, &str)>, PolarsError> {
         .column("id")?
         .i32()?
         .into_iter()
-        .zip(k.column("keyword")?.str()?.into_iter())
+        .zip(k.column("keyword")?.str()?)
         .filter_map(|(id, keyword)| {
             if let (Some(id), Some(keyword)) = (id, keyword) {
                 if matches!(
@@ -137,7 +137,7 @@ pub fn q20c(db: &ImdbData) -> Result<Option<(&str, &str)>, PolarsError> {
         .column("kind")?
         .str()?
         .into_iter()
-        .zip(kt.column("id")?.i32()?.into_iter())
+        .zip(kt.column("id")?.i32()?)
         .filter_map(|(kind, id)| {
             if let (Some(kind), Some(id)) = (kind, id) {
                 if kind == "movie" { Some(id) } else { None }
@@ -151,9 +151,9 @@ pub fn q20c(db: &ImdbData) -> Result<Option<(&str, &str)>, PolarsError> {
         .column("id")?
         .i32()?
         .into_iter()
-        .zip(t.column("title")?.str()?.into_iter())
-        .zip(t.column("production_year")?.i32()?.into_iter())
-        .zip(t.column("kind_id")?.i32()?.into_iter())
+        .zip(t.column("title")?.str()?)
+        .zip(t.column("production_year")?.i32()?)
+        .zip(t.column("kind_id")?.i32()?)
         .filter_map(|(((id, title), production_year), kind_id)| {
             if let (Some(id), Some(title), Some(production_year), Some(kind_id)) =
                 (id, title, production_year, kind_id)
@@ -176,7 +176,7 @@ pub fn q20c(db: &ImdbData) -> Result<Option<(&str, &str)>, PolarsError> {
         .column("keyword_id")?
         .i32()?
         .into_iter()
-        .zip(mk.column("movie_id")?.i32()?.into_iter())
+        .zip(mk.column("movie_id")?.i32()?)
         .filter_map(|(keyword_id, movie_id)| {
             if let (Some(keyword_id), Some(movie_id)) = (keyword_id, movie_id) {
                 if k_s.contains(&keyword_id) {
@@ -227,7 +227,7 @@ pub fn q20c(db: &ImdbData) -> Result<Option<(&str, &str)>, PolarsError> {
     }
 
     let duration = start.elapsed().as_secs_f32();
-    println!("{:}", duration);
+    println!("{duration:}");
 
     Ok(res)
 }

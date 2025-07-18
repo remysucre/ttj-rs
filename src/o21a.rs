@@ -37,7 +37,7 @@ pub fn q21a(db: &ImdbData) -> Result<(), PolarsError> {
         .column("id")?
         .i32()?
         .into_iter()
-        .zip(ct.column("kind")?.str()?.into_iter())
+        .zip(ct.column("kind")?.str()?)
         .filter_map(|(id, kind)| {
             if let (Some(id), Some(kind)) = (id, kind) {
                 if kind == "production companies" { Some(id) } else { None }
@@ -51,7 +51,7 @@ pub fn q21a(db: &ImdbData) -> Result<(), PolarsError> {
         .column("id")?
         .i32()?
         .into_iter()
-        .zip(k.column("keyword")?.str()?.into_iter())
+        .zip(k.column("keyword")?.str()?)
         .filter_map(|(id, keyword)| {
             if let (Some(id), Some(keyword)) = (id, keyword) {
                 if keyword == "sequel" { Some(id) } else { None }
@@ -65,7 +65,7 @@ pub fn q21a(db: &ImdbData) -> Result<(), PolarsError> {
         .column("movie_id")?
         .i32()?
         .into_iter()
-        .zip(mk.column("keyword_id")?.i32()?.into_iter())
+        .zip(mk.column("keyword_id")?.i32()?)
         .filter_map(|(movie_id, keyword_id)| {
             if let (Some(movie_id), Some(keyword_id)) = (movie_id, keyword_id) {
                 if k_s.contains(&keyword_id) { Some(movie_id) } else { None }
@@ -107,7 +107,7 @@ pub fn q21a(db: &ImdbData) -> Result<(), PolarsError> {
         .column("info")?
         .str()?
         .into_iter()
-        .zip(mi.column("movie_id")?.i32()?.into_iter())
+        .zip(mi.column("movie_id")?.i32()?)
         .filter_map(|(info, movie_id)| {
             if let (Some(info), Some(movie_id)) = (info, movie_id) {
                 if matches!(
@@ -135,7 +135,7 @@ pub fn q21a(db: &ImdbData) -> Result<(), PolarsError> {
         .zip(t.column("title")?.str()?.into_iter())
     {
         if let (Some(id), Some(production_year), Some(title)) = (id, production_year, title) {
-            if mk_s.contains(&id) && production_year >= 1950 && production_year <= 2000 {
+            if mk_s.contains(&id) && (1950..=2000).contains(&production_year) {
                 t_m.entry(id).or_default().push(title);
             }
         }
@@ -214,7 +214,7 @@ pub fn q21a(db: &ImdbData) -> Result<(), PolarsError> {
 
     // println!("{:}", res);
     let duration = start.elapsed().as_secs_f32();
-    println!("{:}", duration);
+    println!("{duration:}");
 
     Ok(())
 }

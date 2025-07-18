@@ -24,7 +24,7 @@ pub fn q8a(db: &ImdbData) -> Result<Option<(&str, &str)>, PolarsError> {
         .column("id")?
         .i32()?
         .into_iter()
-        .zip(t.column("title")?.str()?.into_iter())
+        .zip(t.column("title")?.str()?)
         .filter_map(|(id, title)| {
             if let (Some(id), Some(title)) = (id, title) {
                 Some((id, title))
@@ -56,7 +56,7 @@ pub fn q8a(db: &ImdbData) -> Result<Option<(&str, &str)>, PolarsError> {
         .column("id")?
         .i32()?
         .into_iter()
-        .zip(n.column("name")?.str()?.into_iter())
+        .zip(n.column("name")?.str()?)
         .filter_map(|(id, name)| {
             if let (Some(id), Some(name)) = (id, name) {
                 if name.contains("Yo") && !name.contains("Yu") {
@@ -74,7 +74,7 @@ pub fn q8a(db: &ImdbData) -> Result<Option<(&str, &str)>, PolarsError> {
         .column("role")?
         .str()?
         .into_iter()
-        .zip(rt.column("id")?.i32()?.into_iter())
+        .zip(rt.column("id")?.i32()?)
         .filter_map(|(role, id)| {
             if let (Some(role), Some(id)) = (role, id) {
                 if role == "actress" { Some(id) } else { None }
@@ -88,7 +88,7 @@ pub fn q8a(db: &ImdbData) -> Result<Option<(&str, &str)>, PolarsError> {
         .column("country_code")?
         .str()?
         .into_iter()
-        .zip(cn.column("id")?.i32()?.into_iter())
+        .zip(cn.column("id")?.i32()?)
         .filter_map(|(country_code, id)| {
             if let (Some(country_code), Some(id)) = (country_code, id) {
                 if country_code == "[jp]" {
@@ -106,8 +106,8 @@ pub fn q8a(db: &ImdbData) -> Result<Option<(&str, &str)>, PolarsError> {
         .column("movie_id")?
         .i32()?
         .into_iter()
-        .zip(mc.column("note")?.str()?.into_iter())
-        .zip(mc.column("company_id")?.i32()?.into_iter())
+        .zip(mc.column("note")?.str()?)
+        .zip(mc.column("company_id")?.i32()?)
         .filter_map(|((movie_id, note), company_id)| {
             if let (Some(movie_id), Some(note), Some(company_id)) = (movie_id, note, company_id) {
                 if note.contains("(Japan)") && !note.contains("(USA)") && cn_s.contains(&company_id)

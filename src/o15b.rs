@@ -47,8 +47,8 @@ pub fn q15b(db: &ImdbData) -> Result<Option<(&str, &str)>, PolarsError> {
         .column("country_code")?
         .str()?
         .into_iter()
-        .zip(cn.column("id")?.i32()?.into_iter())
-        .zip(cn.column("name")?.str()?.into_iter())
+        .zip(cn.column("id")?.i32()?)
+        .zip(cn.column("name")?.str()?)
         .filter_map(|((country_code, id), name)| {
             if let (Some(country_code), Some(id), Some(name)) = (country_code, id, name) {
                 if country_code == "[us]" && name == "YouTube" {
@@ -66,7 +66,7 @@ pub fn q15b(db: &ImdbData) -> Result<Option<(&str, &str)>, PolarsError> {
         .column("info")?
         .str()?
         .into_iter()
-        .zip(it1.column("id")?.i32()?.into_iter())
+        .zip(it1.column("id")?.i32()?)
         .filter_map(|(info, id)| {
             if let (Some(info), Some(id)) = (info, id) {
                 if info == "release dates" {

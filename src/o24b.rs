@@ -31,7 +31,7 @@ pub fn q24b(db: &ImdbData) -> Result<Option<(&str, &str, &str)>, PolarsError> {
         .column("id")?
         .i32()?
         .into_iter()
-        .zip(chn.column("name")?.str()?.into_iter())
+        .zip(chn.column("name")?.str()?)
         .filter_map(|(id, name)| {
             if let (Some(id), Some(name)) = (id, name) {
                 Some((id, name))
@@ -48,8 +48,8 @@ pub fn q24b(db: &ImdbData) -> Result<Option<(&str, &str, &str)>, PolarsError> {
         .column("country_code")?
         .str()?
         .into_iter()
-        .zip(cn.column("id")?.i32()?.into_iter())
-        .zip(cn.column("name")?.str()?.into_iter())
+        .zip(cn.column("id")?.i32()?)
+        .zip(cn.column("name")?.str()?)
         .filter_map(|((country_code, id), name)| {
             if let (Some(country_code), Some(id), Some(name)) = (country_code, id, name) {
                 if country_code == "[us]" && name == "DreamWorks Animation" {
@@ -67,7 +67,7 @@ pub fn q24b(db: &ImdbData) -> Result<Option<(&str, &str, &str)>, PolarsError> {
         .column("info")?
         .str()?
         .into_iter()
-        .zip(it.column("id")?.i32()?.into_iter())
+        .zip(it.column("id")?.i32()?)
         .filter_map(|(info, id)| {
             if let (Some(info), Some(id)) = (info, id) {
                 if info == "release dates" {
@@ -85,7 +85,7 @@ pub fn q24b(db: &ImdbData) -> Result<Option<(&str, &str, &str)>, PolarsError> {
         .column("id")?
         .i32()?
         .into_iter()
-        .zip(k.column("keyword")?.str()?.into_iter())
+        .zip(k.column("keyword")?.str()?)
         .filter_map(|(id, keyword)| {
             if let (Some(id), Some(keyword)) = (id, keyword) {
                 if matches!(
@@ -106,8 +106,8 @@ pub fn q24b(db: &ImdbData) -> Result<Option<(&str, &str, &str)>, PolarsError> {
         .column("movie_id")?
         .i32()?
         .into_iter()
-        .zip(mi.column("info")?.str()?.into_iter())
-        .zip(mi.column("info_type_id")?.i32()?.into_iter())
+        .zip(mi.column("info")?.str()?)
+        .zip(mi.column("info_type_id")?.i32()?)
         .filter_map(|((movie_id, info), info_type_id)| {
             if let (Some(movie_id), Some(info), Some(info_type_id)) = (movie_id, info, info_type_id)
             {
@@ -129,8 +129,8 @@ pub fn q24b(db: &ImdbData) -> Result<Option<(&str, &str, &str)>, PolarsError> {
         .column("gender")?
         .str()?
         .into_iter()
-        .zip(n.column("id")?.i32()?.into_iter())
-        .zip(n.column("name")?.str()?.into_iter())
+        .zip(n.column("id")?.i32()?)
+        .zip(n.column("name")?.str()?)
         .filter_map(|((gender, id), name)| {
             if let (Some(gender), Some(id), Some(name)) = (gender, id, name) {
                 if an_s.contains(&id) && gender == "f" && name.contains("An") {
@@ -151,7 +151,7 @@ pub fn q24b(db: &ImdbData) -> Result<Option<(&str, &str, &str)>, PolarsError> {
         .column("id")?
         .i32()?
         .into_iter()
-        .zip(rt.column("role")?.str()?.into_iter())
+        .zip(rt.column("role")?.str()?)
         .filter_map(|(id, role)| {
             if let (Some(id), Some(role)) = (id, role) {
                 if role == "actress" { Some(id) } else { None }
@@ -165,8 +165,8 @@ pub fn q24b(db: &ImdbData) -> Result<Option<(&str, &str, &str)>, PolarsError> {
         .column("id")?
         .i32()?
         .into_iter()
-        .zip(t.column("title")?.str()?.into_iter())
-        .zip(t.column("production_year")?.i32()?.into_iter())
+        .zip(t.column("title")?.str()?)
+        .zip(t.column("production_year")?.i32()?)
         .filter_map(|((id, title), production_year)| {
             if let (Some(id), Some(title), Some(production_year)) = (id, title, production_year) {
                 if production_year > 2010 && title.starts_with("Kung Fu Panda") {
@@ -187,7 +187,7 @@ pub fn q24b(db: &ImdbData) -> Result<Option<(&str, &str, &str)>, PolarsError> {
         .column("keyword_id")?
         .i32()?
         .into_iter()
-        .zip(mk.column("movie_id")?.i32()?.into_iter())
+        .zip(mk.column("movie_id")?.i32()?)
         .filter_map(|(keyword_id, movie_id)| {
             if let (Some(keyword_id), Some(movie_id)) = (keyword_id, movie_id) {
                 if k_s.contains(&keyword_id) && mi_s.contains(&movie_id) {
@@ -205,7 +205,7 @@ pub fn q24b(db: &ImdbData) -> Result<Option<(&str, &str, &str)>, PolarsError> {
         .column("company_id")?
         .i32()?
         .into_iter()
-        .zip(mc.column("movie_id")?.i32()?.into_iter())
+        .zip(mc.column("movie_id")?.i32()?)
         .filter_map(|(company_id, movie_id)| {
             if let (Some(company_id), Some(movie_id)) = (company_id, movie_id) {
                 if cn_s.contains(&company_id) && mk_s.contains(&movie_id) {

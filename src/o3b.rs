@@ -19,7 +19,7 @@ pub fn q3b(db: &ImdbData) -> Result<Option<&str>, PolarsError> {
         .column("keyword")?
         .str()?
         .into_iter()
-        .zip(k.column("id")?.i32()?.into_iter())
+        .zip(k.column("id")?.i32()?)
         .filter_map(|(keyword, id)| {
             if let (Some(keyword), Some(id)) = (keyword, id) {
                 if keyword.contains("sequel") {
@@ -37,7 +37,7 @@ pub fn q3b(db: &ImdbData) -> Result<Option<&str>, PolarsError> {
         .column("movie_id")?
         .i32()?
         .into_iter()
-        .zip(mk.column("keyword_id")?.i32()?.into_iter())
+        .zip(mk.column("keyword_id")?.i32()?)
         .filter_map(|(movie_id, keyword_id)| {
             if let (Some(movie_id), Some(keyword_id)) = (movie_id, keyword_id) {
                 if k_s.contains(&keyword_id) {
@@ -55,7 +55,7 @@ pub fn q3b(db: &ImdbData) -> Result<Option<&str>, PolarsError> {
         .column("info")?
         .str()?
         .into_iter()
-        .zip(mi.column("movie_id")?.i32()?.into_iter())
+        .zip(mi.column("movie_id")?.i32()?)
         .filter_map(|(info, movie_id)| {
             if let (Some(info), Some(movie_id)) = (info, movie_id) {
                 if info == "Bulgaria" {
@@ -94,7 +94,7 @@ pub fn q3b(db: &ImdbData) -> Result<Option<&str>, PolarsError> {
     }
 
     let duration = start.elapsed().as_secs_f32();
-    println!("{:}", duration);
+    println!("{duration:}");
 
     Ok(res)
 }

@@ -6,6 +6,7 @@ use std::time::Instant;
 
 use rustc_hash::{FxHashMap as HashMap, FxHashSet as HashSet};
 
+#[allow(clippy::type_complexity)]
 pub fn q33c(db: &ImdbData) -> Result<Option<(&str, &str, &str, &str, &str, &str)>, PolarsError> {
     let cn1 = &db.cn;
     let cn2 = &db.cn;
@@ -24,7 +25,7 @@ pub fn q33c(db: &ImdbData) -> Result<Option<(&str, &str, &str, &str, &str, &str)
         .column("id")?
         .i32()?
         .into_iter()
-        .zip(cn2.column("name")?.str()?.into_iter())
+        .zip(cn2.column("name")?.str()?)
         .filter_map(|(id, name)| {
             if let (Some(id), Some(name)) = (id, name) {
                 Some((id, name))
@@ -57,8 +58,8 @@ pub fn q33c(db: &ImdbData) -> Result<Option<(&str, &str, &str, &str, &str, &str)
         .column("id")?
         .i32()?
         .into_iter()
-        .zip(cn1.column("name")?.str()?.into_iter())
-        .zip(cn1.column("country_code")?.str()?.into_iter())
+        .zip(cn1.column("name")?.str()?)
+        .zip(cn1.column("country_code")?.str()?)
         .filter_map(|((id, name), country_code)| {
             if let (Some(id), Some(name), Some(country_code)) = (id, name, country_code) {
                 if country_code != "[us]" {
@@ -76,7 +77,7 @@ pub fn q33c(db: &ImdbData) -> Result<Option<(&str, &str, &str, &str, &str, &str)
         .column("id")?
         .i32()?
         .into_iter()
-        .zip(it1.column("info")?.str()?.into_iter())
+        .zip(it1.column("info")?.str()?)
         .filter_map(|(id, info)| {
             if let (Some(id), Some(info)) = (id, info) {
                 if info == "rating" { Some(id) } else { None }
@@ -90,7 +91,7 @@ pub fn q33c(db: &ImdbData) -> Result<Option<(&str, &str, &str, &str, &str, &str)
         .column("info_type_id")?
         .i32()?
         .into_iter()
-        .zip(mi_idx1.column("info")?.str()?.into_iter())
+        .zip(mi_idx1.column("info")?.str()?)
         .zip(mi_idx1.column("movie_id")?.i32()?)
         .filter_map(|((it_id, info), movie_id)| {
             if let (Some(it_id), Some(info), Some(movie_id)) = (it_id, info, movie_id) {
@@ -112,7 +113,7 @@ pub fn q33c(db: &ImdbData) -> Result<Option<(&str, &str, &str, &str, &str, &str)
         .column("info_type_id")?
         .i32()?
         .into_iter()
-        .zip(mi_idx2.column("info")?.str()?.into_iter())
+        .zip(mi_idx2.column("info")?.str()?)
         .zip(mi_idx2.column("movie_id")?.i32()?)
         .filter_map(|((it_id, info), movie_id)| {
             if let (Some(it_id), Some(info), Some(movie_id)) = (it_id, info, movie_id) {
@@ -134,7 +135,7 @@ pub fn q33c(db: &ImdbData) -> Result<Option<(&str, &str, &str, &str, &str, &str)
         .column("id")?
         .i32()?
         .into_iter()
-        .zip(kt1.column("kind")?.str()?.into_iter())
+        .zip(kt1.column("kind")?.str()?)
         .filter_map(|(id, kind)| {
             if let (Some(id), Some(kind)) = (id, kind) {
                 if matches!(kind, "tv series" | "episode") {
@@ -155,11 +156,7 @@ pub fn q33c(db: &ImdbData) -> Result<Option<(&str, &str, &str, &str, &str, &str)
         .zip(mc1.column("movie_id")?.i32()?)
         .filter_map(|(company_id, movie_id)| {
             if let (Some(company_id), Some(movie_id)) = (company_id, movie_id) {
-                if let Some(name) = cn1_m.get(&company_id) {
-                    Some((movie_id, name))
-                } else {
-                    None
-                }
+                cn1_m.get(&company_id).map(|name| (movie_id, name))
             } else {
                 None
             }
@@ -174,7 +171,7 @@ pub fn q33c(db: &ImdbData) -> Result<Option<(&str, &str, &str, &str, &str, &str)
         .i32()?
         .into_iter()
         .zip(t1.column("kind_id")?.i32()?)
-        .zip(t1.column("title")?.str()?.into_iter())
+        .zip(t1.column("title")?.str()?)
         .filter_map(|((id, kind_id), title)| {
             if let (Some(id), Some(kind_id), Some(title)) = (id, kind_id, title) {
                 if kt1_s.contains(&kind_id)
@@ -196,7 +193,7 @@ pub fn q33c(db: &ImdbData) -> Result<Option<(&str, &str, &str, &str, &str, &str)
         .i32()?
         .into_iter()
         .zip(t2.column("kind_id")?.i32()?)
-        .zip(t2.column("title")?.str()?.into_iter())
+        .zip(t2.column("title")?.str()?)
         .zip(t2.column("production_year")?.i32()?)
         .filter_map(|(((id, kind_id), title), production_year)| {
             if let (Some(id), Some(kind_id), Some(title), Some(production_year)) =
@@ -221,7 +218,7 @@ pub fn q33c(db: &ImdbData) -> Result<Option<(&str, &str, &str, &str, &str, &str)
         .column("id")?
         .i32()?
         .into_iter()
-        .zip(lt.column("link")?.str()?.into_iter())
+        .zip(lt.column("link")?.str()?)
         .filter_map(|(id, link)| {
             if let (Some(id), Some(link)) = (id, link) {
                 if matches!(link, "sequel" | "follows" | "followed by") {
@@ -255,7 +252,7 @@ pub fn q33c(db: &ImdbData) -> Result<Option<(&str, &str, &str, &str, &str, &str)
                                 if let Some(c1ids) = mc1_m.get(&movie_id) {
                                     if let Some(c2ids) = mc2_m.get(&linked_movie_id) {
                                         for c2 in c2ids {
-                                            if let Some(n2) = cn2_m.get(&c2) {
+                                            if let Some(n2) = cn2_m.get(c2) {
                                                 for n1 in c1ids {
                                                     for r1 in mi_idx1_info {
                                                         for r2 in mi_idx2_info {

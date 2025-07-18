@@ -17,7 +17,7 @@ pub fn q18a(db: &ImdbData) -> Result<Option<(&str, &str, &str)>, PolarsError> {
         .column("id")?
         .i32()?
         .into_iter()
-        .zip(it.column("info")?.str()?.into_iter())
+        .zip(it.column("info")?.str()?)
         .filter_map(|(id, info)| {
             if let (Some(id), Some(info)) = (id, info) {
                 if info == "budget" { Some(id) } else { None }
@@ -47,7 +47,7 @@ pub fn q18a(db: &ImdbData) -> Result<Option<(&str, &str, &str)>, PolarsError> {
         .column("id")?
         .i32()?
         .into_iter()
-        .zip(it.column("info")?.str()?.into_iter())
+        .zip(it.column("info")?.str()?)
         .filter_map(|(id, info)| {
             if let (Some(id), Some(info)) = (id, info) {
                 if info == "votes" { Some(id) } else { None }

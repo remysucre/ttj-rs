@@ -122,7 +122,7 @@ pub fn q10a(db: &ImdbData) -> Result<Option<(&str, &str)>, PolarsError> {
             if note.contains("(voice)") && note.contains("(uncredited)") {
                 if let Some(names) = chn_m.get(&person_role_id) {
                     if let Some(titles) = t_m.get(&mid) {
-                        if let Some(_) = rt_s.get(&role_id) {
+                        if rt_s.contains(&role_id) {
                             for name in names {
                                 for title in titles {
                                     if let Some((old_name, old_title)) = res.as_mut() {

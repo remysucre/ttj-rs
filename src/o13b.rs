@@ -20,7 +20,7 @@ pub fn q13b(db: &ImdbData) -> Result<Option<(&str, &str, &str)>, PolarsError> {
         .column("info")?
         .str()?
         .into_iter()
-        .zip(it1.column("id")?.i32()?.into_iter())
+        .zip(it1.column("id")?.i32()?)
         .filter_map(|(info, id)| {
             if let (Some(info), Some(id)) = (info, id) {
                 if info == "rating" { Some(id) } else { None }
@@ -50,7 +50,7 @@ pub fn q13b(db: &ImdbData) -> Result<Option<(&str, &str, &str)>, PolarsError> {
         .column("info")?
         .str()?
         .into_iter()
-        .zip(it2.column("id")?.i32()?.into_iter())
+        .zip(it2.column("id")?.i32()?)
         .filter_map(|(info, id)| {
             if let (Some(info), Some(id)) = (info, id) {
                 if info == "release dates" {
@@ -68,7 +68,7 @@ pub fn q13b(db: &ImdbData) -> Result<Option<(&str, &str, &str)>, PolarsError> {
         .column("movie_id")?
         .i32()?
         .into_iter()
-        .zip(mi.column("info_type_id")?.i32()?.into_iter())
+        .zip(mi.column("info_type_id")?.i32()?)
         .filter_map(|(movie_id, info_type_id)| {
             if let (Some(movie_id), Some(info_type_id)) = (movie_id, info_type_id) {
                 if it2_s.contains(&info_type_id) {
@@ -86,7 +86,7 @@ pub fn q13b(db: &ImdbData) -> Result<Option<(&str, &str, &str)>, PolarsError> {
         .column("kind")?
         .str()?
         .into_iter()
-        .zip(kt.column("id")?.i32()?.into_iter())
+        .zip(kt.column("id")?.i32()?)
         .filter_map(|(kind, id)| {
             if let (Some(kind), Some(id)) = (kind, id) {
                 if kind == "movie" { Some(id) } else { None }
@@ -106,7 +106,7 @@ pub fn q13b(db: &ImdbData) -> Result<Option<(&str, &str, &str)>, PolarsError> {
         .zip(t.column("kind_id")?.i32()?.into_iter())
     {
         if let (Some(id), Some(title), Some(kind_id)) = (id, title, kind_id) {
-            if title != ""
+            if !title.is_empty()
                 && (title.contains("Champion") || title.contains("Loser"))
                 && kt_s.contains(&kind_id)
                 && mi_idx_m.contains_key(&id)
@@ -121,8 +121,8 @@ pub fn q13b(db: &ImdbData) -> Result<Option<(&str, &str, &str)>, PolarsError> {
         .column("country_code")?
         .str()?
         .into_iter()
-        .zip(cn.column("id")?.i32()?.into_iter())
-        .zip(cn.column("name")?.str()?.into_iter())
+        .zip(cn.column("id")?.i32()?)
+        .zip(cn.column("name")?.str()?)
         .filter_map(|((country_code, id), name)| {
             if let (Some(country_code), Some(id), Some(name)) = (country_code, id, name) {
                 if country_code == "[us]" {
@@ -143,7 +143,7 @@ pub fn q13b(db: &ImdbData) -> Result<Option<(&str, &str, &str)>, PolarsError> {
         .column("kind")?
         .str()?
         .into_iter()
-        .zip(ct.column("id")?.i32()?.into_iter())
+        .zip(ct.column("id")?.i32()?)
         .filter_map(|(kind, id)| {
             if let (Some(kind), Some(id)) = (kind, id) {
                 if kind == "production companies" {

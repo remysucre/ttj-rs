@@ -26,7 +26,7 @@ pub fn q17b(db: &ImdbData) -> Result<Option<(&str, &str)>, PolarsError> {
         .column("keyword")?
         .str()?
         .into_iter()
-        .zip(k.column("id")?.i32()?.into_iter())
+        .zip(k.column("id")?.i32()?)
         .filter_map(|(keyword, id)| {
             if let (Some(keyword), Some(id)) = (keyword, id) {
                 if keyword == "character-name-in-title" {
@@ -44,7 +44,7 @@ pub fn q17b(db: &ImdbData) -> Result<Option<(&str, &str)>, PolarsError> {
         .column("keyword_id")?
         .i32()?
         .into_iter()
-        .zip(mk.column("movie_id")?.i32()?.into_iter())
+        .zip(mk.column("movie_id")?.i32()?)
         .filter_map(|(keyword_id, movie_id)| {
             if let (Some(keyword_id), Some(movie_id)) = (keyword_id, movie_id) {
                 if k_s.contains(&keyword_id) {
@@ -62,7 +62,7 @@ pub fn q17b(db: &ImdbData) -> Result<Option<(&str, &str)>, PolarsError> {
         .column("id")?
         .i32()?
         .into_iter()
-        .zip(cn.column("country_code")?.str()?.into_iter())
+        .zip(cn.column("country_code")?.str()?)
         .filter_map(|(id, country_code)| {
             if let (Some(id), Some(country_code)) = (id, country_code) {
                 if country_code == "[us]" {
@@ -80,7 +80,7 @@ pub fn q17b(db: &ImdbData) -> Result<Option<(&str, &str)>, PolarsError> {
         .column("company_id")?
         .i32()?
         .into_iter()
-        .zip(mc.column("movie_id")?.i32()?.into_iter())
+        .zip(mc.column("movie_id")?.i32()?)
         .filter_map(|(company_id, movie_id)| {
             if let (Some(company_id), Some(movie_id)) = (company_id, movie_id) {
                 if cn_s.contains(&company_id) {

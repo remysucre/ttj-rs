@@ -19,7 +19,7 @@ pub fn q14b(db: &ImdbData) -> Result<Option<(&str, &str)>, PolarsError> {
         .column("info")?
         .str()?
         .into_iter()
-        .zip(it1.column("id")?.i32()?.into_iter())
+        .zip(it1.column("id")?.i32()?)
         .filter_map(|(info, id)| {
             if let (Some(info), Some(id)) = (info, id) {
                 if info == "countries" { Some(id) } else { None }
@@ -33,7 +33,7 @@ pub fn q14b(db: &ImdbData) -> Result<Option<(&str, &str)>, PolarsError> {
         .column("info")?
         .str()?
         .into_iter()
-        .zip(it2.column("id")?.i32()?.into_iter())
+        .zip(it2.column("id")?.i32()?)
         .filter_map(|(info, id)| {
             if let (Some(info), Some(id)) = (info, id) {
                 if info == "rating" { Some(id) } else { None }
@@ -47,7 +47,7 @@ pub fn q14b(db: &ImdbData) -> Result<Option<(&str, &str)>, PolarsError> {
         .column("keyword")?
         .str()?
         .into_iter()
-        .zip(k.column("id")?.i32()?.into_iter())
+        .zip(k.column("id")?.i32()?)
         .filter_map(|(keyword, id)| {
             if let (Some(keyword), Some(id)) = (keyword, id) {
                 if matches!(keyword, "murder" | "murder-in-title") {
@@ -65,7 +65,7 @@ pub fn q14b(db: &ImdbData) -> Result<Option<(&str, &str)>, PolarsError> {
         .column("kind")?
         .str()?
         .into_iter()
-        .zip(kt.column("id")?.i32()?.into_iter())
+        .zip(kt.column("id")?.i32()?)
         .filter_map(|(kind, id)| {
             if let (Some(kind), Some(id)) = (kind, id) {
                 if kind == "movie" { Some(id) } else { None }
@@ -79,8 +79,8 @@ pub fn q14b(db: &ImdbData) -> Result<Option<(&str, &str)>, PolarsError> {
         .column("info")?
         .str()?
         .into_iter()
-        .zip(mi.column("movie_id")?.i32()?.into_iter())
-        .zip(mi.column("info_type_id")?.i32()?.into_iter())
+        .zip(mi.column("movie_id")?.i32()?)
+        .zip(mi.column("info_type_id")?.i32()?)
         .filter_map(|((info, movie_id), info_type_id)| {
             if let (Some(info), Some(movie_id), Some(info_type_id)) = (info, movie_id, info_type_id)
             {
@@ -113,7 +113,7 @@ pub fn q14b(db: &ImdbData) -> Result<Option<(&str, &str)>, PolarsError> {
         .column("keyword_id")?
         .i32()?
         .into_iter()
-        .zip(mk.column("movie_id")?.i32()?.into_iter())
+        .zip(mk.column("movie_id")?.i32()?)
         .filter_map(|(keyword_id, movie_id)| {
             if let (Some(keyword_id), Some(movie_id)) = (keyword_id, movie_id) {
                 if k_s.contains(&keyword_id) {
@@ -131,9 +131,9 @@ pub fn q14b(db: &ImdbData) -> Result<Option<(&str, &str)>, PolarsError> {
         .column("id")?
         .i32()?
         .into_iter()
-        .zip(t.column("title")?.str()?.into_iter())
-        .zip(t.column("production_year")?.i32()?.into_iter())
-        .zip(t.column("kind_id")?.i32()?.into_iter())
+        .zip(t.column("title")?.str()?)
+        .zip(t.column("production_year")?.i32()?)
+        .zip(t.column("kind_id")?.i32()?)
         .filter_map(|(((id, title), production_year), kind_id)| {
             if let (Some(id), Some(title), Some(production_year), Some(kind_id)) =
                 (id, title, production_year, kind_id)
@@ -169,8 +169,8 @@ pub fn q14b(db: &ImdbData) -> Result<Option<(&str, &str)>, PolarsError> {
         if let (Some(info_type_id), Some(movie_id), Some(info)) = (info_type_id, movie_id, info) {
             if it2_s.contains(&info_type_id) && info > "6.0" {
                 if let Some(titles) = t_m.get(&movie_id) {
-                    if mi_s.contains(&movie_id) {
-                        if mk_s.contains(&movie_id) {
+                    if mi_s.contains(&movie_id)
+                        && mk_s.contains(&movie_id) {
                             for title in titles {
                                 if let Some((old_info, old_title)) = res.as_mut() {
                                     if title < old_title {
@@ -184,7 +184,6 @@ pub fn q14b(db: &ImdbData) -> Result<Option<(&str, &str)>, PolarsError> {
                                 }
                             }
                         }
-                    }
                 }
             }
         }

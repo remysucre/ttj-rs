@@ -29,7 +29,7 @@ pub fn q19a(db: &ImdbData) -> Result<Option<(&str, &str)>, PolarsError> {
         .column("country_code")?
         .str()?
         .into_iter()
-        .zip(cn.column("id")?.i32()?.into_iter())
+        .zip(cn.column("id")?.i32()?)
         .filter_map(|(country_code, id)| {
             if let (Some(country_code), Some(id)) = (country_code, id) {
                 if country_code == "[us]" {
@@ -47,7 +47,7 @@ pub fn q19a(db: &ImdbData) -> Result<Option<(&str, &str)>, PolarsError> {
         .column("info")?
         .str()?
         .into_iter()
-        .zip(it.column("id")?.i32()?.into_iter())
+        .zip(it.column("id")?.i32()?)
         .filter_map(|(info, id)| {
             if let (Some(info), Some(id)) = (info, id) {
                 if info == "release dates" {
@@ -72,7 +72,7 @@ pub fn q19a(db: &ImdbData) -> Result<Option<(&str, &str)>, PolarsError> {
         .column("role")?
         .str()?
         .into_iter()
-        .zip(rt.column("id")?.i32()?.into_iter())
+        .zip(rt.column("id")?.i32()?)
         .filter_map(|(role, id)| {
             if let (Some(role), Some(id)) = (role, id) {
                 if role == "actress" { Some(id) } else { None }
@@ -172,8 +172,8 @@ pub fn q19a(db: &ImdbData) -> Result<Option<(&str, &str)>, PolarsError> {
                     | "(voice: Japanese version)"
                     | "(voice) (uncredited)"
                     | "(voice: English version)"
-            ) {
-                if rt_s.contains(&rid) && chn_s.contains(&prid) {
+            )
+                && rt_s.contains(&rid) && chn_s.contains(&prid) {
                     if let Some(titles) = t_m.get(&mid) {
                         if let Some(names) = n_m.get(&pid) {
                             for title in titles {
@@ -193,7 +193,6 @@ pub fn q19a(db: &ImdbData) -> Result<Option<(&str, &str)>, PolarsError> {
                         }
                     }
                 }
-            }
         }
     }
 

@@ -21,7 +21,7 @@ pub fn q4c(db: &ImdbData) -> Result<Option<(&str, &str)>, PolarsError> {
         .column("info")?
         .str()?
         .into_iter()
-        .zip(it.column("id")?.i32()?.into_iter())
+        .zip(it.column("id")?.i32()?)
         .filter_map(|(info, id)| {
             if let (Some(info), Some(id)) = (info, id) {
                 if info == "rating" { Some(id) } else { None }
@@ -35,7 +35,7 @@ pub fn q4c(db: &ImdbData) -> Result<Option<(&str, &str)>, PolarsError> {
         .column("keyword")?
         .str()?
         .into_iter()
-        .zip(k.column("id")?.i32()?.into_iter())
+        .zip(k.column("id")?.i32()?)
         .filter_map(|(keyword, id)| {
             if let (Some(keyword), Some(id)) = (keyword, id) {
                 if keyword.contains("sequel") {
@@ -53,7 +53,7 @@ pub fn q4c(db: &ImdbData) -> Result<Option<(&str, &str)>, PolarsError> {
         .column("movie_id")?
         .i32()?
         .into_iter()
-        .zip(mk.column("keyword_id")?.i32()?.into_iter())
+        .zip(mk.column("keyword_id")?.i32()?)
         .filter_map(|(movie_id, keyword_id)| {
             if let (Some(movie_id), Some(keyword_id)) = (movie_id, keyword_id) {
                 if k_s.contains(&keyword_id) {
@@ -71,8 +71,8 @@ pub fn q4c(db: &ImdbData) -> Result<Option<(&str, &str)>, PolarsError> {
         .column("id")?
         .i32()?
         .into_iter()
-        .zip(t.column("title")?.str()?.into_iter())
-        .zip(t.column("production_year")?.i32()?.into_iter())
+        .zip(t.column("title")?.str()?)
+        .zip(t.column("production_year")?.i32()?)
         .filter_map(|((id, title), production_year)| {
             if let (Some(id), Some(title), Some(production_year)) = (id, title, production_year) {
                 if production_year > 1990 && mk_s.contains(&id) {
@@ -118,7 +118,7 @@ pub fn q4c(db: &ImdbData) -> Result<Option<(&str, &str)>, PolarsError> {
         }
     }
     let duration = start.elapsed().as_secs_f32();
-    println!("{:}", duration);
+    println!("{duration:}");
 
     Ok(res)
 }

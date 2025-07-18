@@ -21,7 +21,7 @@ pub fn q1b(db: &ImdbData) -> Result<Option<(&str, &str, i32)>, PolarsError> {
         .column("info")?
         .str()?
         .into_iter()
-        .zip(it.column("id")?.i32()?.into_iter())
+        .zip(it.column("id")?.i32()?)
         .filter_map(|(info, id)| {
             if let (Some(info), Some(id)) = (info, id) {
                 if info == "bottom 10 rank" {
@@ -39,7 +39,7 @@ pub fn q1b(db: &ImdbData) -> Result<Option<(&str, &str, i32)>, PolarsError> {
         .column("movie_id")?
         .i32()?
         .into_iter()
-        .zip(mi_idx.column("info_type_id")?.i32()?.into_iter())
+        .zip(mi_idx.column("info_type_id")?.i32()?)
         .filter_map(|(movie_id, info_type_id)| {
             if let (Some(movie_id), Some(info_type_id)) = (movie_id, info_type_id) {
                 if it_s.contains(&info_type_id) {
@@ -57,7 +57,7 @@ pub fn q1b(db: &ImdbData) -> Result<Option<(&str, &str, i32)>, PolarsError> {
         .column("kind")?
         .str()?
         .into_iter()
-        .zip(ct.column("id")?.i32()?.into_iter())
+        .zip(ct.column("id")?.i32()?)
         .filter_map(|(kind, id)| {
             if let (Some(kind), Some(id)) = (kind, id) {
                 if kind == "production companies" {
@@ -75,11 +75,11 @@ pub fn q1b(db: &ImdbData) -> Result<Option<(&str, &str, i32)>, PolarsError> {
         .column("id")?
         .i32()?
         .into_iter()
-        .zip(t.column("title")?.str()?.into_iter())
-        .zip(t.column("production_year")?.i32()?.into_iter())
+        .zip(t.column("title")?.str()?)
+        .zip(t.column("production_year")?.i32()?)
         .filter_map(|((id, title), production_year)| {
             if let (Some(id), Some(title), Some(production_year)) = (id, title, production_year) {
-                if mi_idx_s.contains(&id) && production_year >= 2005 && production_year <= 2010 {
+                if mi_idx_s.contains(&id) && (2005..=2010).contains(&production_year) {
                     Some((id, title, production_year))
                 } else {
                     None
@@ -133,7 +133,7 @@ pub fn q1b(db: &ImdbData) -> Result<Option<(&str, &str, i32)>, PolarsError> {
     }
 
     let duration = start.elapsed().as_secs_f32();
-    println!("{:}", duration);
+    println!("{duration:}");
 
     Ok(res)
 }
