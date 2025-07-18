@@ -12,7 +12,7 @@ pub fn q6b(db: &ImdbData) -> Result<Option<(&str, &str, &str)>, PolarsError> {
 
     let start = Instant::now();
 
-    let n_m: HashMap<i32, Vec<&str>> = n
+    let n_m: HashMap<i32, &str> = n
         .column("id")?
         .i32()?
         .into_iter()
@@ -28,67 +28,78 @@ pub fn q6b(db: &ImdbData) -> Result<Option<(&str, &str, &str)>, PolarsError> {
                 None
             }
         })
-        .fold(HashMap::default(), |mut acc, (id, name)| {
-            acc.entry(id).or_default().push(name);
-            acc
-        });
+        .collect();
 
-    let mut k_m: HashMap<i32, Vec<&str>> = HashMap::default();
-
-    for (id, keyword) in k
+    let k_m: HashMap<i32, &str> = k
         .column("id")?
         .i32()?
         .into_iter()
-        .zip(k.column("keyword")?.str()?.into_iter())
-    {
-        if let (Some(id), Some(keyword)) = (id, keyword) {
-            if matches!(
-                keyword,
-                "marvel-cinematic-universe"
-                    | "superhero"
-                    | "sequel"
-                    | "second-part"
-                    | "marvel-comics"
-                    | "based-on-comic"
-                    | "tv-special"
-                    | "fight"
-                    | "violence"
-            ) {
-                k_m.entry(id).or_default().push(keyword);
+        .zip(k.column("keyword")?.str()?)
+        .filter_map(|(id, keyword)| {
+            if let (Some(id), Some(keyword)) = (id, keyword) {
+                if matches!(
+                    keyword,
+                    "marvel-cinematic-universe"
+                        | "superhero"
+                        | "sequel"
+                        | "second-part"
+                        | "marvel-comics"
+                        | "based-on-comic"
+                        | "tv-special"
+                        | "fight"
+                        | "violence"
+                ) {
+                    Some((id, keyword))
+                } else {
+                    None
+                }
+            } else {
+                None
             }
-        }
-    }
+        })
+        .collect();
 
-    let mut mk_m: HashMap<i32, Vec<i32>> = HashMap::default();
+    let t_m: HashMap<i32, &str> = t
+        .column("id")?
+        .i32()?
+        .into_iter()
+        .zip(t.column("title")?.str()?)
+        .zip(t.column("production_year")?.i32()?)
+        .filter_map(|((id, title), production_year)| {
+            if let (Some(id), Some(title), Some(production_year)) = (id, title, production_year) {
+                if production_year > 2014 {
+                    Some((id, title))
+                } else {
+                    None
+                }
+            } else {
+                None
+            }
+        })
+        .collect();
 
-    for (movie_id, keyword_id) in mk
+    let mk_m: HashMap<i32, Vec<&str>> = mk
         .column("movie_id")?
         .i32()?
         .into_iter()
-        .zip(mk.column("keyword_id")?.i32()?.into_iter())
-    {
-        if let (Some(movie_id), Some(keyword_id)) = (movie_id, keyword_id) {
-            if k_m.contains_key(&keyword_id) {
-                mk_m.entry(movie_id).or_default().push(keyword_id);
+        .zip(mk.column("keyword_id")?.i32()?)
+        .filter_map(|(movie_id, keyword_id)| {
+            if let (Some(movie_id), Some(keyword_id)) = (movie_id, keyword_id) {
+                if let Some(keyword) = k_m.get(&keyword_id)
+                    && t_m.contains_key(&movie_id)
+                {
+                    Some((movie_id, keyword))
+                } else {
+                    None
+                }
+            } else {
+                None
             }
-        }
-    }
-
-    let mut t_m: HashMap<i32, Vec<&str>> = HashMap::default();
-
-    for ((id, title), production_year) in t
-        .column("id")?
-        .i32()?
-        .into_iter()
-        .zip(t.column("title")?.str()?.into_iter())
-        .zip(t.column("production_year")?.i32()?.into_iter())
-    {
-        if let (Some(id), Some(title), Some(production_year)) = (id, title, production_year) {
-            if mk_m.contains_key(&id) && production_year > 2014 {
-                t_m.entry(id).or_default().push(title);
-            }
-        }
-    }
+        })
+        .fold(HashMap::default(), |mut acc, (movie_id, keyword)| {
+            acc.entry(movie_id).or_default().push(keyword);
+            acc
+        });
 
     let mut res: Option<(&str, &str, &str)> = None;
 
@@ -99,32 +110,22 @@ pub fn q6b(db: &ImdbData) -> Result<Option<(&str, &str, &str)>, PolarsError> {
         .zip(ci.column("movie_id")?.i32()?.into_iter())
     {
         if let (Some(pid), Some(mid)) = (pid, mid) {
-            if let Some(titles) = t_m.get(&mid) {
-                if let Some(kids) = mk_m.get(&mid) {
-                    if let Some(names) = n_m.get(&pid) {
-                        for kid in kids {
-                            if let Some(keywords) = k_m.get(kid) {
-                                for title in titles {
-                                    for keyword in keywords {
-                                        for name in names {
-                                            if let Some((old_keyword, old_name, old_title)) =
-                                                res.as_mut()
-                                            {
-                                                if name < old_name {
-                                                    *old_name = name;
-                                                }
-                                                if keyword < old_keyword {
-                                                    *old_keyword = keyword;
-                                                }
-                                                if title < old_title {
-                                                    *old_title = title;
-                                                }
-                                            } else {
-                                                res = Some((keyword, name, title));
-                                            }
-                                        }
-                                    }
+            if let Some(name) = n_m.get(&pid) {
+                if let Some(keywords) = mk_m.get(&mid) {
+                    if let Some(title) = t_m.get(&mid) {
+                        for keyword in keywords {
+                            if let Some((old_keyword, old_name, old_title)) = res.as_mut() {
+                                if name < old_name {
+                                    *old_name = name;
                                 }
+                                if keyword < old_keyword {
+                                    *old_keyword = keyword;
+                                }
+                                if title < old_title {
+                                    *old_title = title;
+                                }
+                            } else {
+                                res = Some((keyword, name, title));
                             }
                         }
                     }
