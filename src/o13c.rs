@@ -1,7 +1,9 @@
 use crate::data::ImdbData;
-use ahash::{HashMap, HashSet};
+// use ahash::{HashMap, HashSet};
 use polars::prelude::*;
 use std::time::Instant;
+
+use rustc_hash::{FxHashMap as HashMap, FxHashSet as HashSet};
 
 pub fn q13c(db: &ImdbData) -> Result<Option<(&str, &str, &str)>, PolarsError> {
     let cn = &db.cn;
@@ -15,6 +17,42 @@ pub fn q13c(db: &ImdbData) -> Result<Option<(&str, &str, &str)>, PolarsError> {
     let t = &db.t;
 
     let start = Instant::now();
+
+    let kt_s: HashSet<i32> = kt
+        .column("kind")?
+        .str()?
+        .into_iter()
+        .zip(kt.column("id")?.i32()?.into_iter())
+        .filter_map(|(kind, id)| {
+            if let (Some(kind), Some(id)) = (kind, id) {
+                if kind == "movie" { Some(id) } else { None }
+            } else {
+                None
+            }
+        })
+        .collect();
+
+    let t_m: HashMap<i32, &str> = t
+        .column("id")?
+        .i32()?
+        .into_iter()
+        .zip(t.column("title")?.str()?.into_iter())
+        .zip(t.column("kind_id")?.i32()?.into_iter())
+        .filter_map(|((id, title), kind_id)| {
+            if let (Some(id), Some(title), Some(kind_id)) = (id, title, kind_id) {
+                if title != ""
+                    && (title.starts_with("Champion") || title.starts_with("Loser"))
+                    && kt_s.contains(&kind_id)
+                {
+                    Some((id, title))
+                } else {
+                    None
+                }
+            } else {
+                None
+            }
+        })
+        .collect();
 
     let it_s: HashSet<i32> = it1
         .column("info")?
@@ -30,21 +68,28 @@ pub fn q13c(db: &ImdbData) -> Result<Option<(&str, &str, &str)>, PolarsError> {
         })
         .collect();
 
-    let mut mi_idx_m: HashMap<i32, Vec<&str>> = HashMap::default();
-
-    for ((movie_id, info_type_id), info) in mi_idx
+    let mi_idx_m: HashMap<i32, Vec<&str>> = mi_idx
         .column("movie_id")?
         .i32()?
         .into_iter()
         .zip(mi_idx.column("info_type_id")?.i32()?.into_iter())
         .zip(mi_idx.column("info")?.str()?.into_iter())
-    {
-        if let (Some(movie_id), Some(info_type_id), Some(info)) = (movie_id, info_type_id, info) {
-            if it_s.contains(&info_type_id) {
-                mi_idx_m.entry(movie_id).or_default().push(info);
+        .filter_map(|(((movie_id, info_type_id), info))| {
+            if let (Some(movie_id), Some(info_type_id), Some(info)) = (movie_id, info_type_id, info)
+            {
+                if t_m.contains_key(&movie_id) && it_s.contains(&info_type_id) {
+                    Some((movie_id, info))
+                } else {
+                    None
+                }
+            } else {
+                None
             }
-        }
-    }
+        })
+        .fold(HashMap::default(), |mut acc, (movie_id, info)| {
+            acc.entry(movie_id).or_default().push(info);
+            acc
+        });
 
     let it2_s: HashSet<i32> = it2
         .column("info")?
@@ -71,7 +116,7 @@ pub fn q13c(db: &ImdbData) -> Result<Option<(&str, &str, &str)>, PolarsError> {
         .zip(mi.column("info_type_id")?.i32()?.into_iter())
         .filter_map(|(movie_id, info_type_id)| {
             if let (Some(movie_id), Some(info_type_id)) = (movie_id, info_type_id) {
-                if it2_s.contains(&info_type_id) {
+                if t_m.contains_key(&movie_id) && it2_s.contains(&info_type_id) {
                     Some(movie_id)
                 } else {
                     None
@@ -82,42 +127,7 @@ pub fn q13c(db: &ImdbData) -> Result<Option<(&str, &str, &str)>, PolarsError> {
         })
         .collect();
 
-    let kt_s: HashSet<i32> = kt
-        .column("kind")?
-        .str()?
-        .into_iter()
-        .zip(kt.column("id")?.i32()?.into_iter())
-        .filter_map(|(kind, id)| {
-            if let (Some(kind), Some(id)) = (kind, id) {
-                if kind == "movie" { Some(id) } else { None }
-            } else {
-                None
-            }
-        })
-        .collect();
-
-    let mut t_m: HashMap<i32, Vec<&str>> = HashMap::default();
-
-    for ((id, title), kind_id) in t
-        .column("id")?
-        .i32()?
-        .into_iter()
-        .zip(t.column("title")?.str()?.into_iter())
-        .zip(t.column("kind_id")?.i32()?.into_iter())
-    {
-        if let (Some(id), Some(title), Some(kind_id)) = (id, title, kind_id) {
-            if title != ""
-                && (title.starts_with("Champion") || title.starts_with("Loser"))
-                && kt_s.contains(&kind_id)
-                && mi_idx_m.contains_key(&id)
-                && mi_s.contains(&id)
-            {
-                t_m.entry(id).or_default().push(title);
-            }
-        }
-    }
-
-    let cn_m: HashMap<i32, Vec<&str>> = cn
+    let cn_m: HashMap<i32, &str> = cn
         .column("country_code")?
         .str()?
         .into_iter()
@@ -134,10 +144,7 @@ pub fn q13c(db: &ImdbData) -> Result<Option<(&str, &str, &str)>, PolarsError> {
                 None
             }
         })
-        .fold(HashMap::default(), |mut acc, (id, name)| {
-            acc.entry(id).or_default().push(name);
-            acc
-        });
+        .collect();
 
     let ct_s: HashSet<i32> = ct
         .column("kind")?
@@ -169,14 +176,10 @@ pub fn q13c(db: &ImdbData) -> Result<Option<(&str, &str, &str)>, PolarsError> {
         if let (Some(movie_id), Some(company_id), Some(company_type_id)) =
             (movie_id, company_id, company_type_id)
         {
-            if ct_s.contains(&company_type_id) && mi_s.contains(&movie_id) {
-                if let (Some(name), Some(titles), Some(info)) = (
-                    cn_m.get(&company_id),
-                    t_m.get(&movie_id),
-                    mi_idx_m.get(&movie_id),
-                ) {
-                    for name in name {
-                        for title in titles {
+            if mi_s.contains(&movie_id) && ct_s.contains(&company_type_id) {
+                if let Some(info) = mi_idx_m.get(&movie_id) {
+                    if let Some(title) = t_m.get(&movie_id) {
+                        if let Some(name) = cn_m.get(&company_id) {
                             for info in info {
                                 if let Some((old_name, old_info, old_title)) = res.as_mut() {
                                     if title < old_title {
@@ -200,6 +203,8 @@ pub fn q13c(db: &ImdbData) -> Result<Option<(&str, &str, &str)>, PolarsError> {
     }
 
     dbg!(start.elapsed());
+
+    dbg!(res);
 
     Ok(res)
 }
