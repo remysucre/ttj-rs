@@ -1,6 +1,6 @@
 use crate::data::ImdbData;
-use ahash::{HashMap, HashSet};
 use polars::prelude::*;
+use rustc_hash::{FxHashMap as HashMap, FxHashSet as HashSet};
 use std::time::Instant;
 
 // imdb_int.cast_info(person_id,movie_id,person_role_id,role_id)
@@ -29,21 +29,21 @@ pub fn q26a(db: &ImdbData) -> Result<Option<(&str, &str, &str, &str)>, PolarsErr
     let n = &db.n;
     let t = &db.t;
 
-    let n_m: HashMap<i32, Vec<&str>> = n
+    let n_m: HashMap<i32, &str> = n
         .column("id")?
         .i32()?
         .into_iter()
         .zip(n.column("name")?.str()?.into_iter())
         .fold(HashMap::default(), |mut acc, (id, name)| {
             if let (Some(id), Some(name)) = (id, name) {
-                acc.entry(id).or_default().push(name);
+                acc.entry(id).insert_entry(name);
             }
             acc
         });
 
     let start = Instant::now();
 
-    let chn_m: HashMap<i32, Vec<&str>> = chn
+    let chn_m: HashMap<i32, &str> = chn
         .column("name")?
         .str()?
         .into_iter()
@@ -60,7 +60,7 @@ pub fn q26a(db: &ImdbData) -> Result<Option<(&str, &str, &str, &str)>, PolarsErr
             }
         })
         .fold(HashMap::default(), |mut acc, (name, id)| {
-            acc.entry(id).or_default().push(name);
+            acc.entry(id).insert_entry(name);
             acc
         });
 
@@ -179,21 +179,28 @@ pub fn q26a(db: &ImdbData) -> Result<Option<(&str, &str, &str, &str)>, PolarsErr
         })
         .collect::<HashSet<_>>();
 
-    let mut mi_idx_m: HashMap<i32, Vec<&str>> = HashMap::default();
-
-    for ((movie_id, info), info_type_id) in mi_idx
+    let mi_idx_m: HashMap<i32, Vec<&str>> = mi_idx
         .column("movie_id")?
         .i32()?
         .into_iter()
         .zip(mi_idx.column("info")?.str()?.into_iter())
         .zip(mi_idx.column("info_type_id")?.i32()?.into_iter())
-    {
-        if let (Some(movie_id), Some(info), Some(info_type_id)) = (movie_id, info, info_type_id) {
-            if info > "7.0" && it_s.contains(&info_type_id) && mk_s.contains(&movie_id) {
-                mi_idx_m.entry(movie_id).or_default().push(info);
+        .filter_map(|((movie_id, info), info_type_id)| {
+            if let (Some(movie_id), Some(info), Some(info_type_id)) = (movie_id, info, info_type_id)
+            {
+                if info > "7.0" && it_s.contains(&info_type_id) && mk_s.contains(&movie_id) {
+                    Some((movie_id, info))
+                } else {
+                    None
+                }
+            } else {
+                None
             }
-        }
-    }
+        })
+        .fold(HashMap::default(), |mut acc, (movie_id, info)| {
+            acc.entry(movie_id).or_default().push(info);
+            acc
+        });
 
     let kt_s: HashSet<i32> = kt
         .column("kind")?
@@ -209,7 +216,7 @@ pub fn q26a(db: &ImdbData) -> Result<Option<(&str, &str, &str, &str)>, PolarsErr
         })
         .collect();
 
-    let t_m: HashMap<i32, Vec<&str>> = t
+    let t_m: HashMap<i32, &str> = t
         .column("id")?
         .i32()?
         .into_iter()
@@ -220,7 +227,7 @@ pub fn q26a(db: &ImdbData) -> Result<Option<(&str, &str, &str, &str)>, PolarsErr
             if let (Some(id), Some(kind_id), Some(title), Some(production_year)) =
                 (id, kind_id, title, production_year)
             {
-                if production_year > 2000 && kt_s.contains(&kind_id) && mi_idx_m.contains_key(&id) {
+                if production_year > 2000 && kt_s.contains(&kind_id) {
                     Some((id, title))
                 } else {
                     None
@@ -230,7 +237,7 @@ pub fn q26a(db: &ImdbData) -> Result<Option<(&str, &str, &str, &str)>, PolarsErr
             }
         })
         .fold(HashMap::default(), |mut acc, (id, title)| {
-            acc.entry(id).or_default().push(title);
+            acc.entry(id).insert_entry(title);
             acc
         });
 
@@ -246,44 +253,35 @@ pub fn q26a(db: &ImdbData) -> Result<Option<(&str, &str, &str, &str)>, PolarsErr
         if let (Some(movie_id), Some(person_id), Some(person_role_id)) =
             (movie_id, person_id, person_role_id)
         {
-            if let (Some(titles), Some(names), Some(char_names), Some(info)) = (
+            if let (Some(title), Some(name), Some(char_name), Some(info)) = (
                 t_m.get(&movie_id),
                 n_m.get(&person_id),
                 chn_m.get(&person_role_id),
                 mi_idx_m.get(&movie_id),
             ) {
-                for title in titles {
-                    for name in names {
-                        for char_name in char_names {
-                            for i in info {
-                                if let Some((old_name, old_title, old_char_name, old_info)) =
-                                    res.as_mut()
-                                {
-                                    if name < old_name {
-                                        *old_name = *name;
-                                    }
-                                    if title < old_title {
-                                        *old_title = *title;
-                                    }
-                                    if char_name < old_char_name {
-                                        *old_char_name = *char_name;
-                                    }
-                                    if i < old_info {
-                                        *old_info = *i
-                                    }
-                                } else {
-                                    res = Some((name, title, char_name, i));
-                                }
-                            }
+                for i in info {
+                    if let Some((old_name, old_title, old_char_name, old_info)) = res.as_mut() {
+                        if name < old_name {
+                            *old_name = *name;
                         }
+                        if title < old_title {
+                            *old_title = *title;
+                        }
+                        if char_name < old_char_name {
+                            *old_char_name = *char_name;
+                        }
+                        if i < old_info {
+                            *old_info = *i
+                        }
+                    } else {
+                        res = Some((name, title, char_name, i));
                     }
                 }
             }
         }
     }
 
-    let duration: std::time::Duration = start.elapsed();
-    dbg!(duration);
+    dbg!(start.elapsed());
 
     Ok(res)
 }
