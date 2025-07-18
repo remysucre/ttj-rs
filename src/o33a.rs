@@ -3,6 +3,7 @@ use ahash::{HashMap, HashSet};
 use polars::prelude::*;
 use std::time::Instant;
 
+#[allow(clippy::type_complexity)]
 pub fn q33a(db: &ImdbData) -> Result<Option<(&str, &str, &str, &str, &str, &str)>, PolarsError> {
     let cn1 = &db.cn;
     let cn2 = &db.cn;
