@@ -122,8 +122,6 @@ pub fn q16a(db: &ImdbData) -> Result<Option<(&str, &str)>, PolarsError> {
 
     dbg!(start.elapsed());
 
-    // dbg!(res);
-
     Ok(res)
 }
 

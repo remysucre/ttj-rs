@@ -5,7 +5,7 @@ use std::time::Instant;
 
 use rustc_hash::{FxHashMap as HashMap, FxHashSet as HashSet};
 
-pub fn q11a(db: &ImdbData) -> Result<(), PolarsError> {
+pub fn q11a(db: &ImdbData) -> Result<Option<(&str, &str, &str)>, PolarsError> {
     let cn = &db.cn;
     let ct = &db.ct;
     let k = &db.k;
@@ -25,9 +25,7 @@ pub fn q11a(db: &ImdbData) -> Result<(), PolarsError> {
         .zip(cn.column("country_code")?.str()?.into_iter())
         .filter_map(|((id, name), country_code)| {
             if let (Some(id), Some(name), Some(country_code)) = (id, name, country_code) {
-                if (name.contains("Film") || name.contains("Warner"))
-                    && country_code != "[pl]"
-                {
+                if (name.contains("Film") || name.contains("Warner")) && country_code != "[pl]" {
                     Some((id, name))
                 } else {
                     None
@@ -130,9 +128,7 @@ pub fn q11a(db: &ImdbData) -> Result<(), PolarsError> {
         .zip(t.column("title")?.str()?.into_iter())
         .zip(t.column("production_year")?.i32()?.into_iter())
         .filter_map(|((id, title), production_year)| {
-            if let (Some(id), Some(title), Some(production_year)) =
-                (id, title, production_year)
-            {
+            if let (Some(id), Some(title), Some(production_year)) = (id, title, production_year) {
                 if mk_s.contains(&id)
                     && ml_m.contains_key(&id)
                     && production_year >= 1950
@@ -147,7 +143,6 @@ pub fn q11a(db: &ImdbData) -> Result<(), PolarsError> {
             }
         })
         .collect();
-
 
     let mut res: Option<(&str, &str, &str)> = None;
 
@@ -186,37 +181,33 @@ pub fn q11a(db: &ImdbData) -> Result<(), PolarsError> {
 
     dbg!(start.elapsed());
 
-    println!("Result: {:?}", res);
-
-    Ok(())
+    Ok(res)
 }
 
-// SELECT MIN(cn.name) AS from_company,
-//        MIN(lt.link) AS movie_link_type,
-//        MIN(t.title) AS non_polish_sequel_movie
+// -- JOB Query 11a
+// SELECT MIN(cn.name) AS from_company, MIN(lt.link) AS movie_link_type, MIN(t.title) AS non_polish_sequel_movie
 // FROM company_name AS cn,
-//      company_type AS ct,
-//      keyword AS k,
-//      link_type AS lt,
-//      movie_companies AS mc,
-//      movie_keyword AS mk,
-//      movie_link AS ml,
-//      title AS t
-// WHERE cn.country_code !='[pl]'
-//   AND (cn.name LIKE '%Film%'
-//        OR cn.name LIKE '%Warner%')
-//   AND ct.kind ='production companies'
-//   AND k.keyword ='sequel'
-//   AND lt.link LIKE '%follow%'
-//   AND mc.note IS NULL
-//   AND t.production_year BETWEEN 1950 AND 2000
-//   AND lt.id = ml.link_type_id
-//   AND ml.movie_id = t.id
-//   AND t.id = mk.movie_id
-//   AND mk.keyword_id = k.id
-//   AND t.id = mc.movie_id
-//   AND mc.company_type_id = ct.id
-//   AND mc.company_id = cn.id
-//   AND ml.movie_id = mk.movie_id
-//   AND ml.movie_id = mc.movie_id
-//   AND mk.movie_id = mc.movie_id;
+// company_type AS ct,
+// keyword AS k,
+// link_type AS lt,
+// movie_companies AS mc,
+// movie_keyword AS mk,
+// movie_link AS ml,
+// title AS t
+// WHERE cn.country_code !='[pl]' AND (cn.name LIKE '%Film%' OR cn.name LIKE '%Warner%') AND ct.kind ='production companies' AND k.keyword ='sequel' AND lt.link LIKE '%follow%' AND mc.note IS NULL AND t.production_year BETWEEN 1950 AND 2000 AND lt.id = ml.link_type_id AND ml.movie_id = t.id AND t.id = mk.movie_id AND mk.keyword_id = k.id AND t.id = mc.movie_id AND mc.company_type_id = ct.id AND mc.company_id = cn.id AND ml.movie_id = mk.movie_id AND ml.movie_id = mc.movie_id AND mk.movie_id = mc.movie_id;
+#[cfg(test)]
+mod test_11a {
+    use super::*;
+    use crate::data::ImdbData;
+
+    #[test]
+    fn test_q11a() -> Result<(), PolarsError> {
+        let db = ImdbData::new();
+
+        assert_eq!(
+            q11a(&db)?,
+            Some(("Churchill Films", "followed by", "Batman Beyond"))
+        );
+        Ok(())
+    }
+}
