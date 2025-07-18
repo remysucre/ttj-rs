@@ -182,11 +182,10 @@ pub fn q9a(db: &ImdbData) -> Result<(), PolarsError> {
         }
     }
 
-    let duration = start.elapsed();
-    dbg!("total elapsed");
+    let duration = start.elapsed().as_secs_f32();
     dbg!(duration);
 
-    dbg!(res);
+    // dbg!(res);
 
     Ok(())
 }

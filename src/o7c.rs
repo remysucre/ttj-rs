@@ -37,9 +37,6 @@ pub fn q7c(db: &ImdbData) -> Result<(), PolarsError> {
         })
         .collect();
 
-    dbg!("built lt_s");
-    dbg!(start.elapsed());
-
     let it_s: Vec<i32> = it
         .column("id")?
         .i32()?
@@ -58,9 +55,6 @@ pub fn q7c(db: &ImdbData) -> Result<(), PolarsError> {
         })
         .collect();
 
-    dbg!("built it_s");
-    dbg!(start.elapsed());
-
     let ml_s: HashSet<i32> = ml
         .column("linked_movie_id")?
         .i32()?
@@ -78,9 +72,6 @@ pub fn q7c(db: &ImdbData) -> Result<(), PolarsError> {
             }
         })
         .collect();
-
-    dbg!("built ml_s");
-    dbg!(start.elapsed());
 
     let mut pi_m: HashMap<i32, Vec<&str>> = HashMap::default();
 
@@ -104,10 +95,6 @@ pub fn q7c(db: &ImdbData) -> Result<(), PolarsError> {
         }
     }
 
-    dbg!("built pi_m");
-    dbg!(pi_m.len());
-    dbg!(start.elapsed());
-
     let mut t_s: HashSet<i32> = HashSet::default();
 
     let t_id_col = t.column("id")?.i32()?;
@@ -120,10 +107,6 @@ pub fn q7c(db: &ImdbData) -> Result<(), PolarsError> {
             }
         }
     }
-
-    dbg!("built t_s");
-    dbg!(t_s.len());
-    dbg!(start.elapsed());
 
     let mut n_m: HashMap<i32, Vec<&str>> = HashMap::default();
 
@@ -149,10 +132,6 @@ pub fn q7c(db: &ImdbData) -> Result<(), PolarsError> {
         }
     }
 
-    dbg!("built n_m");
-    dbg!(n_m.len());
-    dbg!(start.elapsed());
-
     let mut an_s: HashSet<i32> = HashSet::default();
 
     let an_id_col = an.column("person_id")?.i32()?;
@@ -165,10 +144,6 @@ pub fn q7c(db: &ImdbData) -> Result<(), PolarsError> {
             }
         }
     }
-
-    dbg!("built an_s");
-    dbg!(an_s.len());
-    dbg!(start.elapsed());
 
     let mut res: Option<(&str, &str)> = None;
 
@@ -203,10 +178,9 @@ pub fn q7c(db: &ImdbData) -> Result<(), PolarsError> {
         }
     }
 
-    dbg!(res);
+    // dbg!(res);
 
-    let duration = start.elapsed();
-    dbg!("total elapsed");
+    let duration = start.elapsed().as_secs_f32();
     dbg!(duration);
 
     Ok(())

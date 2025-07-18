@@ -87,10 +87,9 @@ pub fn q17f(db: &ImdbData) -> Result<(), PolarsError> {
         }
     }
 
-    dbg!(res);
+    // dbg!(res);
 
-    let elapsed = start.elapsed();
-    println!("Elapsed time: {:?}", elapsed);
+    dbg!(start.elapsed().as_secs_f32());
 
     Ok(())
 }

@@ -253,9 +253,8 @@ pub fn q31a(db: &ImdbData) -> Result<(), PolarsError> {
         }
     }
 
-    dbg!(res);
-    dbg!("total elapsed");
-    dbg!(elapsed.elapsed());
+    // dbg!(res);
+    dbg!(elapsed.elapsed().as_secs_f32());
 
     Ok(())
 }

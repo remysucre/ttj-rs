@@ -124,10 +124,9 @@ pub fn q6f(db: &ImdbData) -> Result<(), PolarsError> {
         }
     }
 
-    dbg!(res);
+    // dbg!(res);
 
-    let duration = start.elapsed();
-    dbg!("total elapsed");
+    let duration = start.elapsed().as_secs_f32();
     dbg!(duration);
 
     Ok(())

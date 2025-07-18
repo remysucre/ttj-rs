@@ -5,13 +5,14 @@ edition = "2024"
 rust-version = "1.88.0"
 
 [dependencies]
-polars = { version = "0.48.1", features = ["lazy", "parquet", "regex", "strings", "is_in", "dtype-i128"] }
+# polars = { version = "0.48.1", features = ["lazy", "parquet", "regex", "strings", "is_in", "dtype-i128"] }
+polars = { version = "0.48.1", features = ["parquet"] }
 ahash = "0.8.11"
 foldhash = "0.1.5"
 rustc-hash = "2.1.1"
 
 [profile.release]
-debug = false
-#codegen-units = 1
+# debug = false
+# codegen-units = 1
 # enable when benchmarking
-lto = "fat"
+# lto = "fat"

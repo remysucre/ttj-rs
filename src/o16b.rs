@@ -137,8 +137,8 @@ pub fn q16b(db: &ImdbData) -> Result<(), PolarsError> {
         }
     }
 
-    // dbg!(res);
-    dbg!(start.elapsed());
+    // // dbg!(res);
+    dbg!(start.elapsed().as_secs_f32());
 
     Ok(())
 }

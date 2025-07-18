@@ -181,9 +181,8 @@ pub fn q12a(db: &ImdbData) -> Result<Option<(&str, &str, &str)>, PolarsError> {
         }
     }
 
-    let duration = start.elapsed();
-    dbg!(res);
-    dbg!("total elapsed");
+    let duration = start.elapsed().as_secs_f32();
+    // dbg!(res);
     dbg!(duration);
 
     Ok(res)

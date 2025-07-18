@@ -134,7 +134,7 @@ pub fn q1c(db: &ImdbData) -> Result<Option<(&str, &str, i32)>, PolarsError> {
         }
     }
 
-    let duration = start.elapsed();
+    let duration = start.elapsed().as_secs_f32();
     dbg!(duration);
 
     Ok(res)

@@ -135,7 +135,7 @@ pub fn q17b(db: &ImdbData) -> Result<Option<(&str, &str)>, PolarsError> {
         }
     }
 
-    dbg!(start.elapsed());
+    dbg!(start.elapsed().as_secs_f32());
 
     Ok(res)
 }

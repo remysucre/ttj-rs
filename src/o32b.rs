@@ -128,7 +128,7 @@ pub fn q32b(db: &ImdbData) -> Result<Option<(&str, &str, &str)>, PolarsError> {
         }
     }
 
-    dbg!(elapsed.elapsed());
+    dbg!(elapsed.elapsed().as_secs_f32());
 
     Ok(res)
 }

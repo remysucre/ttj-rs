@@ -259,8 +259,7 @@ pub fn q26c(db: &ImdbData) -> Result<Option<(&str, &str, &str)>, PolarsError> {
         }
     }
 
-    let duration: std::time::Duration = start.elapsed();
-    dbg!(duration);
+    dbg!(start.elapsed().as_secs_f32());
 
     Ok(res)
 }

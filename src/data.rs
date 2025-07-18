@@ -26,89 +26,68 @@ pub struct ImdbData {
 
 impl ImdbData {
     pub fn new() -> Self {
-        let an = LazyFrame::scan_parquet("imdb/aka_name.parquet", Default::default())
-            .unwrap()
-            .collect()
+        let an = ParquetReader::new(std::fs::File::open("imdb/aka_name.parquet").unwrap())
+            .finish()
             .unwrap();
-        let at = LazyFrame::scan_parquet("imdb/aka_title.parquet", Default::default())
-            .unwrap()
-            .collect()
+        let at = ParquetReader::new(std::fs::File::open("imdb/aka_title.parquet").unwrap())
+            .finish()
             .unwrap();
-        let ci = LazyFrame::scan_parquet("imdb/cast_info.parquet", Default::default())
-            .unwrap()
-            .collect()
+        let ci = ParquetReader::new(std::fs::File::open("imdb/cast_info.parquet").unwrap())
+            .finish()
             .unwrap();
-        let chn = LazyFrame::scan_parquet("imdb/char_name.parquet", Default::default())
-            .unwrap()
-            .collect()
+        let chn = ParquetReader::new(std::fs::File::open("imdb/char_name.parquet").unwrap())
+            .finish()
             .unwrap();
-        let cct = LazyFrame::scan_parquet("imdb/comp_cast_type.parquet", Default::default())
-            .unwrap()
-            .collect()
+        let cct = ParquetReader::new(std::fs::File::open("imdb/comp_cast_type.parquet").unwrap())
+            .finish()
             .unwrap();
-        let cn = LazyFrame::scan_parquet("imdb/company_name.parquet", Default::default())
-            .unwrap()
-            .collect()
+        let cn = ParquetReader::new(std::fs::File::open("imdb/company_name.parquet").unwrap())
+            .finish()
             .unwrap();
-        let ct = LazyFrame::scan_parquet("imdb/company_type.parquet", Default::default())
-            .unwrap()
-            .collect()
+        let ct = ParquetReader::new(std::fs::File::open("imdb/company_type.parquet").unwrap())
+            .finish()
             .unwrap();
-        let cc = LazyFrame::scan_parquet("imdb/complete_cast.parquet", Default::default())
-            .unwrap()
-            .collect()
+        let cc = ParquetReader::new(std::fs::File::open("imdb/complete_cast.parquet").unwrap())
+            .finish()
             .unwrap();
-        let it = LazyFrame::scan_parquet("imdb/info_type.parquet", Default::default())
-            .unwrap()
-            .collect()
+        let it = ParquetReader::new(std::fs::File::open("imdb/info_type.parquet").unwrap())
+            .finish()
             .unwrap();
-        let k = LazyFrame::scan_parquet("imdb/keyword.parquet", Default::default())
-            .unwrap()
-            .collect()
+        let k = ParquetReader::new(std::fs::File::open("imdb/keyword.parquet").unwrap())
+            .finish()
             .unwrap();
-        let kt = LazyFrame::scan_parquet("imdb/kind_type.parquet", Default::default())
-            .unwrap()
-            .collect()
+        let kt = ParquetReader::new(std::fs::File::open("imdb/kind_type.parquet").unwrap())
+            .finish()
             .unwrap();
-        let lt = LazyFrame::scan_parquet("imdb/link_type.parquet", Default::default())
-            .unwrap()
-            .collect()
+        let lt = ParquetReader::new(std::fs::File::open("imdb/link_type.parquet").unwrap())
+            .finish()
             .unwrap();
-        let mc = LazyFrame::scan_parquet("imdb/movie_companies.parquet", Default::default())
-            .unwrap()
-            .collect()
+        let mc = ParquetReader::new(std::fs::File::open("imdb/movie_companies.parquet").unwrap())
+            .finish()
             .unwrap();
-        let mi_idx = LazyFrame::scan_parquet("imdb/movie_info_idx.parquet", Default::default())
-            .unwrap()
-            .collect()
+        let mi_idx = ParquetReader::new(std::fs::File::open("imdb/movie_info_idx.parquet").unwrap())
+            .finish()
             .unwrap();
-        let mi = LazyFrame::scan_parquet("imdb/movie_info.parquet", Default::default())
-            .unwrap()
-            .collect()
+        let mi = ParquetReader::new(std::fs::File::open("imdb/movie_info.parquet").unwrap())
+            .finish()
             .unwrap();
-        let mk = LazyFrame::scan_parquet("imdb/movie_keyword.parquet", Default::default())
-            .unwrap()
-            .collect()
+        let mk = ParquetReader::new(std::fs::File::open("imdb/movie_keyword.parquet").unwrap())
+            .finish()
             .unwrap();
-        let ml = LazyFrame::scan_parquet("imdb/movie_link.parquet", Default::default())
-            .unwrap()
-            .collect()
+        let ml = ParquetReader::new(std::fs::File::open("imdb/movie_link.parquet").unwrap())
+            .finish()
             .unwrap();
-        let n = LazyFrame::scan_parquet("imdb/name.parquet", Default::default())
-            .unwrap()
-            .collect()
+        let n = ParquetReader::new(std::fs::File::open("imdb/name.parquet").unwrap())
+            .finish()
             .unwrap();
-        let pi = LazyFrame::scan_parquet("imdb/person_info.parquet", Default::default())
-            .unwrap()
-            .collect()
+        let pi = ParquetReader::new(std::fs::File::open("imdb/person_info.parquet").unwrap())
+            .finish()
             .unwrap();
-        let rt = LazyFrame::scan_parquet("imdb/role_type.parquet", Default::default())
-            .unwrap()
-            .collect()
+        let rt = ParquetReader::new(std::fs::File::open("imdb/role_type.parquet").unwrap())
+            .finish()
             .unwrap();
-        let t = LazyFrame::scan_parquet("imdb/title.parquet", Default::default())
-            .unwrap()
-            .collect()
+        let t = ParquetReader::new(std::fs::File::open("imdb/title.parquet").unwrap())
+            .finish()
             .unwrap();
 
         ImdbData {
