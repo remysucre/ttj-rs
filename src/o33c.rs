@@ -306,7 +306,6 @@ pub fn q33c(db: &ImdbData) -> Result<Option<(&str, &str, &str, &str, &str, &str)
     }
 
     dbg!(start.elapsed());
-    dbg!(res);
 
     Ok(res)
 }
