@@ -9,6 +9,8 @@ polars = { version = "0.48.1", features = ["parquet"] }
 ahash = "0.8.11"
 foldhash = "0.1.5"
 rustc-hash = "2.1.1"
+hashbrown = "0.15.4"
+bumpalo = { version = "3.19.0", features = ["allocator-api2"]}
 
 [profile.release]
 # debug = false
