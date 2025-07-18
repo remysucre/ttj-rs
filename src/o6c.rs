@@ -1,6 +1,6 @@
 use crate::data::ImdbData;
-use ahash::HashMap;
 use polars::prelude::*;
+use rustc_hash::{FxBuildHasher, FxHashMap as HashMap};
 use std::time::Instant;
 
 pub fn q6c(db: &ImdbData) -> Result<Option<(&str, &str, &str)>, PolarsError> {
@@ -12,7 +12,7 @@ pub fn q6c(db: &ImdbData) -> Result<Option<(&str, &str, &str)>, PolarsError> {
 
     let start = Instant::now();
 
-    let n_m: HashMap<i32, Vec<&str>> = n
+    let n_m: HashMap<i32, &str> = n
         .column("id")?
         .i32()?
         .into_iter()
@@ -28,56 +28,107 @@ pub fn q6c(db: &ImdbData) -> Result<Option<(&str, &str, &str)>, PolarsError> {
                 None
             }
         })
-        .fold(HashMap::default(), |mut acc, (id, name)| {
-            acc.entry(id).or_default().push(name);
-            acc
-        });
+        .fold(
+            HashMap::with_capacity_and_hasher(2, FxBuildHasher),
+            |mut acc, (id, name)| {
+                acc.insert(id, name);
+                acc
+            },
+        );
 
-    let mut k_m: HashMap<i32, Vec<&str>> = HashMap::default();
+    // let k_m: HashMap<i32, &str> = k
+    //     .column("id")?
+    //     .i32()?
+    //     .into_iter()
+    //     .zip(k.column("keyword")?.str()?)
+    //     .filter_map(|(id, keyword)| {
+    //         if let (Some(id), Some(keyword)) = (id, keyword) {
+    //             if keyword == "marvel-cinematic-universe" {
+    //                 Some((id, keyword))
+    //             } else {
+    //                 None
+    //             }
+    //         } else {
+    //             None
+    //         }
+    //     })
+    //     .fold(
+    //         HashMap::with_capacity_and_hasher(k.height(), FxBuildHasher),
+    //         |mut acc, (id, keyword)| {
+    //             acc.insert(id, keyword);
+    //             acc
+    //         },
+    //     );
 
-    for (id, keyword) in k
+    // Exploit the fact that |k_m| = 1
+    let k_m = k
         .column("id")?
         .i32()?
         .into_iter()
-        .zip(k.column("keyword")?.str()?.into_iter())
-    {
-        if let (Some(id), Some(keyword)) = (id, keyword) {
-            if keyword == "marvel-cinematic-universe" {
-                k_m.entry(id).or_default().push(keyword);
+        .zip(k.column("keyword")?.str()?)
+        .find_map(|(id, keyword)| {
+            if let (Some(id), Some(keyword)) = (id, keyword) {
+                if keyword == "marvel-cinematic-universe" {
+                    Some((id, keyword))
+                } else {
+                    None
+                }
+            } else {
+                None
             }
-        }
-    }
+        });
 
-    let mut mk_m: HashMap<i32, Vec<i32>> = HashMap::default();
-
-    for (movie_id, keyword_id) in mk
-        .column("movie_id")?
-        .i32()?
-        .into_iter()
-        .zip(mk.column("keyword_id")?.i32()?.into_iter())
-    {
-        if let (Some(movie_id), Some(keyword_id)) = (movie_id, keyword_id) {
-            if k_m.contains_key(&keyword_id) {
-                mk_m.entry(movie_id).or_default().push(keyword_id);
-            }
-        }
-    }
-
-    let mut t_m: HashMap<i32, Vec<&str>> = HashMap::default();
-
-    for ((id, title), production_year) in t
+    let t_m: HashMap<i32, &str> = t
         .column("id")?
         .i32()?
         .into_iter()
         .zip(t.column("title")?.str()?.into_iter())
         .zip(t.column("production_year")?.i32()?.into_iter())
-    {
-        if let (Some(id), Some(title), Some(production_year)) = (id, title, production_year) {
-            if mk_m.contains_key(&id) && production_year > 2014 {
-                t_m.entry(id).or_default().push(title);
+        .filter_map(|((id, title), production_year)| {
+            if let (Some(id), Some(title), Some(production_year)) = (id, title, production_year) {
+                if production_year > 2014 {
+                    Some((id, title))
+                } else {
+                    None
+                }
+            } else {
+                None
             }
-        }
-    }
+        })
+        .fold(
+            HashMap::with_capacity_and_hasher(438, FxBuildHasher),
+            |mut acc, (id, title)| {
+                acc.insert(id, title);
+                acc
+            },
+        );
+
+    let mk_m: HashMap<i32, Vec<i32>> = mk
+        .column("movie_id")?
+        .i32()?
+        .into_iter()
+        .zip(mk.column("keyword_id")?.i32()?)
+        .filter_map(|(movie_id, keyword_id)| {
+            if let (Some(movie_id), Some(keyword_id)) = (movie_id, keyword_id) {
+                if let Some((id, _)) = k_m
+                    && id == keyword_id
+                    && t_m.contains_key(&movie_id)
+                {
+                    Some((movie_id, keyword_id))
+                } else {
+                    None
+                }
+            } else {
+                None
+            }
+        })
+        .fold(
+            HashMap::with_capacity_and_hasher(mk.height(), FxBuildHasher),
+            |mut acc, (movie_id, keyword_id)| {
+                acc.entry(movie_id).or_default().push(keyword_id);
+                acc
+            },
+        );
 
     let mut res: Option<(&str, &str, &str)> = None;
 
@@ -85,36 +136,28 @@ pub fn q6c(db: &ImdbData) -> Result<Option<(&str, &str, &str)>, PolarsError> {
         .column("person_id")?
         .i32()?
         .into_iter()
-        .zip(ci.column("movie_id")?.i32()?.into_iter())
+        .zip(ci.column("movie_id")?.i32()?)
     {
         if let (Some(pid), Some(mid)) = (pid, mid) {
-            if let Some(titles) = t_m.get(&mid) {
-                if let Some(kids) = mk_m.get(&mid) {
-                    if let Some(names) = n_m.get(&pid) {
-                        for kid in kids {
-                            if let Some(keywords) = k_m.get(kid) {
-                                for title in titles {
-                                    for keyword in keywords {
-                                        for name in names {
-                                            if let Some((old_keyword, old_name, old_title)) =
-                                                res.as_mut()
-                                            {
-                                                if name < old_name {
-                                                    *old_name = name;
-                                                }
-                                                if keyword < old_keyword {
-                                                    *old_keyword = keyword;
-                                                }
-                                                if title < old_title {
-                                                    *old_title = title;
-                                                }
-                                            } else {
-                                                res = Some((keyword, name, title));
-                                            }
-                                        }
-                                    }
-                                }
+            if let Some(name) = n_m.get(&pid)
+                && let Some((id, keyword)) = k_m
+                && let Some(title) = t_m.get(&mid)
+                && let Some(kids) = mk_m.get(&mid)
+            {
+                for kid in kids {
+                    if id == *kid {
+                        if let Some((old_keyword, old_name, old_title)) = res.as_mut() {
+                            if name < old_name {
+                                *old_name = name;
                             }
+                            if keyword < *old_keyword {
+                                *old_keyword = keyword;
+                            }
+                            if title < old_title {
+                                *old_title = title;
+                            }
+                        } else {
+                            res = Some((keyword, name, title));
                         }
                     }
                 }
