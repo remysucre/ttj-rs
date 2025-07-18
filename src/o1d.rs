@@ -71,7 +71,7 @@ pub fn q1d(db: &ImdbData) -> Result<Option<(&str, &str, i32)>, PolarsError> {
         })
         .collect();
 
-    let t_m: HashMap<i32, Vec<(&str, i32)>> = t
+    let t_m: HashMap<i32, (&str, i32)> = t
         .column("id")?
         .i32()?
         .into_iter()
@@ -79,8 +79,8 @@ pub fn q1d(db: &ImdbData) -> Result<Option<(&str, &str, i32)>, PolarsError> {
         .zip(t.column("production_year")?.i32()?.into_iter())
         .filter_map(|((id, title), production_year)| {
             if let (Some(id), Some(title), Some(production_year)) = (id, title, production_year) {
-                if production_year > 2000 {
-                    Some((id, title, production_year))
+                if mi_idx_s.contains(&id) && production_year > 2000 {
+                    Some((id, (title, production_year)))
                 } else {
                     None
                 }
@@ -88,13 +88,7 @@ pub fn q1d(db: &ImdbData) -> Result<Option<(&str, &str, i32)>, PolarsError> {
                 None
             }
         })
-        .fold(
-            HashMap::default(),
-            |mut acc, (id, title, production_year)| {
-                acc.entry(id).or_default().push((title, production_year));
-                acc
-            },
-        );
+        .collect();
 
     let mut res: Option<(&str, &str, i32)> = None;
 
@@ -110,23 +104,20 @@ pub fn q1d(db: &ImdbData) -> Result<Option<(&str, &str, i32)>, PolarsError> {
         {
             if !note.contains("(as Metro-Goldwyn-Mayer Pictures)")
                 && ct_s.contains(&company_type_id)
-                && mi_idx_s.contains(&movie_id)
             {
-                if let Some(tuples) = t_m.get(&movie_id) {
-                    for (title, production_year) in tuples {
-                        if let Some((old_note, old_title, old_production_year)) = res.as_mut() {
-                            if *title < *old_title {
-                                *old_title = title;
-                            }
-                            if *production_year < *old_production_year {
-                                *old_production_year = *production_year;
-                            }
-                            if note < *old_note {
-                                *old_note = note;
-                            }
-                        } else {
-                            res = Some((note, title, *production_year));
+                if let Some((title, production_year)) = t_m.get(&movie_id) {
+                    if let Some((old_note, old_title, old_production_year)) = res.as_mut() {
+                        if *title < *old_title {
+                            *old_title = title;
                         }
+                        if *production_year < *old_production_year {
+                            *old_production_year = *production_year;
+                        }
+                        if note < *old_note {
+                            *old_note = note;
+                        }
+                    } else {
+                        res = Some((note, title, *production_year));
                     }
                 }
             }
