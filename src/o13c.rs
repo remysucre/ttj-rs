@@ -18,7 +18,7 @@ pub fn q13c(db: &ImdbData) -> Result<Option<(&str, &str, &str)>, PolarsError> {
 
     let start = Instant::now();
 
-    let kt_s: HashSet<i32> = kt
+    let kt_s: Vec<i32> = kt
         .column("kind")?
         .str()?
         .into_iter()
@@ -41,8 +41,8 @@ pub fn q13c(db: &ImdbData) -> Result<Option<(&str, &str, &str)>, PolarsError> {
         .filter_map(|((id, title), kind_id)| {
             if let (Some(id), Some(title), Some(kind_id)) = (id, title, kind_id) {
                 if !title.is_empty()
-                    && (title.starts_with("Champion") || title.starts_with("Loser"))
                     && kt_s.contains(&kind_id)
+                    && (title.starts_with("Champion") || title.starts_with("Loser"))
                 {
                     Some((id, title))
                 } else {
@@ -54,7 +54,7 @@ pub fn q13c(db: &ImdbData) -> Result<Option<(&str, &str, &str)>, PolarsError> {
         })
         .collect();
 
-    let it_s: HashSet<i32> = it1
+    let it_s: Vec<i32> = it1
         .column("info")?
         .str()?
         .into_iter()
@@ -91,7 +91,7 @@ pub fn q13c(db: &ImdbData) -> Result<Option<(&str, &str, &str)>, PolarsError> {
             acc
         });
 
-    let it2_s: HashSet<i32> = it2
+    let it2_s: Vec<i32> = it2
         .column("info")?
         .str()?
         .into_iter()
@@ -116,7 +116,7 @@ pub fn q13c(db: &ImdbData) -> Result<Option<(&str, &str, &str)>, PolarsError> {
         .zip(mi.column("info_type_id")?.i32()?)
         .filter_map(|(movie_id, info_type_id)| {
             if let (Some(movie_id), Some(info_type_id)) = (movie_id, info_type_id) {
-                if t_m.contains_key(&movie_id) && it2_s.contains(&info_type_id) {
+                if it2_s.contains(&info_type_id) && t_m.contains_key(&movie_id) {
                     Some(movie_id)
                 } else {
                     None
@@ -146,7 +146,7 @@ pub fn q13c(db: &ImdbData) -> Result<Option<(&str, &str, &str)>, PolarsError> {
         })
         .collect();
 
-    let ct_s: HashSet<i32> = ct
+    let ct_s: Vec<i32> = ct
         .column("kind")?
         .str()?
         .into_iter()

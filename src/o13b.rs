@@ -77,7 +77,7 @@ pub fn q13b(db: &ImdbData) -> Result<Option<(&str, &str, &str)>, PolarsError> {
         .filter_map(|((movie_id, info_type_id), info)| {
             if let (Some(movie_id), Some(info_type_id), Some(info)) = (movie_id, info_type_id, info)
             {
-                if it_s.contains(&info_type_id) && t_m.contains_key(&movie_id) {
+                if t_m.contains_key(&movie_id) && it_s.contains(&info_type_id) {
                     Some((movie_id, info))
                 } else {
                     None
