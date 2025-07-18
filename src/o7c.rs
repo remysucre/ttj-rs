@@ -1,10 +1,10 @@
+use crate::data::ImdbData;
 use ahash::HashMap;
 use ahash::HashSet;
 use polars::prelude::*;
 use std::time::Instant;
-use crate::data::ImdbData;
 
-pub fn q7c(db: &ImdbData) -> Result<(), PolarsError> {
+pub fn q7c(db: &ImdbData) -> Result<Option<(&str, &str)>, PolarsError> {
     let an = &db.an;
     let ci = &db.ci;
     let it = &db.it;
@@ -154,36 +154,33 @@ pub fn q7c(db: &ImdbData) -> Result<(), PolarsError> {
         .zip(ci.column("movie_id")?.i32()?.into_iter())
     {
         if let (Some(pid), Some(mid)) = (pid, mid) {
-                if let Some(info) = pi_m.get(&pid) {
-                        if let Some(name) = n_m.get(&pid) {
-                            if t_s.contains(&mid) && an_s.contains(&pid)
-                            {
-                                for name in name {
-                                    for info in info {
-                                        if let Some((old_name, old_info)) = res.as_mut() {
-                                            if name < old_name {
-                                                *old_name = name;
-                                            }
-                                            if info < old_info {
-                                                *old_info = info;
-                                            }
-                                        } else {
-                                            res = Some((name, info));
-                                        }
+            if let Some(info) = pi_m.get(&pid) {
+                if let Some(name) = n_m.get(&pid) {
+                    if t_s.contains(&mid) && an_s.contains(&pid) {
+                        for name in name {
+                            for info in info {
+                                if let Some((old_name, old_info)) = res.as_mut() {
+                                    if name < old_name {
+                                        *old_name = name;
                                     }
+                                    if info < old_info {
+                                        *old_info = info;
+                                    }
+                                } else {
+                                    res = Some((name, info));
                                 }
                             }
                         }
+                    }
                 }
+            }
         }
     }
-
-    // println!("{:}", res);
 
     let duration = start.elapsed().as_secs_f32();
     println!("{duration:}");
 
-    Ok(())
+    Ok(res)
 }
 
 // -- JOB Query 7c
@@ -215,3 +212,23 @@ pub fn q7c(db: &ImdbData) -> Result<(), PolarsError> {
 // AND pi.person_id = ci.person_id
 // AND an.person_id = ci.person_id
 // AND ci.movie_id = ml.linked_movie_id;
+
+#[cfg(test)]
+mod test_q7c {
+    use super::*;
+    use crate::data::ImdbData;
+
+    #[test]
+    fn test_q7c() -> Result<(), PolarsError> {
+        let db = ImdbData::new();
+        let res = q7c(&db)?;
+
+        let expected = Some((
+            "50 Cent",
+            "\"Boo\" Arnold was born Earl Arnold in Hattiesburg, Mississippi in 1966. His father gave him the nickname 'Boo' early in life and it stuck through grade school, high school, and college. He is still known as \"Boo\" to family and friends.  Raised in central Texas, Arnold played baseball at Texas Tech University where he graduated with a BA in Advertising and Marketing. While at Texas Tech he was also a member of the Texas Epsilon chapter of Phi Delta Theta fraternity. After college he worked with Young Life, an outreach to high school students, in San Antonio, Texas.  While with Young Life Arnold began taking extension courses through Fuller Theological Seminary and ultimately went full-time to Gordon-Conwell Theological Seminary in Boston, Massachusetts. At Gordon-Conwell he completed a Master's Degree in Divinity studying Theology, Philosophy, Church History, Biblical Languages (Hebrew & Greek), and Exegetical Methods. Following seminary he was involved with reconciliation efforts in the former Yugoslavia shortly after the war ended there in1995.  Arnold started acting in his early thirties in Texas. After an encouraging visit to Los Angeles where he spent time with childhood friend George Eads (of CSI Las Vegas) he decided to move to Los Angeles in 2001 to pursue acting full-time. While in Los Angeles he has studied acting with Judith Weston at Judith Weston Studio for Actors and Directors.  Arnold's acting career has been one of steady development, booking co-star and guest-star roles in nighttime television. He guest-starred opposite of Jane Seymour on the night time television drama Justice. He played the lead, Michael Hollister, in the film The Seer, written and directed by Patrick Masset (Friday Night Lights).  He was nominated Best Actor in the168 Film Festival for the role of Phil Stevens in the short-film Useless. In Useless he played a US Marshal who must choose between mercy and justice as he confronts the man who murdered his father. Arnold's performance in Useless confirmed his ability to carry lead roles, and he continues to work toward solidifying himself as a male lead in film and television.  Arnold married fellow Texan Stacy Rudd of San Antonio in 2003 and they are now raising their three children in the Los Angeles area.",
+        ));
+
+        assert_eq!(res, expected);
+        Ok(())
+    }
+}

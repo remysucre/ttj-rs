@@ -3,7 +3,7 @@ use ahash::{HashMap, HashSet};
 use polars::prelude::*;
 use std::time::Instant;
 
-pub fn q9a(db: &ImdbData) -> Result<(), PolarsError> {
+pub fn q9a(db: &ImdbData) -> Result<Option<(&str, &str, &str)>, PolarsError> {
     let an = &db.an;
     let chn = &db.chn;
     let ci = &db.ci;
@@ -185,9 +185,7 @@ pub fn q9a(db: &ImdbData) -> Result<(), PolarsError> {
     let duration = start.elapsed().as_secs_f32();
     println!("{duration:}");
 
-    // println!("{:}", res);
-
-    Ok(())
+    Ok(res)
 }
 
 // SELECT MIN(an.name) AS alternative_name,
@@ -222,3 +220,20 @@ pub fn q9a(db: &ImdbData) -> Result<(), PolarsError> {
 //   AND chn.id = ci.person_role_id
 //   AND an.person_id = n.id
 //   AND an.person_id = ci.person_id;
+
+#[cfg(test)]
+mod test_q9a {
+    use super::*;
+    use crate::data::ImdbData;
+
+    #[test]
+    fn test_q9a() -> Result<(), PolarsError> {
+        let db = ImdbData::new();
+        let res = q9a(&db)?;
+
+        let expected = Some(("AJ", "Airport Announcer", "Blue Harvest"));
+
+        assert_eq!(res, expected);
+        Ok(())
+    }
+}

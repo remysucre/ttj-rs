@@ -3,7 +3,7 @@ use ahash::{HashMap, HashSet};
 use polars::prelude::*;
 use std::time::Instant;
 
-pub fn q33a(db: &ImdbData) -> Result<(), PolarsError> {
+pub fn q33a(db: &ImdbData) -> Result<Option<(&str, &str, &str, &str, &str, &str)>, PolarsError> {
     let cn1 = &db.cn;
     let cn2 = &db.cn;
     let it1 = &db.it;
@@ -306,10 +306,9 @@ pub fn q33a(db: &ImdbData) -> Result<(), PolarsError> {
         }
     }
 
-    // println!("{:}", res);
     println!("{:}", start.elapsed().as_secs_f32());
 
-    Ok(())
+    Ok(res)
 }
 
 // -- JOB Query 33a
@@ -360,3 +359,21 @@ pub fn q33a(db: &ImdbData) -> Result<(), PolarsError> {
 // AND ml.linked_movie_id = mi_idx2.movie_id
 // AND ml.linked_movie_id = mc2.movie_id
 // AND mi_idx2.movie_id = mc2.movie_id;
+
+
+#[cfg(test)]
+mod test_q33a {
+    use super::*;
+    use crate::data::ImdbData;
+
+    #[test]
+    fn test_q33a() -> Result<(), PolarsError> {
+        let db = ImdbData::new();
+        let res = q33a(&db)?;
+
+        let expected = Some(("495 Productions", "495 Productions", "3.3", "2.7", "A Double Shot at Love", "A Shot at Love with Tila Tequila"));
+
+        assert_eq!(res, expected);
+        Ok(())
+    }
+}

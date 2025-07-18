@@ -1,10 +1,9 @@
+use crate::data::ImdbData;
 use ahash::{HashMap, HashSet};
 use polars::prelude::*;
 use std::time::Instant;
-use crate::data::ImdbData;
 
-pub fn q21a(db: &ImdbData) -> Result<(), PolarsError> {
-    
+pub fn q21a(db: &ImdbData) -> Result<Option<(&str, &str, &str)>, PolarsError> {
     let cn = &db.cn;
     let ct = &db.ct;
     let k = &db.k;
@@ -40,7 +39,11 @@ pub fn q21a(db: &ImdbData) -> Result<(), PolarsError> {
         .zip(ct.column("kind")?.str()?)
         .filter_map(|(id, kind)| {
             if let (Some(id), Some(kind)) = (id, kind) {
-                if kind == "production companies" { Some(id) } else { None }
+                if kind == "production companies" {
+                    Some(id)
+                } else {
+                    None
+                }
             } else {
                 None
             }
@@ -68,7 +71,11 @@ pub fn q21a(db: &ImdbData) -> Result<(), PolarsError> {
         .zip(mk.column("keyword_id")?.i32()?)
         .filter_map(|(movie_id, keyword_id)| {
             if let (Some(movie_id), Some(keyword_id)) = (movie_id, keyword_id) {
-                if k_s.contains(&keyword_id) { Some(movie_id) } else { None }
+                if k_s.contains(&keyword_id) {
+                    Some(movie_id)
+                } else {
+                    None
+                }
             } else {
                 None
             }
@@ -112,8 +119,14 @@ pub fn q21a(db: &ImdbData) -> Result<(), PolarsError> {
             if let (Some(info), Some(movie_id)) = (info, movie_id) {
                 if matches!(
                     info,
-                    "Sweden" | "Norway" | "Germany" | "Denmark" | "Swedish" | "Denish"
-                        | "Norwegian" | "German"
+                    "Sweden"
+                        | "Norway"
+                        | "Germany"
+                        | "Denmark"
+                        | "Swedish"
+                        | "Denish"
+                        | "Norwegian"
+                        | "German"
                 ) {
                     Some(movie_id)
                 } else {
@@ -163,7 +176,9 @@ pub fn q21a(db: &ImdbData) -> Result<(), PolarsError> {
                                     for link in links {
                                         for title in titles {
                                             for name in names {
-                                                if let Some((old_name, old_link, old_title)) = res.as_mut() {
+                                                if let Some((old_name, old_link, old_title)) =
+                                                    res.as_mut()
+                                                {
                                                     if name < old_name {
                                                         *old_name = name;
                                                     }
@@ -211,12 +226,10 @@ pub fn q21a(db: &ImdbData) -> Result<(), PolarsError> {
     //     }
     // }
 
-
-    // println!("{:}", res);
     let duration = start.elapsed().as_secs_f32();
     println!("{duration:}");
 
-    Ok(())
+    Ok(res)
 }
 
 // -- JOB Query 21a
@@ -262,3 +275,24 @@ pub fn q21a(db: &ImdbData) -> Result<(), PolarsError> {
 //   AND ml.movie_id = mi.movie_id
 //   AND mk.movie_id = mi.movie_id
 //   AND mc.movie_id = mi.movie_id;
+
+#[cfg(test)]
+mod test_21a {
+    use super::*;
+    use crate::data::ImdbData;
+
+    #[test]
+    fn test_q21a() -> Result<(), PolarsError> {
+        let db = ImdbData::new();
+        let res = q21a(&db)?;
+
+        let expected = Some((
+            "Det Danske Filminstitut",
+            "followed by",
+            "Der Serienkiller - Klinge des Todes",
+        ));
+
+        assert_eq!(res, expected);
+        Ok(())
+    }
+}

@@ -3,7 +3,7 @@ use ahash::{HashMap, HashSet};
 use polars::prelude::*;
 use std::time::Instant;
 
-pub fn q17a(db: &ImdbData) -> Result<Option<(&str)>, PolarsError> {
+pub fn q17a(db: &ImdbData) -> Result<Option<&str>, PolarsError> {
     let ci = &db.ci;
     let k = &db.k;
     let mk = &db.mk;

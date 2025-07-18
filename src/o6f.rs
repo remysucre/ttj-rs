@@ -3,7 +3,7 @@ use polars::prelude::*;
 use std::time::Instant;
 use crate::data::ImdbData;
 
-pub fn q6f(db: &ImdbData) -> Result<(), PolarsError> {
+pub fn q6f(db: &ImdbData) -> Result<Option<(&str, &str, &str)>, PolarsError> {
     let ci = &db.ci;
     let k = &db.k;
     let mk = &db.mk;
@@ -124,12 +124,11 @@ pub fn q6f(db: &ImdbData) -> Result<(), PolarsError> {
         }
     }
 
-    // println!("{:}", res);
 
     let duration = start.elapsed().as_secs_f32();
     println!("{duration:}");
 
-    Ok(())
+    Ok(res)
 }
 
 // -- JOB Query 6f
@@ -147,3 +146,21 @@ pub fn q6f(db: &ImdbData) -> Result<(), PolarsError> {
 // AND t.id = ci.movie_id
 // AND ci.movie_id = mk.movie_id
 // AND n.id = ci.person_id;
+
+#[cfg(test)]
+mod test_q6f {
+    use super::*;
+    use crate::data::ImdbData;
+
+    #[test]
+    fn test_q6f() -> Result<(), PolarsError> {
+        let db = ImdbData::new();
+        let res = q6f(&db)?;
+
+        let expected =Some(("\"Steff\", Stefanie Oxmann Mcgaha", "based-on-comic", "& Teller 2"));
+
+        assert_eq!(res, expected);
+        Ok(())
+    }
+}
+

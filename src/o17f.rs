@@ -3,7 +3,7 @@ use polars::prelude::*;
 use std::time::Instant;
 use crate::data::ImdbData;
 
-pub fn q17f(db: &ImdbData) -> Result<Option<(&str)>, PolarsError> {
+pub fn q17f(db: &ImdbData) -> Result<Option<&str>, PolarsError> {
     let ci = &db.ci;
     let k = &db.k;
     let mk = &db.mk;

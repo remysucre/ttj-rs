@@ -3,7 +3,7 @@ use polars::prelude::*;
 use std::time::Instant;
 use crate::data::ImdbData;
 
-pub fn q25c(db: &ImdbData) -> Result<(), PolarsError> {
+pub fn q25c(db: &ImdbData) -> Result<Option<(&str, &str, &str, &str)>, PolarsError> {
 
     let ci = &db.ci;
     let it = &db.it;
@@ -208,11 +208,10 @@ pub fn q25c(db: &ImdbData) -> Result<(), PolarsError> {
         }
     }
 
-    // println!("{:}", res);
     let duration = start.elapsed().as_secs_f32();
     println!("{duration:}");
 
-    Ok(())
+    Ok(res)
 }
 
 // -- JOB Query 25c
@@ -249,3 +248,20 @@ pub fn q25c(db: &ImdbData) -> Result<(), PolarsError> {
 // AND it1.id = mi.info_type_id
 // AND it2.id = mi_idx.info_type_id
 // AND k.id = mk.keyword_id;
+
+#[cfg(test)]
+mod test_q25c {
+    use super::*;
+    use crate::data::ImdbData;
+
+    #[test]
+    fn test_q25c() -> Result<(), PolarsError> {
+        let db = ImdbData::new();
+        let res = q25c(&db)?;
+
+        let expected = Some(("Aakeson, Kim Fupz", "$", "Action", "10"));
+
+        assert_eq!(res, expected);
+        Ok(())
+    }
+}

@@ -3,7 +3,7 @@ use ahash::{HashMap, HashSet};
 use polars::prelude::*;
 use std::time::Instant;
 
-pub fn q23a(db: &ImdbData) -> Result<(), PolarsError> {
+pub fn q23a(db: &ImdbData) -> Result<Option<(&str, &str)>, PolarsError> {
     let cc = &db.cc;
     let cct1 = &db.cct;
     let cn = &db.cn;
@@ -413,11 +413,10 @@ pub fn q23a(db: &ImdbData) -> Result<(), PolarsError> {
     // //     }
     // // }
 
-    // println!("{:}", res);
     let duration = start.elapsed().as_secs_f32();
     println!("{duration:}");
 
-    Ok(())
+    Ok(res)
 }
 
 // -- JOB Query 23a
@@ -459,3 +458,20 @@ pub fn q23a(db: &ImdbData) -> Result<(), PolarsError> {
 //   AND cn.id = mc.company_id
 //   AND ct.id = mc.company_type_id
 //   AND cct1.id = cc.status_id;
+
+#[cfg(test)]
+mod test_q23a {
+    use super::*;
+    use crate::data::ImdbData;
+
+    #[test]
+    fn test_q23a() -> Result<(), PolarsError> {
+        let db = ImdbData::new();
+        let res = q23a(&db)?;
+
+        let expected = Some(("movie", "The Analysts"));
+
+        assert_eq!(res, expected);
+        Ok(())
+    }
+}

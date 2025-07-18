@@ -3,7 +3,7 @@ use ahash::{HashMap, HashSet};
 use polars::prelude::*;
 use std::time::Instant;
 
-pub fn q29a(db: &ImdbData) -> Result<(), PolarsError> {
+pub fn q29a(db: &ImdbData) -> Result<Option<(&str, &str, &str)>, PolarsError> {
     let an = &db.an;
     let cc = &db.cc;
     let cct1 = &db.cct;
@@ -351,11 +351,10 @@ pub fn q29a(db: &ImdbData) -> Result<(), PolarsError> {
         }
     }
 
-    // println!("{:}", res);
     let duration = start.elapsed().as_secs_f32();
     println!("{duration:}");
 
-    Ok(())
+    Ok(res)
 }
 
 // -- JOB Query 29a
@@ -425,3 +424,21 @@ pub fn q29a(db: &ImdbData) -> Result<(), PolarsError> {
 //   AND k.id = mk.keyword_id
 //   AND cct1.id = cc.subject_id
 //   AND cct2.id = cc.status_id;
+
+
+#[cfg(test)]
+mod test_q29a {
+    use super::*;
+    use crate::data::ImdbData;
+
+    #[test]
+    fn test_q29a() -> Result<(), PolarsError> {
+        let db = ImdbData::new();
+        let res = q29a(&db)?;
+
+        let expected = Some(("Andrews, Julie", "Queen", "Shrek 2"));
+
+        assert_eq!(res, expected);
+        Ok(())
+    }
+}

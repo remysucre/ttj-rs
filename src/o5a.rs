@@ -3,7 +3,7 @@ use ahash::HashSet;
 use polars::prelude::*;
 use std::time::Instant;
 
-pub fn q5a(db: &ImdbData) -> Result<(), PolarsError> {
+pub fn q5a(db: &ImdbData) -> Result<Option<&str>, PolarsError> {
     let ct = &db.ct;
     // let it = &db.it;
     let mc = &db.mc;
@@ -107,9 +107,8 @@ pub fn q5a(db: &ImdbData) -> Result<(), PolarsError> {
     let duration = start.elapsed().as_secs_f32();
     println!("{duration:}");
 
-    // println!("{:}", res);
 
-    Ok(())
+    Ok(res)
 }
 
 // SELECT MIN(t.title) AS typical_european_movie
@@ -135,3 +134,20 @@ pub fn q5a(db: &ImdbData) -> Result<(), PolarsError> {
 //   AND mc.movie_id = mi.movie_id
 //   AND ct.id = mc.company_type_id
 //   AND it.id = mi.info_type_id;
+
+#[cfg(test)]
+mod test_q5a {
+    use super::*;
+    use crate::data::ImdbData;
+
+    #[test]
+    fn test_q5a() -> Result<(), PolarsError> {
+        let db = ImdbData::new();
+        let res = q5a(&db)?;
+
+        let expected = None;
+
+        assert_eq!(res, expected);
+        Ok(())
+    }
+}

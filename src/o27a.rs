@@ -3,7 +3,7 @@ use ahash::{HashMap, HashSet};
 use polars::prelude::*;
 use std::time::Instant;
 
-pub fn q27a(db: &ImdbData) -> Result<(), PolarsError> {
+pub fn q27a(db: &ImdbData) -> Result<Option<(&str, &str, &str)>, PolarsError> {
     let cc = &db.cc;
     let cct1 = &db.cct;
     let cct2 = &db.cct;
@@ -255,11 +255,10 @@ pub fn q27a(db: &ImdbData) -> Result<(), PolarsError> {
         }
     }
 
-    // println!("{:}", res);
     let duration = start.elapsed().as_secs_f32();
     println!("{duration:}");
 
-    Ok(())
+    Ok(res)
 }
 
 // -- JOB Query 27a
@@ -314,3 +313,20 @@ pub fn q27a(db: &ImdbData) -> Result<(), PolarsError> {
 //   AND mk.movie_id = cc.movie_id
 //   AND mc.movie_id = cc.movie_id
 //   AND mi.movie_id = cc.movie_id;
+
+#[cfg(test)]
+mod test_q27a {
+    use super::*;
+    use crate::data::ImdbData;
+
+    #[test]
+    fn test_q27a() -> Result<(), PolarsError> {
+        let db = ImdbData::new();
+        let res = q27a(&db)?;
+
+        let expected = Some(("Det Danske Filminstitut", "followed by", "Spår i mörker"));
+
+        assert_eq!(res, expected);
+        Ok(())
+    }
+}
