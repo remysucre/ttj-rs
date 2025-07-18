@@ -192,7 +192,7 @@ pub fn q19d(db: &ImdbData) -> Result<(), PolarsError> {
         }
     }
 
-    dbg!(start.elapsed().as_secs_f32());
+    println!("{:}", start.elapsed().as_secs_f32());
 
     Ok(())
 }

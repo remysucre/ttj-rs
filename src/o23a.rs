@@ -413,9 +413,9 @@ pub fn q23a(db: &ImdbData) -> Result<(), PolarsError> {
     // //     }
     // // }
 
-    // dbg!(res);
+    // println!("{:}", res);
     let duration = start.elapsed().as_secs_f32();
-    dbg!(duration);
+    println!("{:}", duration);
 
     Ok(())
 }

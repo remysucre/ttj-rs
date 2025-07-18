@@ -323,7 +323,7 @@ pub fn q33b(db: &ImdbData) -> Result<Option<(&str, &str, &str, &str, &str, &str)
         }
     }
 
-    dbg!(start.elapsed().as_secs_f32());
+    println!("{:}", start.elapsed().as_secs_f32());
 
     Ok(res)
 }
