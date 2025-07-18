@@ -1,18 +1,36 @@
+   Compiling lfj v0.1.0 (/home/zeyuanhu/projects/remy-ttj-rs)
+    Finished `release` profile [optimized] target(s) in 4m 39s
+     Running `target/release/lfj`
 [src/o1a.rs:113:5] res = Some(
     (
         "A Clockwork Orange",
         1934,
     ),
 )
-[src/o1a.rs:116:5] duration = 140.447328ms
-[src/o3a.rs:104:5] "total elapsed" = "total elapsed"
-[src/o3a.rs:105:5] duration = 180.715819ms
-[src/o3a.rs:107:5] res = Some(
-    "2 Days in New York",
-)
-[src/o5a.rs:105:5] "total elapsed" = "total elapsed"
-[src/o5a.rs:106:5] duration = 200.937008ms
-[src/o5a.rs:108:5] res = None
+[src/o1a.rs:116:5] duration = 138.90702ms
+[src/o1b.rs:136:5] duration = 100.815586ms
+[src/o1c.rs:138:5] duration = 171.310479ms
+[src/o1d.rs:128:5] duration = 99.153267ms
+[src/o2a.rs:111:5] start.elapsed() = 52.121888ms
+[src/o2b.rs:111:5] start.elapsed() = 49.711682ms
+[src/o2c.rs:111:5] start.elapsed() = 44.408555ms
+[src/o2d.rs:111:5] start.elapsed() = 73.741663ms
+[src/o3a.rs:103:5] duration = 502.33002ms
+[src/o3b.rs:97:5] duration = 211.73442ms
+[src/o3c.rs:109:5] duration = 233.163986ms
+[src/o4a.rs:121:5] duration = 91.189035ms
+[src/o4b.rs:121:5] duration = 83.85082ms
+[src/o4c.rs:121:5] duration = 93.323032ms
+[src/o5a.rs:108:5] "total elapsed" = "total elapsed"
+[src/o5a.rs:109:5] duration = 245.135942ms
+[src/o5a.rs:111:5] res = None
+[src/o5b.rs:98:5] start.elapsed() = 250.315859ms
+[src/o5c.rs:109:5] start.elapsed() = 269.367222ms
+[src/o6a.rs:125:5] start.elapsed() = 480.040576ms
+[src/o6b.rs:136:5] start.elapsed() = 488.851582ms
+[src/o6c.rs:125:5] start.elapsed() = 446.244455ms
+[src/o6d.rs:135:5] start.elapsed() = 566.497021ms
+[src/o6e.rs:125:5] start.elapsed() = 481.244139ms
 [src/o6f.rs:127:5] res = Some(
     (
         "\"Steff\", Stefanie Oxmann Mcgaha",
@@ -21,25 +39,27 @@
     ),
 )
 [src/o6f.rs:130:5] "total elapsed" = "total elapsed"
-[src/o6f.rs:131:5] duration = 606.961267ms
+[src/o6f.rs:131:5] duration = 535.174683ms
+[src/o7a.rs:188:5] start.elapsed() = 905.791938ms
+[src/o7b.rs:185:5] start.elapsed() = 394.324877ms
 [src/o7c.rs:40:5] "built lt_s" = "built lt_s"
-[src/o7c.rs:41:5] start.elapsed() = 27.32µs
+[src/o7c.rs:41:5] start.elapsed() = 25.11µs
 [src/o7c.rs:61:5] "built it_s" = "built it_s"
-[src/o7c.rs:62:5] start.elapsed() = 49.61µs
+[src/o7c.rs:62:5] start.elapsed() = 68.41µs
 [src/o7c.rs:82:5] "built ml_s" = "built ml_s"
-[src/o7c.rs:83:5] start.elapsed() = 523.644174ms
+[src/o7c.rs:83:5] start.elapsed() = 570.297µs
 [src/o7c.rs:107:5] "built pi_m" = "built pi_m"
 [src/o7c.rs:108:5] pi_m.len() = 82301
-[src/o7c.rs:109:5] start.elapsed() = 576.416413ms
+[src/o7c.rs:109:5] start.elapsed() = 71.227008ms
 [src/o7c.rs:124:5] "built t_s" = "built t_s"
 [src/o7c.rs:125:5] t_s.len() = 8007
-[src/o7c.rs:126:5] start.elapsed() = 601.925543ms
+[src/o7c.rs:126:5] start.elapsed() = 95.460838ms
 [src/o7c.rs:152:5] "built n_m" = "built n_m"
 [src/o7c.rs:153:5] n_m.len() = 12733
-[src/o7c.rs:154:5] start.elapsed() = 697.739611ms
+[src/o7c.rs:154:5] start.elapsed() = 230.697241ms
 [src/o7c.rs:169:5] "built an_s" = "built an_s"
 [src/o7c.rs:170:5] an_s.len() = 6485
-[src/o7c.rs:171:5] start.elapsed() = 710.588576ms
+[src/o7c.rs:171:5] start.elapsed() = 244.066507ms
 [src/o7c.rs:206:5] res = Some(
     (
         "50 Cent",
@@ -47,11 +67,13 @@
     ),
 )
 [src/o7c.rs:209:5] "total elapsed" = "total elapsed"
-[src/o7c.rs:210:5] duration = 993.873454ms
-Some(("\"A.J.\"", "#1 Cheerleader Camp"))
-[src/o8c.rs:179:5] duration = 384.241779ms
+[src/o7c.rs:210:5] duration = 506.505141ms
+[src/o8a.rs:163:5] start.elapsed() = 844.361517ms
+[src/o8b.rs:166:5] start.elapsed() = 903.726679ms
+[src/o8c.rs:176:5] start.elapsed() = 375.376733ms
+[src/o8d.rs:132:5] start.elapsed() = 381.985141ms
 [src/o9a.rs:186:5] "total elapsed" = "total elapsed"
-[src/o9a.rs:187:5] duration = 956.537622ms
+[src/o9a.rs:187:5] duration = 1.030749168s
 [src/o9a.rs:189:5] res = Some(
     (
         "AJ",
@@ -59,84 +81,18 @@ Some(("\"A.J.\"", "#1 Cheerleader Camp"))
         "Blue Harvest",
     ),
 )
-[src/o10a.rs:148:5] res = Some(
-    (
-        "Actor",
-        "12 Rounds",
-    ),
-)
-[src/o10a.rs:149:5] "total elapsed" = "total elapsed"
-[src/o10a.rs:150:5] duration = 625.212889ms
-[src/o10c.rs:132:5] res = Some(
-    (
-        "Himself",
-        "Evil Eyes: Behind the Scenes",
-    ),
-)
-[src/o10c.rs:135:5] "total elapsed" = "total elapsed"
-[src/o10c.rs:136:5] duration = 665.591279ms
-[src/o11a.rs:35:5] "cn_m len" = "cn_m len"
-[src/o11a.rs:36:5] cn_m.len() = 48302
-[src/o11a.rs:56:5] "ct_s len" = "ct_s len"
-[src/o11a.rs:57:5] ct_s.len() = 1
-[src/o11a.rs:185:5] res = Some(
-    (
-        "Churchill Films",
-        "Batman Beyond",
-        "followed by",
-    ),
-)
-[src/o11a.rs:188:5] "total elapsed" = "total elapsed"
-[src/o11a.rs:189:5] duration = 501.048081ms
-[src/o13a.rs:199:5] "total elapsed" = "total elapsed"
-[src/o13a.rs:200:5] duration = 751.876039ms
-[src/o13a.rs:202:5] res = Some(
-    (
-        "&Me",
-        "1.0",
-        "Afghanistan:24 June 2012",
-    ),
-)
-[src/o15a.rs:167:5] "total elapsed" = "total elapsed"
-[src/o15a.rs:168:5] duration = 354.392228ms
-[src/o15a.rs:170:5] res = Some(
-    (
-        "Battlestar Galactica: The Resistance",
-        "USA:1 June 2007",
-    ),
-)
-[src/o10a.rs:148:5] res = Some(
-    (
-        "Actor",
-        "12 Rounds",
-    ),
-)
-[src/o10a.rs:149:5] "total elapsed" = "total elapsed"
-[src/o10a.rs:150:5] duration = 625.310477ms
+[src/o9b.rs:193:5] start.elapsed() = 906.20074ms
+[src/o9c.rs:195:5] start.elapsed() = 856.04773ms
+[src/o9d.rs:195:5] start.elapsed() = 987.721371ms
+[src/o10a.rs:147:5] start.elapsed() = 738.565205ms
 [src/o10b.rs:148:5] res = None
 [src/o10b.rs:149:5] "total elapsed: {:?}" = "total elapsed: {:?}"
-[src/o10b.rs:149:5] duration = 592.350973ms
-[src/o10c.rs:132:5] res = Some(
-    (
-        "Himself",
-        "Evil Eyes: Behind the Scenes",
-    ),
-)
-[src/o10c.rs:135:5] "total elapsed" = "total elapsed"
-[src/o10c.rs:136:5] duration = 662.591242ms
-[src/o11a.rs:35:5] "cn_m len" = "cn_m len"
-[src/o11a.rs:36:5] cn_m.len() = 48302
-[src/o11a.rs:56:5] "ct_s len" = "ct_s len"
-[src/o11a.rs:57:5] ct_s.len() = 1
-[src/o11a.rs:185:5] res = Some(
-    (
-        "Churchill Films",
-        "Batman Beyond",
-        "followed by",
-    ),
-)
-[src/o11a.rs:188:5] "total elapsed" = "total elapsed"
-[src/o11a.rs:189:5] duration = 490.176331ms
+[src/o10b.rs:149:5] duration = 726.405201ms
+[src/o10c.rs:136:5] start.elapsed() = 803.146903ms
+[src/o11a.rs:182:5] start.elapsed() = 497.746429ms
+[src/o11b.rs:180:5] start.elapsed() = 140.777617ms
+[src/o11c.rs:163:5] start.elapsed() = 133.5804ms
+[src/o11d.rs:160:5] start.elapsed() = 141.886129ms
 [src/o12a.rs:185:5] res = Some(
     (
         "3:20",
@@ -145,9 +101,11 @@ Some(("\"A.J.\"", "#1 Cheerleader Camp"))
     ),
 )
 [src/o12a.rs:186:5] "total elapsed" = "total elapsed"
-[src/o12a.rs:187:5] duration = 327.082881ms
+[src/o12a.rs:187:5] duration = 363.125935ms
+[src/o12b.rs:173:5] start.elapsed() = 315.643719ms
+[src/o12c.rs:180:5] start.elapsed() = 457.060232ms
 [src/o13a.rs:199:5] "total elapsed" = "total elapsed"
-[src/o13a.rs:200:5] duration = 775.387494ms
+[src/o13a.rs:200:5] duration = 807.928211ms
 [src/o13a.rs:202:5] res = Some(
     (
         "&Me",
@@ -155,33 +113,45 @@ Some(("\"A.J.\"", "#1 Cheerleader Camp"))
         "Afghanistan:24 June 2012",
     ),
 )
-[src/o14a.rs:202:5] "total elapsed" = "total elapsed"
-[src/o14a.rs:203:5] duration = 245.849055ms
-[src/o16b.rs:140:5] res = Some(
-    (
-        "!!!, Toy",
-        "& Teller",
-    ),
-)
-[src/o16b.rs:142:5] duration = 618.639806ms
-[src/o17a.rs:136:5] res = Some(
+[src/o13b.rs:202:5] start.elapsed() = 455.63246ms
+[src/o13c.rs:202:5] start.elapsed() = 363.420643ms
+[src/o13d.rs:197:5] start.elapsed() = 448.698943ms
+[src/o14a.rs:198:5] "total elapsed" = "total elapsed"
+[src/o14a.rs:199:5] duration = 284.540822ms
+[src/o14b.rs:193:5] start.elapsed() = 303.096279ms
+[src/o14c.rs:189:5] start.elapsed() = 398.345305ms
+[src/o15a.rs:158:5] start.elapsed() = 499.693935ms
+[src/o15b.rs:159:5] start.elapsed() = 568.491517ms
+[src/o15c.rs:170:5] start.elapsed() = 510.805976ms
+[src/o15d.rs:168:5] start.elapsed() = 367.170948ms
+[src/o16a.rs:123:5] start.elapsed() = 365.927946ms
+[src/o16b.rs:141:5] start.elapsed() = 588.308724ms
+[src/o16c.rs:139:5] start.elapsed() = 641.748012ms
+[src/o16d.rs:142:5] start.elapsed() = 734.507775ms
+[src/o17a.rs:137:5] res = Some(
     "B, Khaz",
 )
-Elapsed time: 477.158786ms
+Elapsed time: 471.548309ms
+[src/o17b.rs:138:5] start.elapsed() = 429.56899ms
+[src/o17c.rs:129:5] start.elapsed() = 306.575565ms
+[src/o17d.rs:121:5] start.elapsed() = 572.247024ms
+[src/o17e.rs:135:5] start.elapsed() = 1.321247827s
 [src/o17f.rs:90:5] res = Some(
     "'El Galgo PornoStar', Blanquito",
 )
-Elapsed time: 488.728732ms
-[src/o18c.rs:157:5] res = Some(
-    (
-        "#PostModem",
-        "Action",
-        "10",
-    ),
-)
-[src/o18c.rs:159:5] duration = 833.741689ms
+Elapsed time: 469.927028ms
+[src/o18a.rs:147:5] start.elapsed() = 1.002518937s
+[src/o18b.rs:157:5] start.elapsed() = 1.113865224s
+[src/o18c.rs:156:5] start.elapsed() = 993.8221ms
+Some(("Angeline, Moriah", "Blue Harvest"))
+[src/o19a.rs:202:5] duration = 1.46306396s
+[src/o19b.rs:200:5] start.elapsed() = 1.405892776s
+[src/o19c.rs:200:5] start.elapsed() = 1.463170898s
 Some(("Aaron, Caroline", "$9.99"))
-[src/o19d.rs:197:5] duration = 1.106674213s
+[src/o19d.rs:197:5] duration = 1.21335714s
+[src/o20a.rs:231:5] duration = 617.321759ms
+[src/o20b.rs:232:5] duration = 745.80121ms
+[src/o20c.rs:230:5] duration = 622.405116ms
 [src/o21a.rs:215:5] res = Some(
     (
         "Det Danske Filminstitut",
@@ -189,17 +159,26 @@ Some(("Aaron, Caroline", "$9.99"))
         "Der Serienkiller - Klinge des Todes",
     ),
 )
-[src/o21a.rs:217:5] duration = 227.149313ms
-[src/o23a.rs:392:5] res = Some(
+[src/o21a.rs:217:5] duration = 782.909957ms
+[src/o21b.rs:193:5] start.elapsed() = 280.834093ms
+[src/o21c.rs:205:5] start.elapsed() = 317.929101ms
+[src/o22a.rs:257:5] duration = 433.578191ms
+[src/o22b.rs:245:5] start.elapsed() = 413.404156ms
+[src/o22c.rs:256:5] start.elapsed() = 477.646207ms
+[src/o22d.rs:253:5] start.elapsed() = 479.630874ms
+[src/o23a.rs:416:5] res = Some(
     (
         "movie",
         "The Analysts",
     ),
 )
-[src/o23a.rs:394:5] duration = 317.164086ms
-[src/o20a.rs:231:5] duration = 616.712591ms
-[src/o20a.rs:231:5] duration = 614.969594ms
-[src/o24a.rs:290:5] duration = 1.084962074s
+[src/o23a.rs:418:5] duration = 436.293335ms
+[src/o23b.rs:226:5] start.elapsed() = 466.736275ms
+[src/o23c.rs:210:5] start.elapsed() = 500.598423ms
+[src/o24a.rs:284:5] duration = 1.659669987s
+[src/o24b.rs:275:5] start.elapsed() = 1.648676362s
+[src/o25a.rs:201:5] start.elapsed() = 1.198853763s
+[src/o25b.rs:206:5] start.elapsed() = 1.534718079s
 [src/o25c.rs:211:5] res = Some(
     (
         "Aakeson, Kim Fupz",
@@ -208,16 +187,10 @@ Some(("Aaron, Caroline", "$9.99"))
         "10",
     ),
 )
-[src/o25c.rs:213:5] duration = 1.046998533s
-[src/o25a.rs:203:5] res = Some(
-    (
-        "Abdallah, Damon",
-        "-- And Now the Screaming Starts!",
-        "Horror",
-        "10",
-    ),
-)
-[src/o25a.rs:204:5] duration = 1.020297572s
+[src/o25c.rs:213:5] duration = 1.244909723s
+[src/o26a.rs:284:5] start.elapsed() = 1.005234306s
+[src/o26b.rs:255:5] duration = 635.54246ms
+[src/o26c.rs:263:5] duration = 668.638893ms
 [src/o27a.rs:259:5] res = Some(
     (
         "Det Danske Filminstitut",
@@ -225,7 +198,12 @@ Some(("Aaron, Caroline", "$9.99"))
         "Spår i mörker",
     ),
 )
-[src/o27a.rs:261:5] duration = 535.542553ms
+[src/o27a.rs:261:5] duration = 285.246342ms
+[src/o27b.rs:258:5] start.elapsed() = 299.774311ms
+[src/o27c.rs:270:5] start.elapsed() = 363.495884ms
+[src/o28a.rs:320:5] duration = 383.28673ms
+[src/o28b.rs:290:5] start.elapsed() = 359.995116ms
+[src/o28c.rs:297:5] start.elapsed() = 381.80938ms
 [src/o29a.rs:354:5] res = Some(
     (
         "Andrews, Julie",
@@ -233,16 +211,11 @@ Some(("Aaron, Caroline", "$9.99"))
         "Shrek 2",
     ),
 )
-[src/o29a.rs:356:5] duration = 1.036118433s
-[src/o25c.rs:211:5] res = Some(
-    (
-        "Aakeson, Kim Fupz",
-        "$",
-        "Action",
-        "10",
-    ),
-)
-[src/o25c.rs:213:5] duration = 1.051723777s
+[src/o29a.rs:356:5] duration = 1.226295056s
+[src/o29b.rs:347:5] start.elapsed() = 1.217329931s
+[src/o29c.rs:350:5] start.elapsed() = 1.299899374s
+[src/o30a.rs:286:5] elapsed.elapsed() = 1.222835304s
+[src/o30b.rs:287:5] elapsed.elapsed() = 1.365620483s
 [src/o30c.rs:282:5] res = Some(
     (
         "Abernathy, Lewis",
@@ -252,7 +225,7 @@ Some(("Aaron, Caroline", "$9.99"))
     ),
 )
 [src/o30c.rs:283:5] "total elapsed" = "total elapsed"
-[src/o30c.rs:284:5] elapsed.elapsed() = 1.029308536s
+[src/o30c.rs:284:5] elapsed.elapsed() = 1.231939635s
 [src/o31a.rs:256:5] res = Some(
     (
         "Agnew, Jim",
@@ -262,7 +235,11 @@ Some(("Aaron, Caroline", "$9.99"))
     ),
 )
 [src/o31a.rs:257:5] "total elapsed" = "total elapsed"
-[src/o31a.rs:258:5] elapsed.elapsed() = 1.047129091s
+[src/o31a.rs:258:5] elapsed.elapsed() = 1.264915617s
+[src/o31b.rs:262:5] elapsed.elapsed() = 1.368962819s
+[src/o31c.rs:259:5] elapsed.elapsed() = 969.068842ms
+[src/o32a.rs:137:5] elapsed.elapsed() = 26.124637ms
+[src/o32b.rs:131:5] elapsed.elapsed() = 29.320966ms
 [src/o33a.rs:309:5] res = Some(
     (
         "495 Productions",
@@ -273,4 +250,6 @@ Some(("Aaron, Caroline", "$9.99"))
         "A Shot at Love with Tila Tequila",
     ),
 )
-[src/o33a.rs:310:5] start.elapsed() = 350.146128ms
+[src/o33a.rs:310:5] start.elapsed() = 360.155322ms
+[src/o33b.rs:326:5] start.elapsed() = 255.786424ms
+[src/o33c.rs:308:5] start.elapsed() = 294.567061ms

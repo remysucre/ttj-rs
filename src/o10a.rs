@@ -26,7 +26,7 @@ pub fn q10a(db: &ImdbData) -> Result<Option<(&str, &str)>, PolarsError> {
         .column("id")?
         .i32()?
         .into_iter()
-        .zip(chn.column("name")?.str()?.into_iter())
+        .zip(chn.column("name")?.str()?)
     {
         if let (Some(id), Some(name)) = (id, name) {
             chn_m.entry(id).or_default().push(name);
@@ -41,7 +41,7 @@ pub fn q10a(db: &ImdbData) -> Result<Option<(&str, &str)>, PolarsError> {
         .column("country_code")?
         .str()?
         .into_iter()
-        .zip(cn.column("id")?.i32()?.into_iter())
+        .zip(cn.column("id")?.i32()?)
         .filter_map(|(country_code, id)| {
             if let (Some(country_code), Some(id)) = (country_code, id) {
                 if country_code == "[ru]" {
@@ -59,8 +59,8 @@ pub fn q10a(db: &ImdbData) -> Result<Option<(&str, &str)>, PolarsError> {
         .column("company_type_id")?
         .i32()?
         .into_iter()
-        .zip(mc.column("company_id")?.i32()?.into_iter())
-        .zip(mc.column("movie_id")?.i32()?.into_iter())
+        .zip(mc.column("company_id")?.i32()?)
+        .zip(mc.column("movie_id")?.i32()?)
         .filter_map(|((company_type_id, company_id), movie_id)| {
             if let (Some(company_type_id), Some(company_id), Some(movie_id)) =
                 (company_type_id, company_id, movie_id)
@@ -80,7 +80,7 @@ pub fn q10a(db: &ImdbData) -> Result<Option<(&str, &str)>, PolarsError> {
         .column("id")?
         .i32()?
         .into_iter()
-        .zip(rt.column("role")?.str()?.into_iter())
+        .zip(rt.column("role")?.str()?)
         .filter_map(|(id, role)| {
             if let (Some(id), Some(role)) = (id, role) {
                 if role == "actor" { Some(id) } else { None }
@@ -96,8 +96,8 @@ pub fn q10a(db: &ImdbData) -> Result<Option<(&str, &str)>, PolarsError> {
         .column("id")?
         .i32()?
         .into_iter()
-        .zip(t.column("title")?.str()?.into_iter())
-        .zip(t.column("production_year")?.i32()?.into_iter())
+        .zip(t.column("title")?.str()?)
+        .zip(t.column("production_year")?.i32()?)
     {
         if let (Some(id), Some(title), Some(production_year)) = (id, title, production_year) {
             if mc_s.contains(&id) && production_year > 2005 {
@@ -112,9 +112,9 @@ pub fn q10a(db: &ImdbData) -> Result<Option<(&str, &str)>, PolarsError> {
         .column("movie_id")?
         .i32()?
         .into_iter()
-        .zip(ci.column("person_role_id")?.i32()?.into_iter())
-        .zip(ci.column("role_id")?.i32()?.into_iter())
-        .zip(ci.column("note")?.str()?.into_iter())
+        .zip(ci.column("person_role_id")?.i32()?)
+        .zip(ci.column("role_id")?.i32()?)
+        .zip(ci.column("note")?.str()?)
     {
         if let (Some(mid), Some(person_role_id), Some(role_id), Some(note)) =
             (mid, person_role_id, role_id, note)
@@ -144,10 +144,7 @@ pub fn q10a(db: &ImdbData) -> Result<Option<(&str, &str)>, PolarsError> {
         }
     }
 
-    let duration = start.elapsed();
-    dbg!(res);
-    dbg!("total elapsed");
-    dbg!(duration);
+    dbg!(start.elapsed());
 
     Ok(res)
 }

@@ -2,6 +2,7 @@
 name = "lfj"
 version = "0.1.0"
 edition = "2024"
+rust-version = "1.88.0"
 
 [dependencies]
 polars = { version = "0.48.1", features = ["lazy", "parquet", "regex", "strings", "is_in", "dtype-i128"] }
@@ -12,4 +13,5 @@ rustc-hash = "2.1.1"
 [profile.release]
 debug = false
 #codegen-units = 1
+# enable when benchmarking
 lto = "fat"
