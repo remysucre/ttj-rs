@@ -3,7 +3,7 @@ use polars::prelude::*;
 use std::time::Instant;
 use crate::data::ImdbData;
 
-pub fn q1a(db: &ImdbData) -> Result<(), PolarsError> {
+pub fn q1a(db: &ImdbData) -> Result<Option<(&str, i32)>, PolarsError> {
     let ct = &db.ct;
     let it = &db.it;
     let mc = &db.mc;
@@ -110,12 +110,10 @@ pub fn q1a(db: &ImdbData) -> Result<(), PolarsError> {
         }
     }
 
-    // println!("{:}", res);
-
     let duration = start.elapsed().as_secs_f32();
     println!("{duration:}");
 
-    Ok(())
+    Ok(res)
 }
 
 // 1a.sql
@@ -137,3 +135,23 @@ pub fn q1a(db: &ImdbData) -> Result<(), PolarsError> {
 //   AND t.id = mi_idx.movie_id
 //   AND mc.movie_id = mi_idx.movie_id
 //   AND it.id = mi_idx.info_type_id;
+
+#[cfg(test)]
+mod test_1a {
+    use super::*;
+    use crate::data::ImdbData;
+
+    #[test]
+    fn test_q1a() -> Result<(), PolarsError> {
+        let db = ImdbData::new();
+        let res = q1a(&db)?;
+
+        let expected = Some((
+            "A Clockwork Orange", 
+            1934
+        ));
+
+        assert_eq!(res, expected);
+        Ok(())
+    }
+}

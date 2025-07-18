@@ -3,7 +3,7 @@ use polars::prelude::*;
 use std::time::Instant;
 use crate::data::ImdbData;
 
-pub fn q17f(db: &ImdbData) -> Result<(), PolarsError> {
+pub fn q17f(db: &ImdbData) -> Result<Option<(&str)>, PolarsError> {
     let ci = &db.ci;
     let k = &db.k;
     let mk = &db.mk;
@@ -87,11 +87,9 @@ pub fn q17f(db: &ImdbData) -> Result<(), PolarsError> {
         }
     }
 
-    // println!("{:}", res);
-
     println!("{:}", start.elapsed().as_secs_f32());
 
-    Ok(())
+    Ok(res)
 }
 
 // -- JOB Query 17f
@@ -114,3 +112,19 @@ pub fn q17f(db: &ImdbData) -> Result<(), PolarsError> {
 // AND ci.movie_id = mc.movie_id
 // AND ci.movie_id = mk.movie_id
 // AND mc.movie_id = mk.movie_id;
+
+#[cfg(test)]
+mod test_17f {
+    use super::*;
+    use crate::data::ImdbData;
+
+    #[test]
+    fn test_q17f() -> Result<(), PolarsError> {
+        let db = ImdbData::new();
+        assert_eq!(
+            q17f(&db)?,
+            Some("'El Galgo PornoStar', Blanquito")
+        );
+        Ok(())
+    }
+}

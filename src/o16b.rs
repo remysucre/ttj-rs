@@ -3,7 +3,7 @@ use polars::prelude::*;
 use std::time::Instant;
 use crate::data::ImdbData;
 
-pub fn q16b(db: &ImdbData) -> Result<(), PolarsError> {
+pub fn q16b(db: &ImdbData) -> Result<Option<(&str, &str)>, PolarsError> {
     let an = &db.an;
     let ci = &db.ci;
     let cn = &db.cn;
@@ -107,7 +107,7 @@ pub fn q16b(db: &ImdbData) -> Result<(), PolarsError> {
         }
     }
 
-    let mut res = None;
+    let mut res: Option<(&str, &str)> = None;
 
     for (x, y) in ci
         .column("person_id")?
@@ -121,10 +121,10 @@ pub fn q16b(db: &ImdbData) -> Result<(), PolarsError> {
                     for name in names {
                         for title in ts {
                             if let Some((old_name, old_title)) = res.as_mut() {
-                                if name < *old_name {
+                                if name < old_name {
                                     *old_name = name;
                                 }
-                                if title < *old_title {
+                                if title < old_title {
                                     *old_title = title;
                                 }
                             } else {
@@ -137,10 +137,9 @@ pub fn q16b(db: &ImdbData) -> Result<(), PolarsError> {
         }
     }
 
-    // // println!("{:}", res);
     println!("{:}", start.elapsed().as_secs_f32());
 
-    Ok(())
+    Ok(res)
 }
 
 // 16b.sql
@@ -167,3 +166,19 @@ pub fn q16b(db: &ImdbData) -> Result<(), PolarsError> {
 //   AND ci.movie_id = mc.movie_id
 //   AND ci.movie_id = mk.movie_id
 //   AND mc.movie_id = mk.movie_id;
+
+#[cfg(test)]
+mod test_16b {
+    use super::*;
+    use crate::data::ImdbData;
+
+    #[test]
+    fn test_q16b() -> Result<(), PolarsError> {
+        let db = ImdbData::new();
+        assert_eq!(
+            q16b(&db)?,
+            Some(("!!!, Toy", "& Teller"))
+        );
+        Ok(())
+    }
+}

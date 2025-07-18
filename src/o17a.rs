@@ -3,7 +3,7 @@ use ahash::{HashMap, HashSet};
 use polars::prelude::*;
 use std::time::Instant;
 
-pub fn q17a(db: &ImdbData) -> Result<(), PolarsError> {
+pub fn q17a(db: &ImdbData) -> Result<Option<(&str)>, PolarsError> {
     let ci = &db.ci;
     let k = &db.k;
     let mk = &db.mk;
@@ -134,11 +134,9 @@ pub fn q17a(db: &ImdbData) -> Result<(), PolarsError> {
         }
     }
 
-    // println!("{:}", res);
-
     println!("{:}",  start.elapsed().as_secs_f32());
 
-    Ok(())
+    Ok(res)
 }
 
 // -- JOB Query 17a
@@ -163,3 +161,19 @@ pub fn q17a(db: &ImdbData) -> Result<(), PolarsError> {
 //   AND ci.movie_id = mc.movie_id
 //   AND ci.movie_id = mk.movie_id
 //   AND mc.movie_id = mk.movie_id;
+
+#[cfg(test)]
+mod test_17a {
+    use super::*;
+    use crate::data::ImdbData;
+
+    #[test]
+    fn test_q17a() -> Result<(), PolarsError> {
+        let db = ImdbData::new();
+        assert_eq!(
+            q17a(&db)?,
+            Some("B, Khaz")
+        );
+        Ok(())
+    }
+}

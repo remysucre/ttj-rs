@@ -3,7 +3,7 @@ use polars::prelude::*;
 use std::time::Instant;
 use crate::data::ImdbData;
 
-pub fn q13a(db: &ImdbData) -> Result<(), PolarsError> {
+pub fn q13a(db: &ImdbData) -> Result<Option<(&str, &str, &str)>, PolarsError> {
 
     let cn = &db.cn;
     let ct = &db.ct;
@@ -198,9 +198,7 @@ pub fn q13a(db: &ImdbData) -> Result<(), PolarsError> {
     let duration = start.elapsed().as_secs_f32();
     println!("{duration:}");
 
-    // println!("{:}", res);
-
-    Ok(())
+    Ok(res)
 }
 
 // SELECT MIN(mi.info) AS release_date,
@@ -231,3 +229,19 @@ pub fn q13a(db: &ImdbData) -> Result<(), PolarsError> {
 //   AND mi.movie_id = miidx.movie_id
 //   AND mi.movie_id = mc.movie_id
 //   AND miidx.movie_id = mc.movie_id;
+
+#[cfg(test)]
+mod test_13a {
+    use super::*;
+    use crate::data::ImdbData;
+
+    #[test]
+    fn test_q13a() -> Result<(), PolarsError> {
+        let db = ImdbData::new();
+        assert_eq!(
+            q13a(&db)?,
+            Some(("&Me", "1.0", "Afghanistan:24 June 2012"))
+        );
+        Ok(())
+    }
+}

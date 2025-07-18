@@ -1,10 +1,10 @@
+use crate::data::ImdbData;
 use ahash::HashMap;
 use ahash::HashSet;
 use polars::prelude::*;
 use std::time::Instant;
-use crate::data::ImdbData;
 
-pub fn q19d(db: &ImdbData) -> Result<(), PolarsError> {
+pub fn q19d(db: &ImdbData) -> Result<Option<(&str, &str)>, PolarsError> {
     let an = &db.an;
     let chn = &db.chn;
     let ci = &db.ci;
@@ -25,7 +25,8 @@ pub fn q19d(db: &ImdbData) -> Result<(), PolarsError> {
 
     let start = Instant::now();
 
-    let cn_s = cn.column("country_code")?
+    let cn_s = cn
+        .column("country_code")?
         .str()?
         .into_iter()
         .zip(cn.column("id")?.i32()?)
@@ -74,11 +75,7 @@ pub fn q19d(db: &ImdbData) -> Result<(), PolarsError> {
         .zip(rt.column("id")?.i32()?)
         .filter_map(|(role, id)| {
             if let (Some(role), Some(id)) = (role, id) {
-                if role == "actress" {
-                    Some(id)
-                } else {
-                    None
-                }
+                if role == "actress" { Some(id) } else { None }
             } else {
                 None
             }
@@ -147,7 +144,7 @@ pub fn q19d(db: &ImdbData) -> Result<(), PolarsError> {
         }
     }
 
-    let mut res = None;
+    let mut res: Option<(&str, &str)> = None;
 
     for ((((mid, pid), rid), prid), note) in ci
         .column("movie_id")?
@@ -167,33 +164,34 @@ pub fn q19d(db: &ImdbData) -> Result<(), PolarsError> {
                     | "(voice: Japanese version)"
                     | "(voice) (uncredited)"
                     | "(voice: English version)"
-            )
-                && rt_s.contains(&rid) && chn_s.contains(&prid) {
-                    if let Some(titles) = t_m.get(&mid) {
-                        if let Some(names) = n_m.get(&pid) {
-                            for title in titles {
-                                for name in names {
-                                    if let Some((old_name, old_title)) = res.as_mut() {
-                                        if name < *old_name {
-                                            *old_name = name;
-                                        }
-                                        if title < *old_title {
-                                            *old_title = title;
-                                        }
-                                    } else {
-                                        res = Some((name, title));
+            ) && rt_s.contains(&rid)
+                && chn_s.contains(&prid)
+            {
+                if let Some(titles) = t_m.get(&mid) {
+                    if let Some(names) = n_m.get(&pid) {
+                        for title in titles {
+                            for name in names {
+                                if let Some((old_name, old_title)) = res.as_mut() {
+                                    if name < old_name {
+                                        *old_name = name;
                                     }
+                                    if title < old_title {
+                                        *old_title = title;
+                                    }
+                                } else {
+                                    res = Some((name, title));
                                 }
                             }
                         }
                     }
                 }
+            }
         }
     }
 
     println!("{:}", start.elapsed().as_secs_f32());
 
-    Ok(())
+    Ok(res)
 }
 
 // 19d.sql
@@ -231,3 +229,16 @@ pub fn q19d(db: &ImdbData) -> Result<(), PolarsError> {
 //   AND n.id = an.person_id
 //   AND ci.person_id = an.person_id
 //   AND chn.id = ci.person_role_id;
+
+#[cfg(test)]
+mod test_19d {
+    use super::*;
+    use crate::data::ImdbData;
+
+    #[test]
+    fn test_q19d() -> Result<(), PolarsError> {
+        let db = ImdbData::new();
+        assert_eq!(q19d(&db)?, Some(("Aaron, Caroline", "$9.99")));
+        Ok(())
+    }
+}
