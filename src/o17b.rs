@@ -1,12 +1,11 @@
 use crate::data::ImdbData;
-use hashbrown::{HashMap, HashSet, DefaultHashBuilder};
 use bumpalo::Bump;
+use hashbrown::{DefaultHashBuilder, HashMap, HashSet};
 use polars::prelude::*;
 use std::time::Instant;
 
 pub fn q17b(db: &ImdbData) -> Result<Option<(&str, &str)>, PolarsError> {
-    
-    let bump = Bump::new();
+    let bump = Bump::with_capacity(9932543);
 
     let ci = &db.ci;
     let k = &db.k;
@@ -128,8 +127,6 @@ pub fn q17b(db: &ImdbData) -> Result<Option<(&str, &str)>, PolarsError> {
     }
 
     println!("{:}", start.elapsed().as_secs_f32());
-
-    dbg!(res);
 
     Ok(res)
 }
