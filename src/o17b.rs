@@ -1,17 +1,15 @@
 use crate::data::ImdbData;
-use bumpalo::Bump;
-use hashbrown::{DefaultHashBuilder, HashMap, HashSet};
 use polars::prelude::*;
 use std::time::Instant;
 
-pub fn q17b(db: &ImdbData) -> Result<Option<(&str, &str)>, PolarsError> {
-    let bump = Bump::with_capacity(9932543);
+use rustc_hash::{FxHashMap as HashMap, FxHashSet as HashSet};
 
+pub fn q17b(db: &ImdbData) -> Result<Option<(&str, &str)>, PolarsError> {
     let ci = &db.ci;
     let k = &db.k;
     let mk = &db.mk;
     let n = &db.n;
-    let cn = &db.cn;
+    // let cn = &db.cn;
     let mc = &db.mc;
     // let t = &db.t;
 
@@ -23,82 +21,77 @@ pub fn q17b(db: &ImdbData) -> Result<Option<(&str, &str)>, PolarsError> {
     //     .flatten()
     //     .collect();
 
+    // let cn_s: HashSet<i32> = cn
+    //     .column("id")?
+    //     .i32()?
+    //     .into_iter()
+    //     .flatten()
+    //     .collect();
+
     let start = Instant::now();
 
-    let mut k_s: HashSet<i32, DefaultHashBuilder, &Bump> = HashSet::new_in(&bump);
-
-    for (keyword, id) in k
+    let k_s: HashSet<i32> = k
         .column("keyword")?
         .str()?
         .into_iter()
         .zip(k.column("id")?.i32()?)
-    {
-        if let (Some(keyword), Some(id)) = (keyword, id) {
-            if keyword == "character-name-in-title" {
-                k_s.insert(id);
+        .filter_map(|(keyword, id)| {
+            if let (Some(keyword), Some(id)) = (keyword, id) {
+                if keyword == "character-name-in-title" {
+                    Some(id)
+                } else {
+                    None
+                }
+            } else {
+                None
             }
-        }
-    }
+        })
+        .collect();
 
-    let mut mk_s: HashSet<i32, DefaultHashBuilder, &Bump> = HashSet::new_in(&bump);
-
-    for (keyword_id, movie_id) in mk
+    let mk_s: HashSet<i32> = mk
         .column("keyword_id")?
         .i32()?
         .into_iter()
         .zip(mk.column("movie_id")?.i32()?)
-    {
-        if let (Some(keyword_id), Some(movie_id)) = (keyword_id, movie_id) {
-            if k_s.contains(&keyword_id) {
-                mk_s.insert(movie_id);
+        .filter_map(|(keyword_id, movie_id)| {
+            if let (Some(keyword_id), Some(movie_id)) = (keyword_id, movie_id) {
+                if k_s.contains(&keyword_id) {
+                    Some(movie_id)
+                } else {
+                    None
+                }
+            } else {
+                None
             }
-        }
-    }
+        })
+        .collect();
 
-    let mut cn_s: HashSet<i32, DefaultHashBuilder, &Bump> = HashSet::new_in(&bump);
-
-    for (id, country_code) in cn
-        .column("id")?
+    let mc_s: HashSet<i32> = mc
+        .column("movie_id")?
         .i32()?
         .into_iter()
-        .zip(cn.column("country_code")?.str()?)
-    {
-        if let (Some(id), Some(country_code)) = (id, country_code) {
-            if country_code == "[us]" {
-                cn_s.insert(id);
-            }
-        }
-    }
+        .filter_map(|movie_id| {
+            movie_id.filter(|&movie_id| mk_s.contains(&movie_id))
+        })
+        .collect();
 
-    let mut mc_s: HashSet<i32, DefaultHashBuilder, &Bump> = HashSet::new_in(&bump);
-
-    for (company_id, movie_id) in mc
-        .column("company_id")?
-        .i32()?
-        .into_iter()
-        .zip(mc.column("movie_id")?.i32()?)
-    {
-        if let (Some(company_id), Some(movie_id)) = (company_id, movie_id) {
-            if cn_s.contains(&company_id) {
-                mc_s.insert(movie_id);
-            }
-        }
-    }
-
-    let mut n_m: HashMap<i32, Vec<&str>, DefaultHashBuilder, &Bump> = HashMap::new_in(&bump);
-
-    for (id, name) in n
+    let n_m: HashMap<i32, &str> = n
         .column("id")?
         .i32()?
         .into_iter()
         .zip(n.column("name")?.str()?)
-    {
-        if let (Some(id), Some(name)) = (id, name) {
-            if name.starts_with('Z') {
-                n_m.entry(id).or_default().push(name);
+        .filter_map(|(id, name)| {
+            if let (Some(id), Some(name)) = (id, name) {
+                if name.starts_with('Z') {
+                    Some((id, name))
+                } else {
+                    None
+                }
+            } else {
+                None
             }
-        }
-    }
+        })
+        .collect();
 
     let mut res: Option<(&str, &str)> = None;
 
@@ -106,20 +99,18 @@ pub fn q17b(db: &ImdbData) -> Result<Option<(&str, &str)>, PolarsError> {
         .column("person_id")?
         .i32()?
         .into_iter()
-        .zip(ci.column("movie_id")?.i32()?.into_iter())
+        .zip(ci.column("movie_id")?.i32()?)
     {
         if let (Some(pid), Some(mid)) = (pid, mid) {
-            if mk_s.contains(&mid) && mc_s.contains(&mid) {
-                if let Some(names) = n_m.get(&pid) {
-                    for name in names {
-                        if let Some((old_name, old_name2)) = res.as_mut() {
-                            if name < old_name {
-                                *old_name = *name;
-                                *old_name2 = *name;
-                            }
-                        } else {
-                            res = Some((name, name));
+            if let Some(name) = n_m.get(&pid) {
+                if mc_s.contains(&mid) {
+                    if let Some((old_name, old_name2)) = res.as_mut() {
+                        if name < old_name {
+                            *old_name = *name;
+                            *old_name2 = *name;
                         }
+                    } else {
+                        res = Some((name, name));
                     }
                 }
             }
