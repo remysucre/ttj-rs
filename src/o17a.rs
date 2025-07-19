@@ -1,7 +1,9 @@
 use crate::data::ImdbData;
-use ahash::{HashMap, HashSet};
+// use ahash::{HashMap, HashSet};
 use polars::prelude::*;
 use std::time::Instant;
+
+use rustc_hash::{FxHashMap as HashMap, FxHashSet as HashSet};
 
 pub fn q17a(db: &ImdbData) -> Result<Option<&str>, PolarsError> {
     let ci = &db.ci;
@@ -83,7 +85,7 @@ pub fn q17a(db: &ImdbData) -> Result<Option<&str>, PolarsError> {
         .zip(mc.column("movie_id")?.i32()?)
         .filter_map(|(company_id, movie_id)| {
             if let (Some(company_id), Some(movie_id)) = (company_id, movie_id) {
-                if cn_s.contains(&company_id) {
+                if mk_s.contains(&movie_id) && cn_s.contains(&company_id) {
                     Some(movie_id)
                 } else {
                     None
@@ -94,20 +96,23 @@ pub fn q17a(db: &ImdbData) -> Result<Option<&str>, PolarsError> {
         })
         .collect();
 
-    let mut n_m: HashMap<i32, Vec<&str>> = HashMap::default();
-
-    for (id, name) in n
+    let n_m: HashMap<i32, &str> = n
         .column("id")?
         .i32()?
         .into_iter()
-        .zip(n.column("name")?.str()?.into_iter())
-    {
-        if let (Some(id), Some(name)) = (id, name) {
-            if name.starts_with('B') {
-                n_m.entry(id).or_default().push(name);
+        .zip(n.column("name")?.str()?)
+        .filter_map(|(id, name)| {
+            if let (Some(id), Some(name)) = (id, name) {
+                if name.starts_with('B') {
+                    Some((id, name))
+                } else {
+                    None
+                }
+            } else {
+                None
             }
-        }
-    }
+        })
+        .collect();
 
     let mut res: Option<&str> = None;
 
@@ -118,23 +123,21 @@ pub fn q17a(db: &ImdbData) -> Result<Option<&str>, PolarsError> {
         .zip(ci.column("movie_id")?.i32()?.into_iter())
     {
         if let (Some(pid), Some(mid)) = (pid, mid) {
-            if mk_s.contains(&mid) && mc_s.contains(&mid) {
-                if let Some(names) = n_m.get(&pid) {
-                    for name in names {
-                        if let Some(old_name) = res.as_mut() {
-                            if name < old_name {
-                                *old_name = name;
-                            }
-                        } else {
-                            res = Some(name);
+            if let Some(name) = n_m.get(&pid) {
+                if mc_s.contains(&mid) {
+                    if let Some(old_name) = res.as_mut() {
+                        if name < old_name {
+                            *old_name = name;
                         }
+                    } else {
+                        res = Some(name);
                     }
                 }
             }
         }
     }
 
-    println!("{:}",  start.elapsed().as_secs_f32());
+    println!("{:}", start.elapsed().as_secs_f32());
 
     Ok(res)
 }
@@ -170,10 +173,7 @@ mod test_17a {
     #[test]
     fn test_q17a() -> Result<(), PolarsError> {
         let db = ImdbData::new();
-        assert_eq!(
-            q17a(&db)?,
-            Some("B, Khaz")
-        );
+        assert_eq!(q17a(&db)?, Some("B, Khaz"));
         Ok(())
     }
 }
