@@ -17,4 +17,4 @@ bumpalo = { version = "3.19.0", features = ["allocator-api2"] }
 # debug = false
 # codegen-units = 1
 # enable when benchmarking
-#lto = "fat"
+lto = "fat"
