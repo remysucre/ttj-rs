@@ -15,14 +15,14 @@ pub fn q2d(db: &ImdbData) -> Result<Option<&str>, PolarsError> {
     let mk = &db.mk;
     let t = &db.t;
 
-    let t_m: HashMap<i32, Vec<&str>> = t
+    let t_m: HashMap<i32, &str> = t
         .column("id")?
         .i32()?
         .into_iter()
         .zip(t.column("title")?.str()?)
         .fold(HashMap::default(), |mut acc, (id, title)| {
             if let (Some(id), Some(title)) = (id, title) {
-                acc.entry(id).or_default().push(title);
+                acc.insert(id, title);
             }
             acc
         });
@@ -93,15 +93,13 @@ pub fn q2d(db: &ImdbData) -> Result<Option<&str>, PolarsError> {
     {
         if let (Some(movie_id), Some(company_id)) = (movie_id, company_id) {
             if cn_s.contains(&company_id) && mk_s.contains(&movie_id) {
-                if let Some(titles) = t_m.get(&movie_id) {
-                    for title in titles {
-                        if let Some(old_title) = res.as_mut() {
-                            if *title < *old_title {
-                                *old_title = title;
-                            }
-                        } else {
-                            res = Some(title);
+                if let Some(title) = t_m.get(&movie_id) {
+                    if let Some(old_title) = res.as_mut() {
+                        if *title < *old_title {
+                            *old_title = title;
                         }
+                    } else {
+                        res = Some(title);
                     }
                 }
             }

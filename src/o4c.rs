@@ -67,7 +67,7 @@ pub fn q4c(db: &ImdbData) -> Result<Option<(&str, &str)>, PolarsError> {
         })
         .collect();
 
-    let t_m: HashMap<i32, Vec<&str>> = t
+    let t_m: HashMap<i32, &str> = t
         .column("id")?
         .i32()?
         .into_iter()
@@ -85,7 +85,7 @@ pub fn q4c(db: &ImdbData) -> Result<Option<(&str, &str)>, PolarsError> {
             }
         })
         .fold(HashMap::default(), |mut acc, (id, title)| {
-            acc.entry(id).or_default().push(title);
+            acc.insert(id, title);
             acc
         });
 
@@ -99,20 +99,19 @@ pub fn q4c(db: &ImdbData) -> Result<Option<(&str, &str)>, PolarsError> {
         .zip(mi_idx.column("info_type_id")?.i32()?.into_iter())
     {
         if let (Some(movie_id), Some(info), Some(info_type_id)) = (movie_id, info, info_type_id) {
-            if it_s.contains(&info_type_id) && info > "2.0" {
-                if let Some(titles) = t_m.get(&movie_id) {
-                    for title in titles {
-                        if let Some((old_info, old_title)) = res.as_mut() {
-                            if info < *old_info {
-                                *old_info = info;
-                            }
-                            if title < old_title {
-                                *old_title = title;
-                            }
-                        } else {
-                            res = Some((info, title));
-                        }
+            if it_s.contains(&info_type_id)
+                && info > "2.0"
+                && let Some(title) = t_m.get(&movie_id)
+            {
+                if let Some((old_info, old_title)) = res.as_mut() {
+                    if info < *old_info {
+                        *old_info = info;
                     }
+                    if title < old_title {
+                        *old_title = title;
+                    }
+                } else {
+                    res = Some((info, title));
                 }
             }
         }
