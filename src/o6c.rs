@@ -15,53 +15,39 @@ pub fn q6c(db: &ImdbData) -> Result<Option<(&str, &str, &str)>, PolarsError> {
     let n_m: HashMap<i32, &str> = n
         .column("id")?
         .i32()?
-        .into_iter()
-        .zip(n.column("name")?.str()?)
+        .into_no_null_iter()
+        .zip(n.column("name")?.str()?.into_no_null_iter())
         .filter_map(|(id, name)| {
-            if let (Some(id), Some(name)) = (id, name) {
-                if name.contains("Downey") && name.contains("Robert") {
-                    Some((id, name))
-                } else {
-                    None
-                }
+            if name.contains("Downey") && name.contains("Robert") {
+                Some((id, name))
             } else {
                 None
             }
         })
-        .fold(HashMap::default(), |mut acc, (id, name)| {
-            acc.insert(id, name);
-            acc
-        });
+        .collect();
 
     let k_m: HashMap<i32, &str> = k
         .column("id")?
         .i32()?
-        .into_iter()
-        .zip(k.column("keyword")?.str()?)
+        .into_no_null_iter()
+        .zip(k.column("keyword")?.str()?.into_no_null_iter())
         .filter_map(|(id, keyword)| {
-            if let (Some(id), Some(keyword)) = (id, keyword) {
-                if keyword == "marvel-cinematic-universe" {
-                    Some((id, keyword))
-                } else {
-                    None
-                }
+            if keyword == "marvel-cinematic-universe" {
+                Some((id, keyword))
             } else {
                 None
             }
         })
-        .fold(HashMap::default(), |mut acc, (id, keyword)| {
-            acc.insert(id, keyword);
-            acc
-        });
+        .collect();
 
     let t_m: HashMap<i32, &str> = t
         .column("id")?
         .i32()?
-        .into_iter()
-        .zip(t.column("title")?.str()?.into_iter())
-        .zip(t.column("production_year")?.i32()?.into_iter())
+        .into_no_null_iter()
+        .zip(t.column("title")?.str()?.into_no_null_iter())
+        .zip(t.column("production_year")?.i32()?)
         .filter_map(|((id, title), production_year)| {
-            if let (Some(id), Some(title), Some(production_year)) = (id, title, production_year) {
+            if let Some(production_year) = production_year {
                 if production_year > 2014 {
                     Some((id, title))
                 } else {
@@ -71,23 +57,16 @@ pub fn q6c(db: &ImdbData) -> Result<Option<(&str, &str, &str)>, PolarsError> {
                 None
             }
         })
-        .fold(HashMap::default(), |mut acc, (id, title)| {
-            acc.insert(id, title);
-            acc
-        });
+        .collect();
 
     let mk_m: HashMap<i32, Vec<i32>> = mk
         .column("movie_id")?
         .i32()?
-        .into_iter()
-        .zip(mk.column("keyword_id")?.i32()?)
+        .into_no_null_iter()
+        .zip(mk.column("keyword_id")?.i32()?.into_no_null_iter())
         .filter_map(|(movie_id, keyword_id)| {
-            if let (Some(movie_id), Some(keyword_id)) = (movie_id, keyword_id) {
-                if k_m.contains_key(&keyword_id) && t_m.contains_key(&movie_id) {
-                    Some((movie_id, keyword_id))
-                } else {
-                    None
-                }
+            if k_m.contains_key(&keyword_id) && t_m.contains_key(&movie_id) {
+                Some((movie_id, keyword_id))
             } else {
                 None
             }
@@ -98,38 +77,65 @@ pub fn q6c(db: &ImdbData) -> Result<Option<(&str, &str, &str)>, PolarsError> {
         });
 
     let mut res: Option<(&str, &str, &str)> = None;
-
-    for (pid, mid) in ci
+    let valid_pairs: Vec<(i32, i32)> = ci
         .column("person_id")?
         .i32()?
-        .into_iter()
-        .zip(ci.column("movie_id")?.i32()?)
-    {
-        if let (Some(pid), Some(mid)) = (pid, mid) {
-            if let Some(name) = n_m.get(&pid)
-                && let Some(title) = t_m.get(&mid)
-                && let Some(kids) = mk_m.get(&mid)
-            {
-                for kid in kids {
-                    if let Some(keyword) = k_m.get(&kid) {
-                        if let Some((old_keyword, old_name, old_title)) = res.as_mut() {
-                            if name < old_name {
-                                *old_name = name;
-                            }
-                            if *keyword < *old_keyword {
-                                *old_keyword = keyword;
-                            }
-                            if title < old_title {
-                                *old_title = title;
-                            }
-                        } else {
-                            res = Some((keyword, name, title));
-                        }
-                    }
-                }
+        .into_no_null_iter()
+        .zip(ci.column("movie_id")?.i32()?.into_no_null_iter())
+        .collect();
+
+    for (pid, mid) in valid_pairs {
+        if let Some(name) = n_m.get(&pid)
+            && let Some(title) = t_m.get(&mid)
+            && let Some(kids) = mk_m.get(&mid)
+        {
+            let best_keyword = kids.iter().filter_map(|kid| k_m.get(kid)).min();
+            if let Some(keyword) = best_keyword {
+                res = match res {
+                    Some((old_keyword, old_name, old_title)) => Some((
+                        keyword.min(&old_keyword),
+                        name.min(&old_name),
+                        title.min(&old_title),
+                    )),
+                    None => Some((keyword, name, title)),
+                };
             }
         }
     }
+
+    // let mut res: Option<(&str, &str, &str)> = None;
+    //
+    // for (pid, mid) in ci
+    //     .column("person_id")?
+    //     .i32()?
+    //     .into_iter()
+    //     .zip(ci.column("movie_id")?.i32()?)
+    // {
+    //     if let (Some(pid), Some(mid)) = (pid, mid) {
+    //         if let Some(name) = n_m.get(&pid)
+    //             && let Some(title) = t_m.get(&mid)
+    //             && let Some(kids) = mk_m.get(&mid)
+    //         {
+    //             for kid in kids {
+    //                 if let Some(keyword) = k_m.get(&kid) {
+    //                     if let Some((old_keyword, old_name, old_title)) = res.as_mut() {
+    //                         if name < old_name {
+    //                             *old_name = name;
+    //                         }
+    //                         if *keyword < *old_keyword {
+    //                             *old_keyword = keyword;
+    //                         }
+    //                         if title < old_title {
+    //                             *old_title = title;
+    //                         }
+    //                     } else {
+    //                         res = Some((keyword, name, title));
+    //                     }
+    //                 }
+    //             }
+    //         }
+    //     }
+    // }
 
     println!("6c,{:}", start.elapsed().as_secs_f32());
 
