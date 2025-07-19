@@ -20,7 +20,7 @@ pub fn q8a(db: &ImdbData) -> Result<Option<(&str, &str)>, PolarsError> {
     let mc = &db.mc;
     let cn = &db.cn;
 
-    let t_m: HashMap<i32, Vec<&str>> = t
+    let t_m: HashMap<i32, &str> = t
         .column("id")?
         .i32()?
         .into_iter()
@@ -33,22 +33,26 @@ pub fn q8a(db: &ImdbData) -> Result<Option<(&str, &str)>, PolarsError> {
             }
         })
         .fold(HashMap::default(), |mut acc, (id, title)| {
-            acc.entry(id).or_default().push(title);
+            acc.insert(id, title);
             acc
         });
 
-    let mut an_m: HashMap<i32, Vec<&str>> = HashMap::default();
-
-    for (id, name) in an
+    let an_m: HashMap<i32, Vec<&str>> = an
         .column("person_id")?
         .i32()?
         .into_iter()
-        .zip(an.column("name")?.str()?.into_iter())
-    {
-        if let (Some(id), Some(name)) = (id, name) {
-            an_m.entry(id).or_default().push(name);
-        }
-    }
+        .zip(an.column("name")?.str()?)
+        .filter_map(|(person_id, name)| {
+            if let (Some(person_id), Some(name)) = (person_id, name) {
+                Some((person_id, name))
+            } else {
+                None
+            }
+        })
+        .fold(HashMap::default(), |mut acc, (id, name)| {
+            acc.entry(id).or_default().push(name);
+            acc
+        });
 
     let start = Instant::now();
 
@@ -128,32 +132,30 @@ pub fn q8a(db: &ImdbData) -> Result<Option<(&str, &str)>, PolarsError> {
         .column("movie_id")?
         .i32()?
         .into_iter()
-        .zip(ci.column("person_id")?.i32()?.into_iter())
-        .zip(ci.column("role_id")?.i32()?.into_iter())
-        .zip(ci.column("note")?.str()?.into_iter())
+        .zip(ci.column("person_id")?.i32()?)
+        .zip(ci.column("role_id")?.i32()?)
+        .zip(ci.column("note")?.str()?)
     {
         if let (Some(movie_id), Some(person_id), Some(role_id), Some(note)) =
             (movie_id, person_id, role_id, note)
         {
-            if note == "(voice: English version)"
-                && rt_s.contains(&role_id)
-                && n_s.contains(&person_id)
+            if rt_s.contains(&role_id)
+                && note == "(voice: English version)"
                 && mc_s.contains(&movie_id)
+                && n_s.contains(&person_id)
+                && let Some(name) = an_m.get(&person_id)
+                && let Some(title) = t_m.get(&movie_id)
             {
-                if let (Some(name), Some(title)) = (an_m.get(&person_id), t_m.get(&movie_id)) {
-                    for name in name {
-                        for title in title {
-                            if let Some((old_name, old_title)) = res.as_mut() {
-                                if *old_title > *title {
-                                    *old_title = title;
-                                }
-                                if *old_name > *name {
-                                    *old_name = name;
-                                }
-                            } else {
-                                res = Some((name, title));
-                            }
+                for name in name {
+                    if let Some((old_name, old_title)) = res.as_mut() {
+                        if *old_title > *title {
+                            *old_title = title;
                         }
+                        if *old_name > *name {
+                            *old_name = name;
+                        }
+                    } else {
+                        res = Some((name, title));
                     }
                 }
             }
