@@ -12,7 +12,7 @@ pub fn q6a(db: &ImdbData) -> Result<Option<(&str, &str, &str)>, PolarsError> {
 
     let start = Instant::now();
 
-    let n_m: HashMap<i32, Vec<&str>> = n
+    let n_m: HashMap<i32, &str> = n
         .column("id")?
         .i32()?
         .into_iter()
@@ -29,11 +29,11 @@ pub fn q6a(db: &ImdbData) -> Result<Option<(&str, &str, &str)>, PolarsError> {
             }
         })
         .fold(HashMap::default(), |mut acc, (id, name)| {
-            acc.entry(id).or_default().push(name);
+            acc.insert(id, name);
             acc
         });
 
-    let mut k_m: HashMap<i32, Vec<&str>> = HashMap::default();
+    let mut k_m: HashMap<i32, &str> = HashMap::default();
 
     for (id, keyword) in k
         .column("id")?
@@ -43,7 +43,7 @@ pub fn q6a(db: &ImdbData) -> Result<Option<(&str, &str, &str)>, PolarsError> {
     {
         if let (Some(id), Some(keyword)) = (id, keyword) {
             if keyword == "marvel-cinematic-universe" {
-                k_m.entry(id).or_default().push(keyword);
+                k_m.insert(id, keyword);
             }
         }
     }
@@ -63,7 +63,7 @@ pub fn q6a(db: &ImdbData) -> Result<Option<(&str, &str, &str)>, PolarsError> {
         }
     }
 
-    let mut t_m: HashMap<i32, Vec<&str>> = HashMap::default();
+    let mut t_m: HashMap<i32, &str> = HashMap::default();
 
     for ((id, title), production_year) in t
         .column("id")?
@@ -74,7 +74,7 @@ pub fn q6a(db: &ImdbData) -> Result<Option<(&str, &str, &str)>, PolarsError> {
     {
         if let (Some(id), Some(title), Some(production_year)) = (id, title, production_year) {
             if mk_m.contains_key(&id) && production_year > 2010 {
-                t_m.entry(id).or_default().push(title);
+                t_m.insert(id, title);
             }
         }
     }
@@ -88,33 +88,24 @@ pub fn q6a(db: &ImdbData) -> Result<Option<(&str, &str, &str)>, PolarsError> {
         .zip(ci.column("movie_id")?.i32()?.into_iter())
     {
         if let (Some(pid), Some(mid)) = (pid, mid) {
-            if let Some(titles) = t_m.get(&mid) {
-                if let Some(kids) = mk_m.get(&mid) {
-                    if let Some(names) = n_m.get(&pid) {
-                        for kid in kids {
-                            if let Some(keywords) = k_m.get(kid) {
-                                for title in titles {
-                                    for keyword in keywords {
-                                        for name in names {
-                                            if let Some((old_keyword, old_name, old_title)) =
-                                                res.as_mut()
-                                            {
-                                                if name < old_name {
-                                                    *old_name = name;
-                                                }
-                                                if keyword < old_keyword {
-                                                    *old_keyword = keyword;
-                                                }
-                                                if title < old_title {
-                                                    *old_title = title;
-                                                }
-                                            } else {
-                                                res = Some((keyword, name, title));
-                                            }
-                                        }
-                                    }
-                                }
+            if let Some(title) = t_m.get(&mid)
+                && let Some(kids) = mk_m.get(&mid)
+                && let Some(name) = n_m.get(&pid)
+            {
+                for kid in kids {
+                    if let Some(keyword) = k_m.get(kid) {
+                        if let Some((old_keyword, old_name, old_title)) = res.as_mut() {
+                            if name < old_name {
+                                *old_name = name;
                             }
+                            if keyword < old_keyword {
+                                *old_keyword = keyword;
+                            }
+                            if title < old_title {
+                                *old_title = title;
+                            }
+                        } else {
+                            res = Some((keyword, name, title));
                         }
                     }
                 }
