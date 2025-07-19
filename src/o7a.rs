@@ -132,30 +132,29 @@ pub fn q7a(db: &ImdbData) -> Result<Option<(&str, &str)>, PolarsError> {
     //     })
     //     .collect();
 
-    let mut res: Option<(&str, &str)> = None;
-
-    for (pid, mid) in ci
+    let res: Option<(&str, &str)> = ci
         .column("person_id")?
         .i32()?
         .into_no_null_iter()
         .zip(ci.column("movie_id")?.i32()?.into_no_null_iter())
-    {
-        let (pid, mid) = (pid, mid);
-        if let Some(name) = n_m.get(&pid)
-            && let Some(title) = t_m.get(&mid)
-        {
-            if let Some((old_name, old_title)) = res.as_mut() {
-                if name < old_name {
-                    *old_name = name;
+        .filter_map(|(person_id, movie_id)| match (person_id, movie_id) {
+            (p_id, m_id) => {
+                if let Some(&name) = n_m.get(&p_id)
+                    && let Some(&title) = t_m.get(&m_id)
+                {
+                    Some((name, title))
+                } else {
+                    None
                 }
-                if title < old_title {
-                    *old_title = title;
-                }
-            } else {
-                res = Some((name, title));
             }
-        }
-    }
+        })
+        .fold(None, |acc: Option<(&str, &str)>, (name, title)| match acc {
+            None => Some((name, title)),
+            Some((min_name, min_title)) => Some((
+                if name < min_name { name } else { min_name },
+                if title < min_title { title } else { min_title },
+            )),
+        });
 
     println!("7a,{:}", start.elapsed().as_secs_f32());
 
