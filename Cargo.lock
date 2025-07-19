@@ -1122,6 +1122,7 @@ dependencies = [
  "foldhash",
  "hashbrown 0.15.4",
  "polars",
+ "polars-core",
  "rustc-hash",
 ]
 

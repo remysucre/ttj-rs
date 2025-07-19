@@ -5,7 +5,8 @@ edition = "2024"
 rust-version = "1.88.0"
 
 [dependencies]
-polars = { version = "0.48.1", features = ["parquet"] }
+polars = { version = "0.48.1", features = ["lazy", "parquet", "regex", "strings", "is_in", "dtype-i128"] }
+polars-core = "0.48.1"
 ahash = "0.8.11"
 foldhash = "0.1.5"
 rustc-hash = "2.1.1"
@@ -16,4 +17,4 @@ bumpalo = { version = "3.19.0", features = ["allocator-api2"] }
 # debug = false
 # codegen-units = 1
 # enable when benchmarking
-lto = "fat"
+#lto = "fat"
