@@ -1,6 +1,6 @@
 use crate::data::ImdbData;
+use ahash::HashMap;
 use polars::prelude::*;
-use rustc_hash::{FxBuildHasher, FxHashMap as HashMap};
 use std::time::Instant;
 
 pub fn q6c(db: &ImdbData) -> Result<Option<(&str, &str, &str)>, PolarsError> {
@@ -28,45 +28,17 @@ pub fn q6c(db: &ImdbData) -> Result<Option<(&str, &str, &str)>, PolarsError> {
                 None
             }
         })
-        .fold(
-            HashMap::with_capacity_and_hasher(2, FxBuildHasher),
-            |mut acc, (id, name)| {
-                acc.insert(id, name);
-                acc
-            },
-        );
+        .fold(HashMap::default(), |mut acc, (id, name)| {
+            acc.insert(id, name);
+            acc
+        });
 
-    // let k_m: HashMap<i32, &str> = k
-    //     .column("id")?
-    //     .i32()?
-    //     .into_iter()
-    //     .zip(k.column("keyword")?.str()?)
-    //     .filter_map(|(id, keyword)| {
-    //         if let (Some(id), Some(keyword)) = (id, keyword) {
-    //             if keyword == "marvel-cinematic-universe" {
-    //                 Some((id, keyword))
-    //             } else {
-    //                 None
-    //             }
-    //         } else {
-    //             None
-    //         }
-    //     })
-    //     .fold(
-    //         HashMap::with_capacity_and_hasher(k.height(), FxBuildHasher),
-    //         |mut acc, (id, keyword)| {
-    //             acc.insert(id, keyword);
-    //             acc
-    //         },
-    //     );
-
-    // Exploit the fact that |k_m| = 1
-    let k_m = k
+    let k_m: HashMap<i32, &str> = k
         .column("id")?
         .i32()?
         .into_iter()
         .zip(k.column("keyword")?.str()?)
-        .find_map(|(id, keyword)| {
+        .filter_map(|(id, keyword)| {
             if let (Some(id), Some(keyword)) = (id, keyword) {
                 if keyword == "marvel-cinematic-universe" {
                     Some((id, keyword))
@@ -76,6 +48,10 @@ pub fn q6c(db: &ImdbData) -> Result<Option<(&str, &str, &str)>, PolarsError> {
             } else {
                 None
             }
+        })
+        .fold(HashMap::default(), |mut acc, (id, keyword)| {
+            acc.insert(id, keyword);
+            acc
         });
 
     let t_m: HashMap<i32, &str> = t
@@ -95,13 +71,10 @@ pub fn q6c(db: &ImdbData) -> Result<Option<(&str, &str, &str)>, PolarsError> {
                 None
             }
         })
-        .fold(
-            HashMap::with_capacity_and_hasher(438, FxBuildHasher),
-            |mut acc, (id, title)| {
-                acc.insert(id, title);
-                acc
-            },
-        );
+        .fold(HashMap::default(), |mut acc, (id, title)| {
+            acc.insert(id, title);
+            acc
+        });
 
     let mk_m: HashMap<i32, Vec<i32>> = mk
         .column("movie_id")?
@@ -110,10 +83,7 @@ pub fn q6c(db: &ImdbData) -> Result<Option<(&str, &str, &str)>, PolarsError> {
         .zip(mk.column("keyword_id")?.i32()?)
         .filter_map(|(movie_id, keyword_id)| {
             if let (Some(movie_id), Some(keyword_id)) = (movie_id, keyword_id) {
-                if let Some((id, _)) = k_m
-                    && id == keyword_id
-                    && t_m.contains_key(&movie_id)
-                {
+                if k_m.contains_key(&keyword_id) && t_m.contains_key(&movie_id) {
                     Some((movie_id, keyword_id))
                 } else {
                     None
@@ -122,13 +92,10 @@ pub fn q6c(db: &ImdbData) -> Result<Option<(&str, &str, &str)>, PolarsError> {
                 None
             }
         })
-        .fold(
-            HashMap::with_capacity_and_hasher(mk.height(), FxBuildHasher),
-            |mut acc, (movie_id, keyword_id)| {
-                acc.entry(movie_id).or_default().push(keyword_id);
-                acc
-            },
-        );
+        .fold(HashMap::default(), |mut acc, (movie_id, keyword_id)| {
+            acc.entry(movie_id).or_default().push(keyword_id);
+            acc
+        });
 
     let mut res: Option<(&str, &str, &str)> = None;
 
@@ -140,17 +107,16 @@ pub fn q6c(db: &ImdbData) -> Result<Option<(&str, &str, &str)>, PolarsError> {
     {
         if let (Some(pid), Some(mid)) = (pid, mid) {
             if let Some(name) = n_m.get(&pid)
-                && let Some((id, keyword)) = k_m
                 && let Some(title) = t_m.get(&mid)
                 && let Some(kids) = mk_m.get(&mid)
             {
                 for kid in kids {
-                    if id == *kid {
+                    if let Some(keyword) = k_m.get(&kid) {
                         if let Some((old_keyword, old_name, old_title)) = res.as_mut() {
                             if name < old_name {
                                 *old_name = name;
                             }
-                            if keyword < *old_keyword {
+                            if *keyword < *old_keyword {
                                 *old_keyword = keyword;
                             }
                             if title < old_title {
@@ -191,7 +157,7 @@ mod test_6c {
     use crate::data::ImdbData;
 
     #[test]
-    fn test_q6b() -> Result<(), PolarsError> {
+    fn test_q6c() -> Result<(), PolarsError> {
         let db = ImdbData::new();
         let res = q6c(&db)?;
         assert_eq!(
