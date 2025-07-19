@@ -110,24 +110,23 @@ pub fn q6b(db: &ImdbData) -> Result<Option<(&str, &str, &str)>, PolarsError> {
         .zip(ci.column("movie_id")?.i32()?.into_iter())
     {
         if let (Some(pid), Some(mid)) = (pid, mid) {
-            if let Some(name) = n_m.get(&pid) {
-                if let Some(keywords) = mk_m.get(&mid) {
-                    if let Some(title) = t_m.get(&mid) {
-                        for keyword in keywords {
-                            if let Some((old_keyword, old_name, old_title)) = res.as_mut() {
-                                if name < old_name {
-                                    *old_name = name;
-                                }
-                                if keyword < old_keyword {
-                                    *old_keyword = keyword;
-                                }
-                                if title < old_title {
-                                    *old_title = title;
-                                }
-                            } else {
-                                res = Some((keyword, name, title));
-                            }
+            if let Some(name) = n_m.get(&pid)
+                && let Some(title) = t_m.get(&mid)
+                && let Some(keywords) = mk_m.get(&mid)
+            {
+                for keyword in keywords {
+                    if let Some((old_keyword, old_name, old_title)) = res.as_mut() {
+                        if name < old_name {
+                            *old_name = name;
                         }
+                        if keyword < old_keyword {
+                            *old_keyword = keyword;
+                        }
+                        if title < old_title {
+                            *old_title = title;
+                        }
+                    } else {
+                        res = Some((keyword, name, title));
                     }
                 }
             }
