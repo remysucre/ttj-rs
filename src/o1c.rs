@@ -1,7 +1,9 @@
 use crate::data::ImdbData;
-use ahash::{HashMap, HashSet};
+// use ahash::{HashMap, HashSet};
 use polars::prelude::*;
 use std::time::Instant;
+
+use rustc_hash::{FxHashMap as HashMap, FxHashSet as HashSet};
 
 // imdb.q1c_movie_companies(movie_id,company_id,company_type_id)
 // |imdb.q1c_title(movie_id,kind_id)
@@ -71,16 +73,22 @@ pub fn q1c(db: &ImdbData) -> Result<Option<(&str, &str, i32)>, PolarsError> {
         })
         .collect();
 
-    let t_m: HashMap<i32, Vec<(&str, i32)>> = t
-        .column("id")?
+    let mc_m: HashMap<i32, Vec<&str>> = mc
+        .column("movie_id")?
         .i32()?
         .into_iter()
-        .zip(t.column("title")?.str()?)
-        .zip(t.column("production_year")?.i32()?)
-        .filter_map(|((id, title), production_year)| {
-            if let (Some(id), Some(title), Some(production_year)) = (id, title, production_year) {
-                if production_year > 2010 {
-                    Some((id, title, production_year))
+        .zip(mc.column("note")?.str()?)
+        .zip(mc.column("company_type_id")?.i32()?)
+        .filter_map(|((movie_id, note), company_type_id)| {
+            if let (Some(movie_id), Some(note), Some(company_type_id)) =
+                (movie_id, note, company_type_id)
+            {
+                if ct_s.contains(&company_type_id)
+                    && mi_idx_s.contains(&movie_id)
+                    && !note.contains("(as Metro-Goldwyn-Mayer Pictures)")
+                    && note.contains("(co-production)")
+                {
+                    Some((movie_id, note))
                 } else {
                     None
                 }
@@ -88,46 +96,37 @@ pub fn q1c(db: &ImdbData) -> Result<Option<(&str, &str, i32)>, PolarsError> {
                 None
             }
         })
-        .fold(
-            HashMap::default(),
-            |mut acc, (id, title, production_year)| {
-                acc.entry(id).or_default().push((title, production_year));
-                acc
-            },
-        );
+        .fold(HashMap::default(), |mut acc, (movie_id, note)| {
+            acc.entry(movie_id).or_default().push(note);
+            acc
+        });
 
     let mut res: Option<(&str, &str, i32)> = None;
 
-    for ((movie_id, company_type_id), note) in mc
-        .column("movie_id")?
+    for ((id, title), production_year) in t
+        .column("id")?
         .i32()?
         .into_iter()
-        .zip(mc.column("company_type_id")?.i32()?.into_iter())
-        .zip(mc.column("note")?.str()?.into_iter())
+        .zip(t.column("title")?.str()?)
+        .zip(t.column("production_year")?.i32()?.into_iter())
     {
-        if let (Some(note), Some(company_type_id), Some(movie_id)) =
-            (note, company_type_id, movie_id)
-        {
-            if !note.contains("(as Metro-Goldwyn-Mayer Pictures)")
-                && note.contains("(co-production)")
-                && ct_s.contains(&company_type_id)
-                && mi_idx_s.contains(&movie_id)
+        if let (Some(id), Some(title), Some(production_year)) = (id, title, production_year) {
+            if production_year > 2010
+                && let Some(notes) = mc_m.get(&id)
             {
-                if let Some(tuples) = t_m.get(&movie_id) {
-                    for (title, production_year) in tuples {
-                        if let Some((old_note, old_title, old_production_year)) = res.as_mut() {
-                            if *title < *old_title {
-                                *old_title = title;
-                            }
-                            if *production_year < *old_production_year {
-                                *old_production_year = *production_year;
-                            }
-                            if note < *old_note {
-                                *old_note = note;
-                            }
-                        } else {
-                            res = Some((note, title, *production_year));
+                for note in notes {
+                    if let Some((old_note, old_title, old_production_year)) = res.as_mut() {
+                        if title < *old_title {
+                            *old_title = title;
                         }
+                        if production_year < *old_production_year {
+                            *old_production_year = production_year;
+                        }
+                        if note < old_note {
+                            *old_note = note;
+                        }
+                    } else {
+                        res = Some((note, title, production_year));
                     }
                 }
             }
