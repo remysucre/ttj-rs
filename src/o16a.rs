@@ -1,9 +1,7 @@
 use crate::data::ImdbData;
-// use foldhash::{HashMap, HashSet};
 use polars::prelude::*;
-use std::time::Instant;
-
 use rustc_hash::{FxHashMap as HashMap, FxHashSet as HashSet};
+use std::time::Instant;
 
 pub fn q16a(db: &ImdbData) -> Result<Option<(&str, &str)>, PolarsError> {
     let an = &db.an;
@@ -13,6 +11,20 @@ pub fn q16a(db: &ImdbData) -> Result<Option<(&str, &str)>, PolarsError> {
     let mk = &db.mk;
     let t = &db.t;
     let mc = &db.mc;
+
+    let an_m: HashMap<i32, Vec<&str>> = an
+        .column("person_id")?
+        .i32()?
+        .into_iter()
+        .zip(an.column("name")?.str()?)
+        .fold(HashMap::default(), |mut acc, (person_id, name)| {
+            if let (Some(person_id), Some(name)) = (person_id, name) {
+                acc.entry(person_id).or_default().push(name);
+                acc
+            } else {
+                acc
+            }
+        });
 
     let start = Instant::now();
 
@@ -80,17 +92,6 @@ pub fn q16a(db: &ImdbData) -> Result<Option<(&str, &str)>, PolarsError> {
             }
         })
         .collect();
-
-    let an_m: HashMap<i32, Vec<&str>> = an
-        .column("person_id")?
-        .i32()?
-        .into_iter()
-        .zip(an.column("name")?.str()?)
-        .filter_map(|(person_id, name)| Some((person_id?, name?)))
-        .fold(HashMap::default(), |mut acc, (person_id, name)| {
-            acc.entry(person_id).or_default().push(name);
-            acc
-        });
 
     let mut res: Option<(&str, &str)> = None;
 
