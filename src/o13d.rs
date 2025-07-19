@@ -71,7 +71,7 @@ pub fn q13d(db: &ImdbData) -> Result<Option<(&str, &str, &str)>, PolarsError> {
         .zip(mi.column("info_type_id")?.i32()?)
         .filter_map(|(movie_id, info_type_id)| {
             if let (Some(movie_id), Some(info_type_id)) = (movie_id, info_type_id) {
-                if it2_s.contains(&info_type_id) {
+                if it2_s.contains(&info_type_id) && mi_idx_m.contains_key(&movie_id) {
                     Some(movie_id)
                 } else {
                     None
@@ -96,23 +96,27 @@ pub fn q13d(db: &ImdbData) -> Result<Option<(&str, &str, &str)>, PolarsError> {
         })
         .collect();
 
-    let mut t_m: HashMap<i32, Vec<&str>> = HashMap::default();
-
-    for ((id, title), kind_id) in t
+    let t_m: HashMap<i32, &str> = t
         .column("id")?
         .i32()?
         .into_iter()
         .zip(t.column("title")?.str()?.into_iter())
         .zip(t.column("kind_id")?.i32()?.into_iter())
-    {
-        if let (Some(id), Some(title), Some(kind_id)) = (id, title, kind_id) {
-            if kt_s.contains(&kind_id) && mi_idx_m.contains_key(&id) && mi_s.contains(&id) {
-                t_m.entry(id).or_default().push(title);
+        .filter_map(|((id, title), kind_id)| {
+            if let (Some(id), Some(title), Some(kind_id)) = (id, title, kind_id) {
+                if kt_s.contains(&kind_id) && mi_s.contains(&id) {
+                    Some((id, title))
+                } else {
+                    None
+                }
+            } else {
+                None
             }
-        }
-    }
+        })
+        .collect();
 
-    let cn_m: HashMap<i32, Vec<&str>> = cn
+
+    let cn_m: HashMap<i32, &str> = cn
         .column("country_code")?
         .str()?
         .into_iter()
@@ -129,10 +133,7 @@ pub fn q13d(db: &ImdbData) -> Result<Option<(&str, &str, &str)>, PolarsError> {
                 None
             }
         })
-        .fold(HashMap::default(), |mut acc, (id, name)| {
-            acc.entry(id).or_default().push(name);
-            acc
-        });
+        .collect();
 
     let ct_s: HashSet<i32> = ct
         .column("kind")?
@@ -164,29 +165,24 @@ pub fn q13d(db: &ImdbData) -> Result<Option<(&str, &str, &str)>, PolarsError> {
         if let (Some(movie_id), Some(company_id), Some(company_type_id)) =
             (movie_id, company_id, company_type_id)
         {
-            if ct_s.contains(&company_type_id) && mi_s.contains(&movie_id) {
-                if let (Some(name), Some(titles), Some(info)) = (
-                    cn_m.get(&company_id),
-                    t_m.get(&movie_id),
-                    mi_idx_m.get(&movie_id),
-                ) {
-                    for name in name {
-                        for title in titles {
-                            for info in info {
-                                if let Some((old_name, old_info, old_title)) = res.as_mut() {
-                                    if title < old_title {
-                                        *old_title = title;
-                                    }
-                                    if info < old_info {
-                                        *old_info = info;
-                                    }
-                                    if name < old_name {
-                                        *old_name = name;
-                                    }
-                                } else {
-                                    res = Some((name, info, title));
-                                }
+            if ct_s.contains(&company_type_id) {
+                if let Some(title) = t_m.get(&movie_id)
+                    && let Some(info) = mi_idx_m.get(&movie_id)
+                    && let Some(name) = cn_m.get(&company_id)
+                {
+                    for info in info {
+                        if let Some((old_name, old_info, old_title)) = res.as_mut() {
+                            if title < old_title {
+                                *old_title = title;
                             }
+                            if info < old_info {
+                                *old_info = info;
+                            }
+                            if name < old_name {
+                                *old_name = name;
+                            }
+                        } else {
+                            res = Some((name, info, title));
                         }
                     }
                 }
