@@ -20,9 +20,23 @@ pub fn q17e(db: &ImdbData) -> Result<Option<&str>, PolarsError> {
     //     .flatten()
     //     .collect();
 
+    let n_m: HashMap<i32, &str> = n
+        .column("id")?
+        .i32()?
+        .into_iter()
+        .zip(n.column("name")?.str()?.into_iter())
+        .filter_map(|(id, name)| {
+            if let (Some(id), Some(name)) = (id, name) {
+                Some((id, name))
+            } else {
+                None
+            }
+        })
+        .collect();
+
     let start = Instant::now();
 
-    let k_s: HashSet<i32> = k
+    let k_s: Vec<i32> = k
         .column("keyword")?
         .str()?
         .into_iter()
@@ -94,19 +108,6 @@ pub fn q17e(db: &ImdbData) -> Result<Option<&str>, PolarsError> {
         })
         .collect();
 
-    let mut n_m: HashMap<i32, Vec<&str>> = HashMap::default();
-
-    for (id, name) in n
-        .column("id")?
-        .i32()?
-        .into_iter()
-        .zip(n.column("name")?.str()?.into_iter())
-    {
-        if let (Some(id), Some(name)) = (id, name) {
-            n_m.entry(id).or_default().push(name);
-        }
-    }
-
     let mut res: Option<&str> = None;
 
     for (pid, mid) in ci
@@ -117,15 +118,13 @@ pub fn q17e(db: &ImdbData) -> Result<Option<&str>, PolarsError> {
     {
         if let (Some(pid), Some(mid)) = (pid, mid) {
             if mk_s.contains(&mid) && mc_s.contains(&mid) {
-                if let Some(names) = n_m.get(&pid) {
-                    for name in names {
-                        if let Some(old_name) = res.as_mut() {
-                            if name < old_name {
-                                *old_name = *name;
-                            }
-                        } else {
-                            res = Some(name);
+                if let Some(name) = n_m.get(&pid) {
+                    if let Some(old_name) = res.as_mut() {
+                        if name < old_name {
+                            *old_name = *name;
                         }
+                    } else {
+                        res = Some(name);
                     }
                 }
             }
