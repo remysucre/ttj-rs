@@ -145,7 +145,7 @@ pub fn q20a(db: &ImdbData) -> Result<Option<&str>, PolarsError> {
         })
         .collect::<HashSet<_>>();
 
-    let t_m: HashMap<i32, Vec<&str>> = t
+    let t_m: HashMap<i32, &str> = t
         .column("id")?
         .i32()?
         .into_iter()
@@ -156,7 +156,7 @@ pub fn q20a(db: &ImdbData) -> Result<Option<&str>, PolarsError> {
             if let (Some(id), Some(title), Some(production_year), Some(kind_id)) =
                 (id, title, production_year, kind_id)
             {
-                if production_year > 1950 && kt_s.contains(&kind_id) {
+                if production_year > 1950 && kt_s.contains(&kind_id) && cc_s.contains(&id) {
                     Some((id, title))
                 } else {
                     None
@@ -166,7 +166,7 @@ pub fn q20a(db: &ImdbData) -> Result<Option<&str>, PolarsError> {
             }
         })
         .fold(HashMap::default(), |mut acc, (id, title)| {
-            acc.entry(id).or_default().push(title);
+            acc.insert(id, title);
             acc
         });
 
@@ -184,7 +184,7 @@ pub fn q20a(db: &ImdbData) -> Result<Option<&str>, PolarsError> {
         .zip(mk.column("movie_id")?.i32()?)
         .filter_map(|(keyword_id, movie_id)| {
             if let (Some(keyword_id), Some(movie_id)) = (keyword_id, movie_id) {
-                if k_s.contains(&keyword_id) {
+                if k_s.contains(&keyword_id) && t_m.contains_key(&movie_id) {
                     Some(movie_id)
                 } else {
                     None
@@ -209,18 +209,16 @@ pub fn q20a(db: &ImdbData) -> Result<Option<&str>, PolarsError> {
         {
             if chn_s.contains(&person_role_id)
                 // && n_s.contains(&person_id)
-                && cc_s.contains(&movie_id)
+                // && cc_s.contains(&movie_id)
                 && mk_s.contains(&movie_id)
             {
-                if let Some(titles) = t_m.get(&movie_id) {
-                    for title in titles {
-                        if let Some(old_title) = res.as_ref() {
-                            if title < old_title {
-                                res = Some(*title);
-                            }
-                        } else {
+                if let Some(title) = t_m.get(&movie_id) {
+                    if let Some(old_title) = res.as_ref() {
+                        if title < old_title {
                             res = Some(*title);
                         }
+                    } else {
+                        res = Some(*title);
                     }
                 }
             }
