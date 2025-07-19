@@ -104,10 +104,7 @@ pub fn q7a(db: &ImdbData) -> Result<Option<(&str, &str)>, PolarsError> {
                 None
             }
         })
-        .fold(HashMap::default(), |mut acc, (id, title)| {
-            acc.insert(id, title);
-            acc
-        });
+        .collect();
 
     let n_m: HashMap<i32, &str> = n
         .column("id")?
@@ -120,9 +117,9 @@ pub fn q7a(db: &ImdbData) -> Result<Option<(&str, &str)>, PolarsError> {
             if let (Some(id), Some(name), Some(name_pcode), Some(gender)) =
                 (id, name, name_pcode, gender)
             {
-                if pi_s.contains(&id)
-                    && (("A"..="F").contains(&name_pcode) && gender == "m"
-                        || gender == "f" && name.starts_with('B'))
+                if (("A"..="F").contains(&name_pcode) && gender == "m"
+                    || gender == "f" && name.starts_with('B'))
+                    && pi_s.contains(&id)
                 {
                     Some((id, name))
                 } else {
@@ -132,10 +129,7 @@ pub fn q7a(db: &ImdbData) -> Result<Option<(&str, &str)>, PolarsError> {
                 None
             }
         })
-        .fold(HashMap::default(), |mut acc, (id, name)| {
-            acc.insert(id, name);
-            acc
-        });
+        .collect();
 
     // let an_s: HashSet<i32> = an
     //     .column("person_id")?
