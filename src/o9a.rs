@@ -157,8 +157,11 @@ pub fn q9a(db: &ImdbData) -> Result<Option<(&str, &str, &str)>, PolarsError> {
                             for title in titles {
                                 for alternative_name in alternative_names {
                                     for character_name in character_names {
-                                        if let Some((old_alternative_name, old_character_name, old_title)) =
-                                            res.as_mut()
+                                        if let Some((
+                                            old_alternative_name,
+                                            old_character_name,
+                                            old_title,
+                                        )) = res.as_mut()
                                         {
                                             if title < old_title {
                                                 *old_title = title;
@@ -183,7 +186,7 @@ pub fn q9a(db: &ImdbData) -> Result<Option<(&str, &str, &str)>, PolarsError> {
     }
 
     let duration = start.elapsed().as_secs_f32();
-    println!("{duration:}");
+    println!("9a,{duration:}");
 
     Ok(res)
 }

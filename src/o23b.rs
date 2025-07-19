@@ -223,7 +223,7 @@ pub fn q23b(db: &ImdbData) -> Result<Option<(&str, &str)>, PolarsError> {
         }
     }
 
-    println!("{:}", start.elapsed().as_secs_f32());
+    println!("23b,{:}", start.elapsed().as_secs_f32());
 
     Ok(res)
 }

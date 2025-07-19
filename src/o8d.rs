@@ -129,7 +129,7 @@ pub fn q8d(db: &ImdbData) -> Result<Option<(&str, &str)>, PolarsError> {
         }
     }
 
-    println!("{:}", start.elapsed().as_secs_f32());
+    println!("8d,{:}", start.elapsed().as_secs_f32());
 
     Ok(res)
 }

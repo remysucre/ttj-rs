@@ -131,7 +131,7 @@ pub fn q17e(db: &ImdbData) -> Result<Option<&str>, PolarsError> {
         }
     }
 
-    println!("{:}", start.elapsed().as_secs_f32());
+    println!("17e,{:}", start.elapsed().as_secs_f32());
 
     Ok(res)
 }

@@ -324,7 +324,7 @@ pub fn q33b(db: &ImdbData) -> Result<Option<(&str, &str, &str, &str, &str, &str)
         }
     }
 
-    println!("{:}", start.elapsed().as_secs_f32());
+    println!("33b,{:}", start.elapsed().as_secs_f32());
 
     Ok(res)
 }

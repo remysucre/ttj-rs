@@ -192,7 +192,7 @@ pub fn q9c(db: &ImdbData) -> Result<Option<(&str, &str, &str, &str)>, PolarsErro
         }
     }
 
-    println!("{:}", start.elapsed().as_secs_f32());
+    println!("9c,{:}", start.elapsed().as_secs_f32());
     Ok(res)
 }
 

@@ -145,8 +145,7 @@ pub fn q10b(db: &ImdbData) -> Result<Option<(&str, &str)>, PolarsError> {
     }
 
     let duration = start.elapsed().as_secs_f32();
-    // println!("{:}", res);
-    println!("{duration:}");
+    println!("10b,{duration:}");
 
     Ok(res)
 }

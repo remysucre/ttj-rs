@@ -267,7 +267,7 @@ pub fn q27c(db: &ImdbData) -> Result<Option<(&str, &str, &str)>, PolarsError> {
         }
     }
 
-    println!("{:}", start.elapsed().as_secs_f32());
+    println!("27c,{:}", start.elapsed().as_secs_f32());
 
     Ok(res)
 }

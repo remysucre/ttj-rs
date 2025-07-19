@@ -1,7 +1,7 @@
+use crate::data::ImdbData;
 use ahash::{HashMap, HashSet};
 use polars::prelude::*;
 use std::time::Instant;
-use crate::data::ImdbData;
 
 pub fn q16b(db: &ImdbData) -> Result<Option<(&str, &str)>, PolarsError> {
     let an = &db.an;
@@ -137,7 +137,7 @@ pub fn q16b(db: &ImdbData) -> Result<Option<(&str, &str)>, PolarsError> {
         }
     }
 
-    println!("{:}", start.elapsed().as_secs_f32());
+    println!("16b,{:}", start.elapsed().as_secs_f32());
 
     Ok(res)
 }
@@ -175,10 +175,7 @@ mod test_16b {
     #[test]
     fn test_q16b() -> Result<(), PolarsError> {
         let db = ImdbData::new();
-        assert_eq!(
-            q16b(&db)?,
-            Some(("!!!, Toy", "& Teller"))
-        );
+        assert_eq!(q16b(&db)?, Some(("!!!, Toy", "& Teller")));
         Ok(())
     }
 }

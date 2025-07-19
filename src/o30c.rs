@@ -1,7 +1,7 @@
+use crate::data::ImdbData;
 use ahash::{HashMap, HashSet};
 use polars::prelude::*;
 use std::time::Instant;
-use crate::data::ImdbData;
 
 pub fn q30c(db: &ImdbData) -> Result<Option<(&str, &str, &str, &str)>, PolarsError> {
     let cc = &db.cc;
@@ -279,7 +279,7 @@ pub fn q30c(db: &ImdbData) -> Result<Option<(&str, &str, &str, &str)>, PolarsErr
         }
     }
 
-    println!("{:}", elapsed.elapsed().as_secs_f32());
+    println!("30c,{:}", elapsed.elapsed().as_secs_f32());
 
     Ok(res)
 }

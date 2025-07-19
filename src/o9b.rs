@@ -190,7 +190,7 @@ pub fn q9b(db: &ImdbData) -> Result<Option<(&str, &str, &str, &str)>, PolarsErro
         }
     }
 
-    println!("{:}", start.elapsed().as_secs_f32());
+    println!("9b,{:}", start.elapsed().as_secs_f32());
     Ok(res)
 }
 

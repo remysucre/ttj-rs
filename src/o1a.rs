@@ -3,7 +3,7 @@ use crate::data::ImdbData;
 use polars::prelude::*;
 use std::time::Instant;
 
-use rustc_hash::{FxHashMap as HashMap, FxHashSet as HashSet};
+use rustc_hash::FxHashSet as HashSet;
 
 pub fn q1a(db: &ImdbData) -> Result<Option<(&str, i32)>, PolarsError> {
     let ct = &db.ct;
@@ -116,7 +116,7 @@ pub fn q1a(db: &ImdbData) -> Result<Option<(&str, i32)>, PolarsError> {
     }
 
     let duration = start.elapsed().as_secs_f32();
-    println!("{duration:}");
+    println!("1a,{duration:}");
 
     Ok(res)
 }

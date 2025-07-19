@@ -106,7 +106,7 @@ pub fn q5c(db: &ImdbData) -> Result<Option<&str>, PolarsError> {
         }
     }
 
-    println!("{:}", start.elapsed().as_secs_f32());
+    println!("5c,{:}", start.elapsed().as_secs_f32());
 
     Ok(res)
 }

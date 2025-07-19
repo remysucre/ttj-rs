@@ -1,7 +1,7 @@
+use crate::data::ImdbData;
 use ahash::HashMap;
 use polars::prelude::*;
 use std::time::Instant;
-use crate::data::ImdbData;
 
 pub fn q6f(db: &ImdbData) -> Result<Option<(&str, &str, &str)>, PolarsError> {
     let ci = &db.ci;
@@ -124,9 +124,8 @@ pub fn q6f(db: &ImdbData) -> Result<Option<(&str, &str, &str)>, PolarsError> {
         }
     }
 
-
     let duration = start.elapsed().as_secs_f32();
-    println!("{duration:}");
+    println!("6f,{duration:}");
 
     Ok(res)
 }
@@ -157,10 +156,13 @@ mod test_q6f {
         let db = ImdbData::new();
         let res = q6f(&db)?;
 
-        let expected =Some(("\"Steff\", Stefanie Oxmann Mcgaha", "based-on-comic", "& Teller 2"));
+        let expected = Some((
+            "\"Steff\", Stefanie Oxmann Mcgaha",
+            "based-on-comic",
+            "& Teller 2",
+        ));
 
         assert_eq!(res, expected);
         Ok(())
     }
 }
-

@@ -157,7 +157,7 @@ pub fn q11d(db: &ImdbData) -> Result<Option<(&str, &str, &str)>, PolarsError> {
         }
     }
 
-    println!("{:}", start.elapsed().as_secs_f32());
+    println!("11d,{:}", start.elapsed().as_secs_f32());
 
     Ok(res)
 }

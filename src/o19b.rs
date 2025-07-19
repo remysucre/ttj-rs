@@ -172,31 +172,30 @@ pub fn q19b(db: &ImdbData) -> Result<Option<(&str, &str)>, PolarsError> {
         if let (Some(mid), Some(pid), Some(rid), Some(prid), Some(note)) =
             (mid, pid, rid, prid, note)
         {
-            if note == "(voice)"
-                && rt_s.contains(&rid) && chn_s.contains(&prid) {
-                    if let Some(titles) = t_m.get(&mid) {
-                        if let Some(names) = n_m.get(&pid) {
-                            for title in titles {
-                                for name in names {
-                                    if let Some((old_name, old_title)) = res.as_mut() {
-                                        if *name < *old_name {
-                                            *old_name = name;
-                                        }
-                                        if *title < *old_title {
-                                            *old_title = title;
-                                        }
-                                    } else {
-                                        res = Some((name, title));
+            if note == "(voice)" && rt_s.contains(&rid) && chn_s.contains(&prid) {
+                if let Some(titles) = t_m.get(&mid) {
+                    if let Some(names) = n_m.get(&pid) {
+                        for title in titles {
+                            for name in names {
+                                if let Some((old_name, old_title)) = res.as_mut() {
+                                    if *name < *old_name {
+                                        *old_name = name;
                                     }
+                                    if *title < *old_title {
+                                        *old_title = title;
+                                    }
+                                } else {
+                                    res = Some((name, title));
                                 }
                             }
                         }
                     }
                 }
+            }
         }
     }
 
-    println!("{:}", start.elapsed().as_secs_f32());
+    println!("19b,{:}", start.elapsed().as_secs_f32());
 
     Ok(res)
 }

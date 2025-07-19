@@ -169,27 +169,26 @@ pub fn q14b(db: &ImdbData) -> Result<Option<(&str, &str)>, PolarsError> {
         if let (Some(info_type_id), Some(movie_id), Some(info)) = (info_type_id, movie_id, info) {
             if it2_s.contains(&info_type_id) && info > "6.0" {
                 if let Some(titles) = t_m.get(&movie_id) {
-                    if mi_s.contains(&movie_id)
-                        && mk_s.contains(&movie_id) {
-                            for title in titles {
-                                if let Some((old_info, old_title)) = res.as_mut() {
-                                    if title < old_title {
-                                        *old_title = title;
-                                    }
-                                    if info < *old_info {
-                                        *old_info = info;
-                                    }
-                                } else {
-                                    res = Some((info, title));
+                    if mi_s.contains(&movie_id) && mk_s.contains(&movie_id) {
+                        for title in titles {
+                            if let Some((old_info, old_title)) = res.as_mut() {
+                                if title < old_title {
+                                    *old_title = title;
                                 }
+                                if info < *old_info {
+                                    *old_info = info;
+                                }
+                            } else {
+                                res = Some((info, title));
                             }
                         }
+                    }
                 }
             }
         }
     }
 
-    println!("{:}", start.elapsed().as_secs_f32());
+    println!("14b,{:}", start.elapsed().as_secs_f32());
 
     Ok(res)
 }

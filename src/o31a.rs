@@ -1,7 +1,7 @@
+use crate::data::ImdbData;
 use ahash::{HashMap, HashSet};
 use polars::prelude::*;
 use std::time::Instant;
-use crate::data::ImdbData;
 
 pub fn q31a(db: &ImdbData) -> Result<Option<(&str, &str, &str, &str)>, PolarsError> {
     let ci = &db.ci;
@@ -25,7 +25,11 @@ pub fn q31a(db: &ImdbData) -> Result<Option<(&str, &str, &str, &str)>, PolarsErr
         .zip(cn.column("id")?.i32()?)
         .filter_map(|(name, id)| {
             if let (Some(name), Some(id)) = (name, id) {
-                if name.starts_with("Lionsgate") { Some(id) } else { None }
+                if name.starts_with("Lionsgate") {
+                    Some(id)
+                } else {
+                    None
+                }
             } else {
                 None
             }
@@ -39,7 +43,11 @@ pub fn q31a(db: &ImdbData) -> Result<Option<(&str, &str, &str, &str)>, PolarsErr
         .zip(mc.column("movie_id")?.i32()?)
         .filter_map(|(company_id, movie_id)| {
             if let (Some(company_id), Some(movie_id)) = (company_id, movie_id) {
-                if cn_s.contains(&company_id) { Some(movie_id) } else { None }
+                if cn_s.contains(&company_id) {
+                    Some(movie_id)
+                } else {
+                    None
+                }
             } else {
                 None
             }
@@ -70,11 +78,7 @@ pub fn q31a(db: &ImdbData) -> Result<Option<(&str, &str, &str, &str)>, PolarsErr
         .zip(mi.column("info_type_id")?.i32()?.into_iter())
     {
         if let (Some(movie_id), Some(info), Some(info_type_id)) = (movie_id, info, info_type_id) {
-            if matches!(
-                info,
-                "Horror" | "Thriller"
-            ) && it1_s.contains(&info_type_id)
-            {
+            if matches!(info, "Horror" | "Thriller") && it1_s.contains(&info_type_id) {
                 mi_m.entry(movie_id).or_default().push(info);
             }
         }
@@ -190,8 +194,6 @@ pub fn q31a(db: &ImdbData) -> Result<Option<(&str, &str, &str, &str)>, PolarsErr
         }
     }
 
-
-
     let mut res: Option<(&str, &str, &str, &str)> = None;
 
     for ((pid, mid), note) in ci
@@ -253,7 +255,7 @@ pub fn q31a(db: &ImdbData) -> Result<Option<(&str, &str, &str, &str)>, PolarsErr
         }
     }
 
-    println!("{:}", elapsed.elapsed().as_secs_f32());
+    println!("31a,{:}", elapsed.elapsed().as_secs_f32());
 
     Ok(res)
 }

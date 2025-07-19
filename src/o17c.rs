@@ -71,9 +71,7 @@ pub fn q17c(db: &ImdbData) -> Result<Option<(&str, &str)>, PolarsError> {
         .column("movie_id")?
         .i32()?
         .into_iter()
-        .filter_map(|movie_id| {
-            movie_id.filter(|&movie_id| mk_s.contains(&movie_id))
-        })
+        .filter_map(|movie_id| movie_id.filter(|&movie_id| mk_s.contains(&movie_id)))
         .collect();
 
     let n_m: HashMap<i32, &str> = n
@@ -118,7 +116,7 @@ pub fn q17c(db: &ImdbData) -> Result<Option<(&str, &str)>, PolarsError> {
         }
     }
 
-    println!("{:}", start.elapsed().as_secs_f32());
+    println!("17c,{:}", start.elapsed().as_secs_f32());
 
     Ok(res)
 }

@@ -134,7 +134,7 @@ pub fn q6b(db: &ImdbData) -> Result<Option<(&str, &str, &str)>, PolarsError> {
         }
     }
 
-    println!("{:}", start.elapsed().as_secs_f32());
+    println!("6b,{:}", start.elapsed().as_secs_f32());
 
     Ok(res)
 }

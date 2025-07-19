@@ -1,7 +1,7 @@
+use crate::data::ImdbData;
 use ahash::{HashMap, HashSet};
 use polars::prelude::*;
 use std::time::Instant;
-use crate::data::ImdbData;
 
 pub fn q17f(db: &ImdbData) -> Result<Option<&str>, PolarsError> {
     let ci = &db.ci;
@@ -87,7 +87,7 @@ pub fn q17f(db: &ImdbData) -> Result<Option<&str>, PolarsError> {
         }
     }
 
-    println!("{:}", start.elapsed().as_secs_f32());
+    println!("17f,{:}", start.elapsed().as_secs_f32());
 
     Ok(res)
 }
@@ -121,10 +121,7 @@ mod test_17f {
     #[test]
     fn test_q17f() -> Result<(), PolarsError> {
         let db = ImdbData::new();
-        assert_eq!(
-            q17f(&db)?,
-            Some("'El Galgo PornoStar', Blanquito")
-        );
+        assert_eq!(q17f(&db)?, Some("'El Galgo PornoStar', Blanquito"));
         Ok(())
     }
 }

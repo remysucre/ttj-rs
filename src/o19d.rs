@@ -189,7 +189,7 @@ pub fn q19d(db: &ImdbData) -> Result<Option<(&str, &str)>, PolarsError> {
         }
     }
 
-    println!("{:}", start.elapsed().as_secs_f32());
+    println!("19d,{:}", start.elapsed().as_secs_f32());
 
     Ok(res)
 }

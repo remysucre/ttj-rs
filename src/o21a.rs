@@ -227,7 +227,7 @@ pub fn q21a(db: &ImdbData) -> Result<Option<(&str, &str, &str)>, PolarsError> {
     // }
 
     let duration = start.elapsed().as_secs_f32();
-    println!("{duration:}");
+    println!("21a,{duration:}");
 
     Ok(res)
 }

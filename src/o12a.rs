@@ -149,40 +149,37 @@ pub fn q12a(db: &ImdbData) -> Result<Option<(&str, &str, &str)>, PolarsError> {
         {
             if let Some(titles) = t_m.get(&movie_id) {
                 if let Some(names) = cn_m.get(&company_id) {
-                    if ct_s.contains(&company_type_id)
-                        && mi_s.contains(&movie_id) {
-                            if let Some(info) = mi_idx_m.get(&movie_id) {
-                                for title in titles {
-                                    for name in names {
-                                        for i in info {
-                                            if let Some((old_title, old_name, old_info)) =
-                                                res.as_mut()
-                                            {
-                                                if name < old_name {
-                                                    *old_name = name;
-                                                }
-                                                if title < old_title {
-                                                    *old_title = title;
-                                                }
-                                                if i < old_info {
-                                                    *old_info = i;
-                                                }
-                                            } else {
-                                                res = Some((name, title, i));
+                    if ct_s.contains(&company_type_id) && mi_s.contains(&movie_id) {
+                        if let Some(info) = mi_idx_m.get(&movie_id) {
+                            for title in titles {
+                                for name in names {
+                                    for i in info {
+                                        if let Some((old_title, old_name, old_info)) = res.as_mut()
+                                        {
+                                            if name < old_name {
+                                                *old_name = name;
                                             }
+                                            if title < old_title {
+                                                *old_title = title;
+                                            }
+                                            if i < old_info {
+                                                *old_info = i;
+                                            }
+                                        } else {
+                                            res = Some((name, title, i));
                                         }
                                     }
                                 }
                             }
                         }
+                    }
                 }
             }
         }
     }
 
     let duration = start.elapsed().as_secs_f32();
-    // println!("{:}", res);
-    println!("{duration:}");
+    println!("12a,{duration:}");
 
     Ok(res)
 }

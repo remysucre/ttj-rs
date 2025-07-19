@@ -283,7 +283,7 @@ pub fn q30a(db: &ImdbData) -> Result<Option<(&str, &str, &str, &str)>, PolarsErr
         }
     }
 
-    println!("{:}", elapsed.elapsed().as_secs_f32());
+    println!("30a,{:}", elapsed.elapsed().as_secs_f32());
 
     Ok(res)
 }

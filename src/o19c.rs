@@ -172,31 +172,32 @@ pub fn q19c(db: &ImdbData) -> Result<Option<(&str, &str)>, PolarsError> {
                     | "(voice: Japanese version)"
                     | "(voice) (uncredited)"
                     | "(voice: English version)"
-            )
-                && rt_s.contains(&rid) && chn_s.contains(&prid) {
-                    if let Some(titles) = t_m.get(&mid) {
-                        if let Some(names) = n_m.get(&pid) {
-                            for title in titles {
-                                for name in names {
-                                    if let Some((old_name, old_title)) = res.as_mut() {
-                                        if *name < *old_name {
-                                            *old_name = name;
-                                        }
-                                        if *title < *old_title {
-                                            *old_title = title;
-                                        }
-                                    } else {
-                                        res = Some((name, title));
+            ) && rt_s.contains(&rid)
+                && chn_s.contains(&prid)
+            {
+                if let Some(titles) = t_m.get(&mid) {
+                    if let Some(names) = n_m.get(&pid) {
+                        for title in titles {
+                            for name in names {
+                                if let Some((old_name, old_title)) = res.as_mut() {
+                                    if *name < *old_name {
+                                        *old_name = name;
                                     }
+                                    if *title < *old_title {
+                                        *old_title = title;
+                                    }
+                                } else {
+                                    res = Some((name, title));
                                 }
                             }
                         }
                     }
                 }
+            }
         }
     }
 
-    println!("{:}", start.elapsed().as_secs_f32());
+    println!("19c,{:}", start.elapsed().as_secs_f32());
 
     Ok(res)
 }

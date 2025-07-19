@@ -1,10 +1,9 @@
+use crate::data::ImdbData;
 use ahash::{HashMap, HashSet};
 use polars::prelude::*;
 use std::time::Instant;
-use crate::data::ImdbData;
 
 pub fn q25c(db: &ImdbData) -> Result<Option<(&str, &str, &str, &str)>, PolarsError> {
-
     let ci = &db.ci;
     let it = &db.it;
     let k = &db.k;
@@ -178,8 +177,12 @@ pub fn q25c(db: &ImdbData) -> Result<Option<(&str, &str, &str, &str)>, PolarsErr
                                     for title in ts {
                                         for i in info {
                                             for x in xinfo {
-                                                if let Some((old_name, old_title, old_info, old_xinfo)) =
-                                                    res.as_mut()
+                                                if let Some((
+                                                    old_name,
+                                                    old_title,
+                                                    old_info,
+                                                    old_xinfo,
+                                                )) = res.as_mut()
                                                 {
                                                     if name < old_name {
                                                         *old_name = name;
@@ -209,7 +212,7 @@ pub fn q25c(db: &ImdbData) -> Result<Option<(&str, &str, &str, &str)>, PolarsErr
     }
 
     let duration = start.elapsed().as_secs_f32();
-    println!("{duration:}");
+    println!("25c,{duration:}");
 
     Ok(res)
 }

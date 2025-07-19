@@ -22,7 +22,12 @@ pub fn q29a(db: &ImdbData) -> Result<Option<(&str, &str, &str)>, PolarsError> {
     let rt = &db.rt;
     let t = &db.t;
 
-    let an_s: HashSet<i32> = an.column("person_id")?.i32()?.into_iter().flatten().collect();
+    let an_s: HashSet<i32> = an
+        .column("person_id")?
+        .i32()?
+        .into_iter()
+        .flatten()
+        .collect();
 
     let start = Instant::now();
 
@@ -229,12 +234,8 @@ pub fn q29a(db: &ImdbData) -> Result<Option<(&str, &str, &str)>, PolarsError> {
         .into_iter()
         .zip(rt.column("id")?.i32()?)
         .filter_map(|(role, id)| {
-            if let (Some(role), Some(id)) = (role, id) { 
-                if role == "actress" {
-                    Some(id)
-                } else {
-                    None
-                }
+            if let (Some(role), Some(id)) = (role, id) {
+                if role == "actress" { Some(id) } else { None }
             } else {
                 None
             }
@@ -264,11 +265,7 @@ pub fn q29a(db: &ImdbData) -> Result<Option<(&str, &str, &str)>, PolarsError> {
         .zip(it3.column("id")?.i32()?)
         .filter_map(|(info, id)| {
             if let (Some(info), Some(id)) = (info, id) {
-                if info == "trivia" {
-                    Some(id)
-                } else {
-                    None
-                }
+                if info == "trivia" { Some(id) } else { None }
             } else {
                 None
             }
@@ -281,9 +278,7 @@ pub fn q29a(db: &ImdbData) -> Result<Option<(&str, &str, &str)>, PolarsError> {
         .into_iter()
         .zip(pi.column("info_type_id")?.i32()?)
         .filter_map(|(person_id, info_type_id)| {
-            if let (Some(person_id), Some(info_type_id)) =
-                (person_id, info_type_id)
-            {
+            if let (Some(person_id), Some(info_type_id)) = (person_id, info_type_id) {
                 if it3_s.contains(&info_type_id) {
                     Some(person_id)
                 } else {
@@ -352,7 +347,7 @@ pub fn q29a(db: &ImdbData) -> Result<Option<(&str, &str, &str)>, PolarsError> {
     }
 
     let duration = start.elapsed().as_secs_f32();
-    println!("{duration:}");
+    println!("29a,{duration:}");
 
     Ok(res)
 }
@@ -424,7 +419,6 @@ pub fn q29a(db: &ImdbData) -> Result<Option<(&str, &str, &str)>, PolarsError> {
 //   AND k.id = mk.keyword_id
 //   AND cct1.id = cc.subject_id
 //   AND cct2.id = cc.status_id;
-
 
 #[cfg(test)]
 mod test_q29a {

@@ -115,7 +115,6 @@ pub fn q13d(db: &ImdbData) -> Result<Option<(&str, &str, &str)>, PolarsError> {
         })
         .collect();
 
-
     let cn_m: HashMap<i32, &str> = cn
         .column("country_code")?
         .str()?
@@ -190,7 +189,7 @@ pub fn q13d(db: &ImdbData) -> Result<Option<(&str, &str, &str)>, PolarsError> {
         }
     }
 
-    println!("{:}", start.elapsed().as_secs_f32());
+    println!("13d,{:}", start.elapsed().as_secs_f32());
 
     Ok(res)
 }

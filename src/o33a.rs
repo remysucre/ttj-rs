@@ -265,27 +265,44 @@ pub fn q33a(db: &ImdbData) -> Result<Option<(&str, &str, &str, &str, &str, &str)
                                                                     for r2 in mi_idx2_info {
                                                                         for t1 in t1_title {
                                                                             for t2 in t2_title {
-                                                                                if let Some((old_n1, old_n2, old_r1, old_r2, old_t1, old_t2)) = res.as_mut() {
+                                                                                if let Some((
+                                                                                    old_n1,
+                                                                                    old_n2,
+                                                                                    old_r1,
+                                                                                    old_r2,
+                                                                                    old_t1,
+                                                                                    old_t2,
+                                                                                )) = res.as_mut()
+                                                                                {
                                                                                     if n1 < old_n1 {
-                                                                                        *old_n1 = n1;
+                                                                                        *old_n1 =
+                                                                                            n1;
                                                                                     }
                                                                                     if n2 < old_n2 {
-                                                                                        *old_n2 = n2;
+                                                                                        *old_n2 =
+                                                                                            n2;
                                                                                     }
                                                                                     if r1 < old_r1 {
-                                                                                        *old_r1 = r1;
+                                                                                        *old_r1 =
+                                                                                            r1;
                                                                                     }
                                                                                     if r2 < old_r2 {
-                                                                                        *old_r2 = r2;
+                                                                                        *old_r2 =
+                                                                                            r2;
                                                                                     }
                                                                                     if t1 < old_t1 {
-                                                                                        *old_t1 = t1;
+                                                                                        *old_t1 =
+                                                                                            t1;
                                                                                     }
                                                                                     if t2 < old_t2 {
-                                                                                        *old_t2 = t2;
+                                                                                        *old_t2 =
+                                                                                            t2;
                                                                                     }
                                                                                 } else {
-                                                                                    res = Some((n1, n2, r1, r2, t1, t2));
+                                                                                    res = Some((
+                                                                                        n1, n2, r1,
+                                                                                        r2, t1, t2,
+                                                                                    ));
                                                                                 }
                                                                             }
                                                                         }
@@ -307,7 +324,7 @@ pub fn q33a(db: &ImdbData) -> Result<Option<(&str, &str, &str, &str, &str, &str)
         }
     }
 
-    println!("{:}", start.elapsed().as_secs_f32());
+    println!("33a,{:}", start.elapsed().as_secs_f32());
 
     Ok(res)
 }
@@ -361,7 +378,6 @@ pub fn q33a(db: &ImdbData) -> Result<Option<(&str, &str, &str, &str, &str, &str)
 // AND ml.linked_movie_id = mc2.movie_id
 // AND mi_idx2.movie_id = mc2.movie_id;
 
-
 #[cfg(test)]
 mod test_q33a {
     use super::*;
@@ -372,7 +388,14 @@ mod test_q33a {
         let db = ImdbData::new();
         let res = q33a(&db)?;
 
-        let expected = Some(("495 Productions", "495 Productions", "3.3", "2.7", "A Double Shot at Love", "A Shot at Love with Tila Tequila"));
+        let expected = Some((
+            "495 Productions",
+            "495 Productions",
+            "3.3",
+            "2.7",
+            "A Double Shot at Love",
+            "A Shot at Love with Tila Tequila",
+        ));
 
         assert_eq!(res, expected);
         Ok(())
