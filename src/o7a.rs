@@ -5,7 +5,7 @@ use polars::prelude::*;
 use std::time::Instant;
 
 pub fn q7a(db: &ImdbData) -> Result<Option<(&str, &str)>, PolarsError> {
-    let an = &db.an;
+    // let an = &db.an;
     let ci = &db.ci;
     let it = &db.it;
     let lt = &db.lt;
@@ -87,7 +87,7 @@ pub fn q7a(db: &ImdbData) -> Result<Option<(&str, &str)>, PolarsError> {
         })
         .collect();
 
-    let t_m: HashMap<i32, Vec<&str>> = t
+    let t_m: HashMap<i32, &str> = t
         .column("id")?
         .i32()?
         .into_iter()
@@ -105,11 +105,11 @@ pub fn q7a(db: &ImdbData) -> Result<Option<(&str, &str)>, PolarsError> {
             }
         })
         .fold(HashMap::default(), |mut acc, (id, title)| {
-            acc.entry(id).or_default().push(title);
+            acc.insert(id, title);
             acc
         });
 
-    let n_m: HashMap<i32, Vec<&str>> = n
+    let n_m: HashMap<i32, &str> = n
         .column("id")?
         .i32()?
         .into_iter()
@@ -133,27 +133,27 @@ pub fn q7a(db: &ImdbData) -> Result<Option<(&str, &str)>, PolarsError> {
             }
         })
         .fold(HashMap::default(), |mut acc, (id, name)| {
-            acc.entry(id).or_default().push(name);
+            acc.insert(id, name);
             acc
         });
 
-    let an_s: HashSet<i32> = an
-        .column("person_id")?
-        .i32()?
-        .into_iter()
-        .zip(an.column("name")?.str()?)
-        .filter_map(|(id, name)| {
-            if let (Some(id), Some(name)) = (id, name) {
-                if n_m.contains_key(&id) && name.contains('a') {
-                    Some(id)
-                } else {
-                    None
-                }
-            } else {
-                None
-            }
-        })
-        .collect();
+    // let an_s: HashSet<i32> = an
+    //     .column("person_id")?
+    //     .i32()?
+    //     .into_iter()
+    //     .zip(an.column("name")?.str()?)
+    //     .filter_map(|(id, name)| {
+    //         if let (Some(id), Some(name)) = (id, name) {
+    //             if n_m.contains_key(&id) && name.contains('a') {
+    //                 Some(id)
+    //             } else {
+    //                 None
+    //             }
+    //         } else {
+    //             None
+    //         }
+    //     })
+    //     .collect();
 
     let mut res: Option<(&str, &str)> = None;
 
@@ -161,25 +161,21 @@ pub fn q7a(db: &ImdbData) -> Result<Option<(&str, &str)>, PolarsError> {
         .column("person_id")?
         .i32()?
         .into_iter()
-        .zip(ci.column("movie_id")?.i32()?.into_iter())
+        .zip(ci.column("movie_id")?.i32()?)
     {
         if let (Some(pid), Some(mid)) = (pid, mid) {
-            if pi_s.contains(&pid) && an_s.contains(&pid) {
-                if let (Some(name), Some(titles)) = (n_m.get(&pid), t_m.get(&mid)) {
-                    for name in name {
-                        for title in titles {
-                            if let Some((old_name, old_title)) = res.as_mut() {
-                                if name < old_name {
-                                    *old_name = name;
-                                }
-                                if title < old_title {
-                                    *old_title = title;
-                                }
-                            } else {
-                                res = Some((name, title));
-                            }
-                        }
+            if let Some(name) = n_m.get(&pid)
+                && let Some(title) = t_m.get(&mid)
+            {
+                if let Some((old_name, old_title)) = res.as_mut() {
+                    if name < old_name {
+                        *old_name = name;
                     }
+                    if title < old_title {
+                        *old_title = title;
+                    }
+                } else {
+                    res = Some((name, title));
                 }
             }
         }
