@@ -151,15 +151,11 @@ pub fn q20b(db: &ImdbData) -> Result<Option<&str>, PolarsError> {
         .zip(ci.column("person_id")?.i32()?.into_no_null_iter())
         .zip(ci.column("person_role_id")?.i32()?.into_no_null_iter())
     {
-        // Early exit conditions
-        if !mk_s.contains(&movie_id)
-            || !n_s.contains(&person_id)
-            || !chn_s.contains(&person_role_id)
+        if n_s.contains(&person_id)
+            && chn_s.contains(&person_role_id)
+            && let Some(titles) = t_m.get(&movie_id)
+            && mk_s.contains(&movie_id)
         {
-            continue;
-        }
-        // Found a match, get the title(s)
-        if let Some(titles) = t_m.get(&movie_id) {
             for &title in titles {
                 match res {
                     None => res = Some(title),
