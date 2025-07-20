@@ -12,7 +12,6 @@ foldhash = "0.1.5"
 rustc-hash = "2.1.1"
 hashbrown = "0.15.4"
 bumpalo = { version = "3.19.0", features = ["allocator-api2"] }
-regex = "1"
 
 [profile.release]
 # debug = false
