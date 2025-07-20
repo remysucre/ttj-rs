@@ -26,23 +26,6 @@ pub fn q6b(db: &ImdbData) -> Result<Option<(&str, &str, &str)>, PolarsError> {
         })
         .collect();
 
-    let ci_m: HashMap<i32, Vec<i32>> = ci
-        .column("movie_id")?
-        .i32()?
-        .into_no_null_iter()
-        .zip(ci.column("person_id")?.i32()?.into_no_null_iter())
-        .filter_map(|(movie_id, person_id)| {
-            if n_m.contains_key(&person_id) {
-                Some((movie_id, person_id))
-            } else {
-                None
-            }
-        })
-        .fold(HashMap::default(), |mut acc, (movie_id, person_id)| {
-            acc.entry(movie_id).or_default().push(person_id);
-            acc
-        });
-
     let target_keywords: ahash::HashSet<&str> = [
         "marvel-cinematic-universe",
         "superhero",
@@ -62,12 +45,19 @@ pub fn q6b(db: &ImdbData) -> Result<Option<(&str, &str, &str)>, PolarsError> {
         .i32()?
         .into_no_null_iter()
         .zip(k.column("keyword")?.str()?.into_no_null_iter())
-        .filter_map(|(id, keyword)| {
-            if target_keywords.contains(keyword) {
-                Some((id, keyword))
-            } else {
-                None
-            }
+        .filter_map(|(id, keyword)| target_keywords.contains(keyword).then_some((id, keyword)))
+        .collect();
+
+    let t_m: HashMap<i32, &str> = t
+        .column("id")?
+        .i32()?
+        .into_no_null_iter()
+        .zip(t.column("title")?.str()?.into_no_null_iter())
+        .zip(t.column("production_year")?.i32()?)
+        .filter_map(|((id, title), production_year)| {
+            production_year
+                .filter(|&year| year > 2014)
+                .map(|_| (id, title))
         })
         .collect();
 
@@ -77,7 +67,7 @@ pub fn q6b(db: &ImdbData) -> Result<Option<(&str, &str, &str)>, PolarsError> {
         .into_no_null_iter()
         .zip(mk.column("keyword_id")?.i32()?.into_no_null_iter())
         .filter_map(|(movie_id, keyword_id)| {
-            if ci_m.contains_key(&movie_id) {
+            if t_m.contains_key(&movie_id) {
                 k_m.get(&keyword_id).map(|&keyword| (movie_id, keyword))
             } else {
                 None
@@ -88,57 +78,36 @@ pub fn q6b(db: &ImdbData) -> Result<Option<(&str, &str, &str)>, PolarsError> {
             acc
         });
 
-    let mut min_keyword: Option<&str> = None;
-    let mut min_name: Option<&str> = None;
-    let mut min_title: Option<&str> = None;
+    let mut res: Option<(&str, &str, &str)> = None;
 
-    for ((movie_id, title), production_year) in t
-        .column("id")?
+    for (pid, mid) in ci
+        .column("person_id")?
         .i32()?
         .into_no_null_iter()
-        .zip(t.column("title")?.str()?.into_no_null_iter())
-        .zip(t.column("production_year")?.i32()?)
+        .zip(ci.column("movie_id")?.i32()?.into_no_null_iter())
     {
-        if let Some(production_year) = production_year
-            && production_year > 2014
-            && let Some(keywords) = mk_m.get(&movie_id)
-            && let Some(person_ids) = ci_m.get(&movie_id)
+        if let Some(name) = n_m.get(&pid)
+            && let Some(title) = t_m.get(&mid)
+            && let Some(keywords) = mk_m.get(&mid)
         {
-            min_title = Some(match min_title {
-                None => title,
-                Some(current) => {
-                    if title < current {
-                        title
-                    } else {
-                        current
+            for &keyword in keywords {
+                match res {
+                    Some((min_keyword, min_name, min_title)) => {
+                        let new_keyword = if keyword < min_keyword {
+                            keyword
+                        } else {
+                            min_keyword
+                        };
+                        let new_name = if *name < min_name { *name } else { min_name };
+                        let new_title = if *title < min_title {
+                            *title
+                        } else {
+                            min_title
+                        };
+                        res = Some((new_keyword, new_name, new_title));
                     }
-                }
-            });
-
-            for &person_id in person_ids {
-                if let Some(&name) = n_m.get(&person_id) {
-                    min_name = Some(match min_name {
-                        None => name,
-                        Some(current) => {
-                            if name < current {
-                                name
-                            } else {
-                                current
-                            }
-                        }
-                    });
-
-                    for &keyword in keywords {
-                        min_keyword = Some(match min_keyword {
-                            None => keyword,
-                            Some(current) => {
-                                if keyword < current {
-                                    keyword
-                                } else {
-                                    current
-                                }
-                            }
-                        });
+                    None => {
+                        res = Some((keyword, name, title));
                     }
                 }
             }
@@ -147,10 +116,7 @@ pub fn q6b(db: &ImdbData) -> Result<Option<(&str, &str, &str)>, PolarsError> {
 
     println!("6b,{:}", start.elapsed().as_secs_f32());
 
-    match (min_keyword, min_name, min_title) {
-        (Some(keyword), Some(name), Some(title)) => Ok(Some((keyword, name, title))),
-        _ => Ok(None),
-    }
+    Ok(res)
 }
 
 // -- JOB Query 6b
