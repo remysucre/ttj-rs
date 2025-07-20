@@ -28,147 +28,101 @@ pub fn q20a(db: &ImdbData) -> Result<Option<&str>, PolarsError> {
 
     let start = Instant::now();
 
-    let cct1_s = cct1
+    let cct1_id = cct1
         .column("id")?
         .i32()?
-        .into_iter()
-        .zip(cct1.column("kind")?.str()?)
-        .filter_map(|(id, kind)| {
-            if let (Some(id), Some(kind)) = (id, kind) {
-                if kind == "cast" { Some(id) } else { None }
-            } else {
-                None
-            }
-        })
-        .collect::<HashSet<_>>();
+        .into_no_null_iter()
+        .zip(cct1.column("kind")?.str()?.into_no_null_iter())
+        .find(|(_, kind)| *kind == "cast")
+        .map(|(id, _)| id)
+        .unwrap();
 
-    let cct2_s = cct2
+    let cct2_s: HashSet<i32> = cct2
         .column("id")?
         .i32()?
-        .into_iter()
-        .zip(cct2.column("kind")?.str()?)
-        .filter_map(|(id, kind)| {
-            if let (Some(id), Some(kind)) = (id, kind) {
-                if kind.contains("complete") {
-                    Some(id)
-                } else {
-                    None
-                }
-            } else {
-                None
-            }
-        })
-        .collect::<HashSet<_>>();
+        .into_no_null_iter()
+        .zip(cct2.column("kind")?.str()?.into_no_null_iter())
+        .filter_map(|(id, kind)| kind.contains("complete").then_some(id))
+        .collect();
 
     let cc_s = cc
         .column("subject_id")?
         .i32()?
-        .into_iter()
-        .zip(cc.column("status_id")?.i32()?)
-        .zip(cc.column("movie_id")?.i32()?)
+        .into_no_null_iter()
+        .zip(cc.column("status_id")?.i32()?.into_no_null_iter())
+        .zip(cc.column("movie_id")?.i32()?.into_no_null_iter())
         .filter_map(|((subject_id, status_id), movie_id)| {
-            if let (Some(subject_id), Some(status_id), Some(movie_id)) =
-                (subject_id, status_id, movie_id)
-            {
-                if cct1_s.contains(&subject_id) && cct2_s.contains(&status_id) {
-                    Some(movie_id)
-                } else {
-                    None
-                }
-            } else {
-                None
-            }
+            (cct1_id == subject_id && cct2_s.contains(&status_id)).then_some(movie_id)
         })
         .collect::<HashSet<_>>();
 
     let chn_s = chn
         .column("name")?
         .str()?
-        .into_iter()
-        .zip(chn.column("id")?.i32()?)
+        .into_no_null_iter()
+        .zip(chn.column("id")?.i32()?.into_no_null_iter())
         .filter_map(|(name, id)| {
-            if let (Some(name), Some(id)) = (name, id) {
-                // Could be further optimized by reordering depending on the selectivity of the filters
-                if (name.contains("Tony") && name.contains("Stark")
-                    || name.contains("Iron") && name.contains("Man"))
-                    && !name.contains("Sherlock")
-                {
-                    Some(id)
-                } else {
-                    None
-                }
+            if name.contains("Sherlock") {
+                return None;
+            }
+            if (name.contains("Tony") && name.contains("Stark"))
+                || (name.contains("Iron") && name.contains("Man"))
+            {
+                Some(id)
             } else {
                 None
             }
         })
         .collect::<HashSet<_>>();
 
-    let k_s = k
+    let target_keywords: HashSet<&str> = [
+        "superhero",
+        "sequel",
+        "second-part",
+        "marvel-comics",
+        "based-on-comic",
+        "tv-special",
+        "fight",
+        "violence",
+    ]
+    .into_iter()
+    .collect();
+
+    let k_s: HashSet<i32> = k
         .column("id")?
         .i32()?
-        .into_iter()
-        .zip(k.column("keyword")?.str()?)
-        .filter_map(|(id, keyword)| {
-            if let (Some(id), Some(keyword)) = (id, keyword) {
-                if matches!(
-                    keyword,
-                    "superhero"
-                        | "sequel"
-                        | "second-part"
-                        | "marvel-comics"
-                        | "based-on-comic"
-                        | "tv-special"
-                        | "fight"
-                        | "violence"
-                ) {
-                    Some(id)
-                } else {
-                    None
-                }
-            } else {
-                None
-            }
-        })
-        .collect::<HashSet<_>>();
+        .into_no_null_iter()
+        .zip(k.column("keyword")?.str()?.into_no_null_iter())
+        .filter_map(|(id, keyword)| target_keywords.contains(keyword).then_some(id))
+        .collect();
 
-    let kt_s = kt
+    let kt_id = kt
         .column("kind")?
         .str()?
-        .into_iter()
-        .zip(kt.column("id")?.i32()?)
-        .filter_map(|(kind, id)| {
-            if let (Some(kind), Some(id)) = (kind, id) {
-                if kind == "movie" { Some(id) } else { None }
-            } else {
-                None
-            }
-        })
-        .collect::<HashSet<_>>();
+        .into_no_null_iter()
+        .zip(kt.column("id")?.i32()?.into_no_null_iter())
+        .find(|(kind, _)| *kind == "movie")
+        .map(|(_, id)| id)
+        .unwrap();
 
     let t_m: HashMap<i32, &str> = t
         .column("id")?
         .i32()?
-        .into_iter()
-        .zip(t.column("title")?.str()?)
+        .into_no_null_iter()
+        .zip(t.column("title")?.str()?.into_no_null_iter())
         .zip(t.column("production_year")?.i32()?)
-        .zip(t.column("kind_id")?.i32()?)
+        .zip(t.column("kind_id")?.i32()?.into_no_null_iter())
         .filter_map(|(((id, title), production_year), kind_id)| {
-            if let (Some(id), Some(title), Some(production_year), Some(kind_id)) =
-                (id, title, production_year, kind_id)
-            {
-                if production_year > 1950 && kt_s.contains(&kind_id) && cc_s.contains(&id) {
-                    Some((id, title))
-                } else {
-                    None
-                }
+            if kt_id != kind_id || !cc_s.contains(&id) {
+                return None;
+            }
+            if let Some(year) = production_year {
+                (year > 1950).then_some((id, title))
             } else {
                 None
             }
         })
-        .fold(HashMap::default(), |mut acc, (id, title)| {
-            acc.insert(id, title);
-            acc
-        });
+        .collect();
 
     // let n_s = n
     //     .column("id")?
@@ -180,50 +134,29 @@ pub fn q20a(db: &ImdbData) -> Result<Option<&str>, PolarsError> {
     let mk_s = mk
         .column("keyword_id")?
         .i32()?
-        .into_iter()
-        .zip(mk.column("movie_id")?.i32()?)
+        .into_no_null_iter()
+        .zip(mk.column("movie_id")?.i32()?.into_no_null_iter())
         .filter_map(|(keyword_id, movie_id)| {
-            if let (Some(keyword_id), Some(movie_id)) = (keyword_id, movie_id) {
-                if k_s.contains(&keyword_id) && t_m.contains_key(&movie_id) {
-                    Some(movie_id)
-                } else {
-                    None
-                }
-            } else {
-                None
-            }
+            (k_s.contains(&keyword_id) && t_m.contains_key(&movie_id)).then_some(movie_id)
         })
         .collect::<HashSet<_>>();
 
-    let mut res = None;
-
-    for ((movie_id, person_id), person_role_id) in ci
+    let matching_movies: Vec<i32> = ci
         .column("movie_id")?
         .i32()?
-        .into_iter()
-        .zip(ci.column("person_id")?.i32()?.into_iter())
-        .zip(ci.column("person_role_id")?.i32()?.into_iter())
-    {
-        if let (Some(movie_id), Some(_), Some(person_role_id)) =
-            (movie_id, person_id, person_role_id)
-        {
-            if chn_s.contains(&person_role_id)
-                // && n_s.contains(&person_id)
-                // && cc_s.contains(&movie_id)
-                && mk_s.contains(&movie_id)
-            {
-                if let Some(title) = t_m.get(&movie_id) {
-                    if let Some(old_title) = res.as_ref() {
-                        if title < old_title {
-                            res = Some(*title);
-                        }
-                    } else {
-                        res = Some(*title);
-                    }
-                }
-            }
-        }
-    }
+        .into_no_null_iter()
+        .zip(ci.column("person_role_id")?.i32()?.into_no_null_iter())
+        .filter(|(movie_id, person_role_id)| {
+            chn_s.contains(person_role_id) && mk_s.contains(movie_id)
+        })
+        .map(|(movie_id, _)| movie_id)
+        .collect();
+
+    let res = matching_movies
+        .iter()
+        .filter_map(|movie_id| t_m.get(movie_id))
+        .min()
+        .copied();
 
     let duration = start.elapsed().as_secs_f32();
     println!("20a,{duration:}");
