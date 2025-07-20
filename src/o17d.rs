@@ -1,9 +1,7 @@
 use crate::data::ImdbData;
-// use ahash::{HashMap, HashSet};
+use ahash::{HashMap, HashSet};
 use polars::prelude::*;
 use std::time::Instant;
-
-use rustc_hash::{FxHashMap as HashMap, FxHashSet as HashSet};
 
 pub fn q17d(db: &ImdbData) -> Result<Option<&str>, PolarsError> {
     let ci = &db.ci;
@@ -26,95 +24,50 @@ pub fn q17d(db: &ImdbData) -> Result<Option<&str>, PolarsError> {
 
     let start = Instant::now();
 
-    let k_s: HashSet<i32> = k
+    let k_id = k
         .column("keyword")?
         .str()?
-        .into_iter()
-        .zip(k.column("id")?.i32()?)
-        .filter_map(|(keyword, id)| {
-            if let (Some(keyword), Some(id)) = (keyword, id) {
-                if keyword == "character-name-in-title" {
-                    Some(id)
-                } else {
-                    None
-                }
-            } else {
-                None
-            }
-        })
-        .collect();
+        .into_no_null_iter()
+        .zip(k.column("id")?.i32()?.into_no_null_iter())
+        .find(|(keyword, _)| *keyword == "character-name-in-title")
+        .map(|(_, id)| id)
+        .unwrap();
 
     let mk_s: HashSet<i32> = mk
         .column("keyword_id")?
         .i32()?
-        .into_iter()
-        .zip(mk.column("movie_id")?.i32()?)
-        .filter_map(|(keyword_id, movie_id)| {
-            if let (Some(keyword_id), Some(movie_id)) = (keyword_id, movie_id) {
-                if k_s.contains(&keyword_id) {
-                    Some(movie_id)
-                } else {
-                    None
-                }
-            } else {
-                None
-            }
-        })
+        .into_no_null_iter()
+        .zip(mk.column("movie_id")?.i32()?.into_no_null_iter())
+        .filter_map(|(keyword_id, movie_id)| (k_id == keyword_id).then_some(movie_id))
         .collect();
 
     let mc_s: HashSet<i32> = mc
         .column("movie_id")?
         .i32()?
-        .into_iter()
-        .flat_map(|movie_id| {
-            if mk_s.contains(&movie_id?) {
-                movie_id
-            } else {
-                None
-            }
-        })
+        .into_no_null_iter()
+        .filter(|movie_id| mk_s.contains(movie_id))
         .collect();
 
     let n_m: HashMap<i32, &str> = n
         .column("id")?
         .i32()?
-        .into_iter()
-        .zip(n.column("name")?.str()?)
-        .filter_map(|(id, name)| {
-            if let (Some(id), Some(name)) = (id, name) {
-                if name.contains("Bert") {
-                    Some((id, name))
-                } else {
-                    None
-                }
-            } else {
-                None
-            }
-        })
+        .into_no_null_iter()
+        .zip(n.column("name")?.str()?.into_no_null_iter())
+        .filter_map(|(id, name)| name.contains("Bert").then_some((id, name)))
         .collect();
 
-    let mut res: Option<&str> = None;
-
-    for (pid, mid) in ci
+    let res = ci
         .column("person_id")?
         .i32()?
-        .into_iter()
-        .zip(ci.column("movie_id")?.i32()?.into_iter())
-    {
-        if let (Some(pid), Some(mid)) = (pid, mid) {
-            if let Some(name) = n_m.get(&pid) {
-                if mc_s.contains(&mid) {
-                    if let Some(old_name) = res.as_mut() {
-                        if name < old_name {
-                            *old_name = *name;
-                        }
-                    } else {
-                        res = Some(name);
-                    }
-                }
-            }
-        }
-    }
+        .into_no_null_iter()
+        .zip(ci.column("movie_id")?.i32()?.into_no_null_iter())
+        .filter_map(|(person_id, movie_id)| {
+            // Check if this person has a "Bert" name and the movie is valid
+            n_m.get(&person_id)
+                .filter(|_| mc_s.contains(&movie_id))
+                .copied()
+        })
+        .min();
 
     println!("17d,{:}", start.elapsed().as_secs_f32());
 
