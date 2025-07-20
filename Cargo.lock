@@ -1123,6 +1123,7 @@ dependencies = [
  "hashbrown 0.15.4",
  "polars",
  "polars-core",
+ "regex",
  "rustc-hash",
 ]
 

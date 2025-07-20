@@ -10,6 +10,8 @@ pub fn q6b(db: &ImdbData) -> Result<Option<(&str, &str, &str)>, PolarsError> {
     let n = &db.n;
     let t = &db.t;
 
+    let re = regex::Regex::new(r"Downey.*Robert")?;
+
     let start = Instant::now();
 
     let n_m: HashMap<i32, &str> = n
@@ -18,7 +20,7 @@ pub fn q6b(db: &ImdbData) -> Result<Option<(&str, &str, &str)>, PolarsError> {
         .into_no_null_iter()
         .zip(n.column("name")?.str()?.into_no_null_iter())
         .filter_map(|(id, name)| {
-            if name.contains("Downey") && name.contains("Robert") {
+            if re.is_match(name) {
                 Some((id, name))
             } else {
                 None
