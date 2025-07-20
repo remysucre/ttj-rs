@@ -106,10 +106,7 @@ pub fn q17c(db: &ImdbData) -> Result<Option<(&str, &str)>, PolarsError> {
 
     println!("17c,{:}", start.elapsed().as_secs_f32());
 
-    Ok(match res {
-        Some(name) => Some((name, name)),
-        _ => None,
-    })
+    Ok(res.map(|name| (name, name)))
 }
 
 // -- JOB Query 17c
