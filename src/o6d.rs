@@ -43,14 +43,15 @@ pub fn q6d(db: &ImdbData) -> Result<Option<(&str, &str, &str)>, PolarsError> {
         .filter_map(|(id, keyword)| target_keywords.contains(keyword).then_some((id, keyword)))
         .collect();
 
-    let mk_m: HashMap<i32, i32> = mk
+    // Optimization: Pre-compute minimum keywords per movie: Instead of storing all keywords per movie
+    // and finding the minimum repeatedly, we compute the minimum keyword once during the initial pass through mk.
+    let mk_m: HashMap<i32, &str> = mk
         .column("movie_id")?
         .i32()?
         .into_no_null_iter()
         .zip(mk.column("keyword_id")?.i32()?.into_no_null_iter())
         .filter_map(|(movie_id, keyword_id)| {
-            k_m.contains_key(&keyword_id)
-                .then_some((movie_id, keyword_id))
+            k_m.get(&keyword_id).map(|&keyword| (movie_id, keyword))
         })
         .fold(HashMap::default(), |mut acc, (movie_id, keyword)| {
             acc.entry(movie_id)
@@ -91,15 +92,15 @@ pub fn q6d(db: &ImdbData) -> Result<Option<(&str, &str, &str)>, PolarsError> {
     {
         if let Some(title) = t_m.get(&mid)
             && let Some(name) = n_m.get(&pid)
-            && let Some(kid) = mk_m.get(&mid)
+            && let Some(keyword) = mk_m.get(&mid)
         {
             res = match res {
                 Some((old_keyword, old_name, old_title)) => Some((
-                    k_m.get(kid).unwrap().min(&old_keyword),
+                    keyword.min(&old_keyword),
                     name.min(&old_name),
                     title.min(&old_title),
                 )),
-                None => Some((k_m.get(kid).unwrap(), name, title)),
+                None => Some((keyword, name, title)),
             };
         }
     }
