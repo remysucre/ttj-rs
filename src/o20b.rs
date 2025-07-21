@@ -1,6 +1,6 @@
 use crate::data::ImdbData;
-use ahash::HashMap;
 use ahash::HashSet;
+use ahash::{HashMap, HashSetExt};
 use polars::prelude::*;
 use std::time::Instant;
 
@@ -11,29 +11,27 @@ pub fn q20b(db: &ImdbData) -> Result<Option<&str>, PolarsError> {
     let kt = &db.kt;
     let n = &db.n;
     let cc = &db.cc;
-    let cct1: &DataFrame = &db.cct;
-    let cct2: &DataFrame = &db.cct;
+    let cct: &DataFrame = &db.cct;
     let mk = &db.mk;
     let k = &db.k;
 
     let start = Instant::now();
 
-    let cct1_id = cct1
-        .column("id")?
-        .i32()?
-        .into_no_null_iter()
-        .zip(cct1.column("kind")?.str()?.into_no_null_iter())
-        .find(|(_, kind)| *kind == "cast")
-        .map(|(id, _)| id)
-        .unwrap();
+    let mut cct1_id: i32 = 0;
+    let mut cct2_s = HashSet::new();
 
-    let cct2_s: HashSet<i32> = cct2
+    for (id, kind) in cct
         .column("id")?
         .i32()?
         .into_no_null_iter()
-        .zip(cct2.column("kind")?.str()?.into_no_null_iter())
-        .filter_map(|(id, kind)| kind.contains("complete").then_some(id))
-        .collect();
+        .zip(db.cct.column("kind")?.str()?.into_no_null_iter())
+    {
+        if kind == "cast" {
+            cct1_id = id;
+        } else if kind.contains("complete") {
+            cct2_s.insert(id);
+        }
+    }
 
     let cc_s: HashSet<i32> = cc
         .column("subject_id")?
