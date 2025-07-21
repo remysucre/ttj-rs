@@ -18,93 +18,58 @@ pub fn q2c(db: &ImdbData) -> Result<Option<&str>, PolarsError> {
     let t_m: HashMap<i32, &str> = t
         .column("id")?
         .i32()?
-        .into_iter()
-        .zip(t.column("title")?.str()?)
-        .fold(HashMap::default(), |mut acc, (id, title)| {
-            if let (Some(id), Some(title)) = (id, title) {
-                acc.insert(id, title);
-            }
-            acc
-        });
+        .into_no_null_iter()
+        .zip(t.column("title")?.str()?.into_no_null_iter())
+        .collect();
 
     let start = Instant::now();
 
-    let cn_s: HashSet<i32> = cn
-        .column("country_code")?
-        .str()?
-        .into_iter()
-        .zip(cn.column("id")?.i32()?)
-        .filter_map(|(country_code, id)| {
-            if let (Some(country_code), Some(id)) = (country_code, id) {
-                if country_code == "[sm]" {
-                    Some(id)
-                } else {
-                    None
-                }
-            } else {
-                None
-            }
-        })
-        .collect();
-
-    let k_s: HashSet<i32> = k
+    let k_id = k
         .column("keyword")?
         .str()?
-        .into_iter()
-        .zip(k.column("id")?.i32()?)
-        .filter_map(|(keyword, id)| {
-            if let (Some(keyword), Some(id)) = (keyword, id) {
-                if keyword == "character-name-in-title" {
-                    Some(id)
-                } else {
-                    None
-                }
-            } else {
-                None
-            }
-        })
-        .collect();
+        .into_no_null_iter()
+        .zip(k.column("id")?.i32()?.into_no_null_iter())
+        .find(|(keyword, _)| *keyword == "character-name-in-title")
+        .map(|(_, id)| id)
+        .unwrap();
 
     let mk_s = mk
         .column("keyword_id")?
         .i32()?
-        .into_iter()
-        .zip(mk.column("movie_id")?.i32()?)
+        .into_no_null_iter()
+        .zip(mk.column("movie_id")?.i32()?.into_no_null_iter())
         .filter_map(|(keyword_id, movie_id)| {
-            if let (Some(keyword_id), Some(movie_id)) = (keyword_id, movie_id) {
-                if k_s.contains(&keyword_id) {
-                    Some(movie_id)
-                } else {
-                    None
-                }
-            } else {
-                None
-            }
+            (k_id == keyword_id && t_m.contains_key(&movie_id)).then_some(movie_id)
         })
         .collect::<HashSet<_>>();
 
-    let mut res: Option<&str> = None;
+    let cn_id = cn
+        .column("country_code")?
+        .str()?
+        .into_no_null_iter()
+        .zip(k.column("id")?.i32()?.into_no_null_iter())
+        .find(|(country_code, _)| *country_code == "[sm]")
+        .map(|(_, id)| id)
+        .unwrap();
 
-    for (movie_id, company_id) in mc
+    let mc_s: HashSet<i32> = mc
         .column("movie_id")?
         .i32()?
-        .into_iter()
-        .zip(mc.column("company_id")?.i32()?.into_iter())
-    {
-        if let (Some(movie_id), Some(company_id)) = (movie_id, company_id) {
-            if cn_s.contains(&company_id) && mk_s.contains(&movie_id) {
-                if let Some(title) = t_m.get(&movie_id) {
-                    if let Some(old_title) = res.as_mut() {
-                        if *title < *old_title {
-                            *old_title = title;
-                        }
-                    } else {
-                        res = Some(title);
-                    }
-                }
-            }
-        }
-    }
+        .into_no_null_iter()
+        .zip(mc.column("company_id")?.i32()?.into_no_null_iter())
+        .filter_map(|(movie_id, company_id)| {
+            (company_id == cn_id && mk_s.contains(&movie_id)).then_some(movie_id)
+        })
+        .collect();
+
+    let res: Option<&str> = t
+        .column("title")?
+        .str()?
+        .into_no_null_iter()
+        .zip(t.column("id")?.i32()?.into_no_null_iter())
+        .filter(|(_, movie_id)| mc_s.contains(movie_id))
+        .min_by_key(|(_, movie_id)| t_m[movie_id])
+        .map(|(title, _)| title);
 
     println!("2c,{:}", start.elapsed().as_secs_f32());
 
