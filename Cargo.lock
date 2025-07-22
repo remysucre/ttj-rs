@@ -1121,8 +1121,10 @@ dependencies = [
  "bumpalo",
  "foldhash",
  "hashbrown 0.15.4",
+ "memchr",
  "polars",
  "polars-core",
+ "regex",
  "rustc-hash",
 ]
 
