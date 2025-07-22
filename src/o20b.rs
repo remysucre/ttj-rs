@@ -1,10 +1,14 @@
 use crate::data::Data;
 use ahash::HashSet;
-use ahash::{HashMap, HashSetExt};
 use polars::prelude::*;
 use std::time::Instant;
 
 use memchr::memmem;
+
+#[inline]
+fn matches(haystack: &str, needle: &[u8]) -> bool {
+    memmem::find(haystack.as_bytes(), needle).is_some()
+}
 
 pub fn q20b(db: &Data) -> Result<Option<&str>, PolarsError> {
     let ci = &db.ci;
@@ -23,10 +27,7 @@ pub fn q20b(db: &Data) -> Result<Option<&str>, PolarsError> {
         n.id.iter()
             .zip(n.name.iter())
             .filter_map(|(id, name)| {
-                let downey = b"Downey";
-                let robert = b"Robert";
-
-                if memmem::find(name.as_bytes(), downey).is_some() && memmem::find(name.as_bytes(), robert).is_some() {
+                if matches(name, b"Downey") && matches(name, b"Robert") {
                     Some(*id)
                 } else {
                     None
@@ -39,26 +40,12 @@ pub fn q20b(db: &Data) -> Result<Option<&str>, PolarsError> {
         .iter()
         .zip(chn.id.iter())
         .filter_map(|(name, id)| {
-            if memmem::find(name.as_bytes(), b"Sherlock").is_some() {
-                return None;
-            }
-            let tony = b"Tony";
-            let stark = b"Stark";
-            let iron = b"Iron";
-            let man = b"Man";
-            let name_bytes = name.as_bytes();
-
-            if (memmem::find(name_bytes, tony).is_some() && memmem::find(name_bytes, stark).is_some())
-                || (memmem::find(name_bytes, iron).is_some() && memmem::find(name_bytes, man).is_some())
-            {
-                Some(*id)
-            } else {
-                None
-            }
+            (!matches(name, b"Sherlock")
+                && (matches(name, b"Tony") && matches(name, b"Stark")
+                    || matches(name, b"Iron") && matches(name, b"Man")))
+            .then_some(*id)
         })
         .collect();
-
-    dbg!(start.elapsed().as_secs_f32());
 
     let ci_s: HashSet<i32> = ci
         .person_id
@@ -70,10 +57,8 @@ pub fn q20b(db: &Data) -> Result<Option<&str>, PolarsError> {
         })
         .collect();
 
-    dbg!(start.elapsed().as_secs_f32());
-
     let mut cct1_id: i32 = 0;
-    let mut cct2_s = HashSet::new();
+    let mut cct2_s = HashSet::default();
 
     for (id, kind) in cct.id.iter().zip(cct.kind.iter()) {
         if kind == "cast" {
@@ -89,7 +74,8 @@ pub fn q20b(db: &Data) -> Result<Option<&str>, PolarsError> {
         .zip(cc.status_id.iter())
         .zip(cc.movie_id.iter())
         .filter_map(|((subject_id, status_id), movie_id)| {
-            (ci_s.contains(&(*movie_id)?) && cct1_id == *subject_id && cct2_s.contains(&status_id)).then_some((*movie_id)?)
+            (ci_s.contains(&(*movie_id)?) && cct1_id == *subject_id && cct2_s.contains(&status_id))
+                .then_some((*movie_id)?)
         })
         .collect();
 
@@ -132,20 +118,20 @@ pub fn q20b(db: &Data) -> Result<Option<&str>, PolarsError> {
     let mut res: Option<&str> = None;
 
     for (((id, title), production_year), kind_id) in
-        t.id.iter().zip(t.title.iter()).zip(t.production_year.iter()).zip(t.kind_id.iter())
+        t.id.iter()
+            .zip(t.title.iter())
+            .zip(t.production_year.iter())
+            .zip(t.kind_id.iter())
     {
         if let Some(production_year) = production_year
             && mk_s.contains(id)
             && *production_year > 2000
             && kt_id == kind_id
         {
-            // Check if the movie is in the cast info and has the required person and role
-            if ci_s.contains(id) {
-                match res {
-                    None => res = Some(title),
-                    Some(current_min) if **title < *current_min => res = Some(title),
-                    _ => {}
-                }
+            match res {
+                None => res = Some(title),
+                Some(current_min) if **title < *current_min => res = Some(title),
+                _ => {}
             }
         }
     }
