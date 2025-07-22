@@ -21,8 +21,8 @@ pub fn q33a(db: &ImdbData) -> Result<Option<(&str, &str, &str, &str, &str, &str)
         .i32()?
         .into_no_null_iter()
         .zip(cn.column("name")?.str()?.into_no_null_iter())
-        .zip(cn.column("country_code")?.str()?.into_no_null_iter())
-        .filter_map(|((id, name), country_code)| (country_code == "[us]").then_some((id, name)))
+        .zip(cn.column("country_code")?.str()?)
+        .filter_map(|((id, name), country_code)| (country_code? == "[us]").then_some((id, name)))
         .collect();
 
     let it1_s: i32 = it
