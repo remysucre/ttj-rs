@@ -6,8 +6,8 @@ use std::time::Instant;
 use memchr::memmem;
 
 #[inline]
-fn matches(haystack: &str, needle: &[u8]) -> bool {
-    memmem::find(haystack.as_bytes(), needle).is_some()
+fn matches(haystack: &str, finder: &memchr::memmem::Finder) -> bool {
+    finder.find(haystack.as_bytes()).is_some()
 }
 
 pub fn q20b(db: &Data) -> Result<Option<&str>, PolarsError> {
@@ -21,13 +21,21 @@ pub fn q20b(db: &Data) -> Result<Option<&str>, PolarsError> {
     let mk = &db.mk;
     let k = &db.k;
 
+    let downey = memmem::Finder::new(b"Downey");
+    let robert = memmem::Finder::new(b"Robert");
+    let iron = memmem::Finder::new(b"Iron");
+    let man = memmem::Finder::new(b"Man");
+    let sherlock = memmem::Finder::new(b"Sherlock");
+    let tony = memmem::Finder::new(b"Tony");
+    let stark = memmem::Finder::new(b"Stark");
+
     let start = Instant::now();
 
     let n_s: HashSet<i32> =
         n.id.iter()
             .zip(n.name.iter())
             .filter_map(|(id, name)| {
-                if matches(name, b"Downey") && matches(name, b"Robert") {
+                if matches(name, &downey) && matches(name, &robert) {
                     Some(*id)
                 } else {
                     None
@@ -40,9 +48,9 @@ pub fn q20b(db: &Data) -> Result<Option<&str>, PolarsError> {
         .iter()
         .zip(chn.id.iter())
         .filter_map(|(name, id)| {
-            (!matches(name, b"Sherlock")
-                && (matches(name, b"Tony") && matches(name, b"Stark")
-                    || matches(name, b"Iron") && matches(name, b"Man")))
+            (!matches(name, &sherlock)
+                && (matches(name, &tony) && matches(name, &stark)
+                    || matches(name, &iron) && matches(name, &man)))
             .then_some(*id)
         })
         .collect();
