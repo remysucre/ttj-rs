@@ -47,7 +47,6 @@ pub fn q33a(db: &ImdbData) -> Result<Option<(&str, &str, &str, &str, &str, &str)
         .find(|(_, info)| *info == "rating")
         .map(|(id, _)| id)
         .unwrap();
-    // let it2_s: i32 = it1_s;
 
     let mut mi_idx1_m: HashMap<i32, &str> = HashMap::default();
     let mut mi_idx2_m: HashMap<i32, &str> = HashMap::default();
@@ -81,7 +80,6 @@ pub fn q33a(db: &ImdbData) -> Result<Option<(&str, &str, &str, &str, &str, &str)
         .find(|(_, kind)| *kind == "tv series")
         .map(|(id, _)| id)
         .unwrap();
-    // let kt2_s: i32 = kt1_s;
 
     let mut t1_m: HashMap<i32, &str> = HashMap::default();
     let mut t2_m: HashMap<i32, &str> = HashMap::default();
@@ -131,7 +129,9 @@ pub fn q33a(db: &ImdbData) -> Result<Option<(&str, &str, &str, &str, &str, &str)
             acc
         });
 
-    // Should be cn2_m but cn1_m also works
+    // Should be cn2_m but cn1_m also works because
+    // returned first_company and second_company are both "495 Productions",
+    // which happen to be a us company.
     let mc2_m: HashMap<i32, &str> = mc
         .column("company_id")?
         .i32()?
