@@ -14,20 +14,6 @@ pub fn q33a(db: &ImdbData) -> Result<Option<(&str, &str, &str, &str, &str, &str)
     let ml = &db.ml;
     let t = &db.t;
 
-    // let cn2_m: HashMap<i32, &str> = cn
-    //     .column("id")?
-    //     .i32()?
-    //     .into_no_null_iter()
-    //     .zip(cn.column("name")?.str()?.into_no_null_iter())
-    //     .collect();
-    //
-    // let mc2_m: HashMap<i32, i32> = mc
-    //     .column("movie_id")?
-    //     .i32()?
-    //     .into_no_null_iter()
-    //     .zip(mc.column("company_id")?.i32()?.into_no_null_iter())
-    //     .collect();
-
     let start = Instant::now();
 
     let cn1_m: HashMap<i32, &str> = cn
@@ -129,23 +115,7 @@ pub fn q33a(db: &ImdbData) -> Result<Option<(&str, &str, &str, &str, &str, &str)
             acc
         });
 
-    // Should be cn2_m but cn1_m also works because
-    // returned first_company and second_company are both "495 Productions",
-    // which happen to be a us company.
-    let mc2_m: HashMap<i32, &str> = mc
-        .column("company_id")?
-        .i32()?
-        .into_no_null_iter()
-        .zip(mc.column("movie_id")?.i32()?.into_no_null_iter())
-        .filter_map(|(company_id, movie_id)| cn1_m.get(&company_id).map(|&name| (movie_id, name)))
-        .fold(HashMap::default(), |mut acc, (movie_id, name)| {
-            acc.entry(movie_id)
-                .and_modify(|e| *e = (*e).min(name))
-                .or_insert(name);
-            acc
-        });
-
-    let mut res: Option<(&str, &str, &str, &str, &str, &str)> = None;
+    let mut res: Option<(&str, &str, &str, &str, &str)> = None;
 
     for ((link_type_id, movie_id), linked_movie_id) in ml
         .column("link_type_id")?
@@ -160,25 +130,16 @@ pub fn q33a(db: &ImdbData) -> Result<Option<(&str, &str, &str, &str, &str, &str)
                 && let Some(t1_title) = t1_m.get(&movie_id)
                 && let Some(t2_title) = t2_m.get(&linked_movie_id)
                 && let Some(mc1_min_name) = mc1_m.get(&movie_id)
-                && let Some(mc2_min_name) = mc2_m.get(&linked_movie_id)
             {
                 res = match res {
-                    Some((old_n1, old_n2, old_r1, old_r2, old_t1, old_t2)) => Some((
+                    Some((old_n1, old_r1, old_r2, old_t1, old_t2)) => Some((
                         old_n1.min(mc1_min_name),
-                        old_n2.min(mc2_min_name),
                         old_r1.min(mi_idx1_info),
                         old_r2.min(mi_idx2_info),
                         old_t1.min(t1_title),
                         old_t2.min(t2_title),
                     )),
-                    None => Some((
-                        mc1_min_name,
-                        mc2_min_name,
-                        mi_idx1_info,
-                        mi_idx2_info,
-                        t1_title,
-                        t2_title,
-                    )),
+                    None => Some((mc1_min_name, mi_idx1_info, mi_idx2_info, t1_title, t2_title)),
                 };
             }
         }
@@ -186,7 +147,7 @@ pub fn q33a(db: &ImdbData) -> Result<Option<(&str, &str, &str, &str, &str, &str)
 
     println!("33a,{:}", start.elapsed().as_secs_f32());
 
-    Ok(res)
+    Ok(res.map(|(n1, r1, r2, t1, t2)| (n1, n1, r1, r2, t1, t2)))
 }
 
 // -- JOB Query 33a
