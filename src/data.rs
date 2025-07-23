@@ -176,6 +176,75 @@ pub struct K {
     pub phonetic_code: Vec<Option<String>>,
 }
 
+// CREATE TABLE aka_name (
+//      id integer NOT NULL,
+//      person_id integer NOT NULL,
+//      name text NOT NULL,
+//      imdb_index character varying(12),
+//      name_pcode_cf character varying(5),
+//      name_pcode_nf character varying(5),
+//      surname_pcode character varying(5),
+//      md5sum character varying(32)
+//      --FOREIGN KEY (person_id) REFERENCES name (id)
+// );
+
+pub struct AN {
+    pub id: Vec<i32>,
+    pub person_id: Vec<i32>,
+    pub name: Vec<String>,
+    pub imdb_index: Vec<Option<String>>,
+    pub name_pcode_cf: Vec<Option<String>>,
+    pub name_pcode_nf: Vec<Option<String>>,
+    pub surname_pcode: Vec<Option<String>>,
+    pub md5sum: Vec<Option<String>>,
+}
+
+// CREATE TABLE role_type (
+//      id integer primary key ,
+//      role character varying(32) NOT NULL
+// );
+
+pub struct RT {
+    pub id: Vec<i32>,
+    pub role: Vec<String>,
+}
+
+// CREATE TABLE movie_companies (
+//      id integer NOT NULL,
+//      movie_id integer NOT NULL,
+//      company_id integer NOT NULL,
+//      company_type_id integer NOT NULL,
+//      note text
+// --   FOREIGN KEY (company_id) REFERENCES company_name(id),
+// --   FOREIGN KEY (movie_id) REFERENCES title (id),
+// --   FOREIGN KEY (company_type_id) REFERENCES company_type(id)
+// );
+pub struct MC {
+    pub id: Vec<i32>,
+    pub movie_id: Vec<i32>,
+    pub company_id: Vec<i32>,
+    pub company_type_id: Vec<i32>,
+    pub note: Vec<Option<String>>,
+}
+
+// CREATE TABLE company_name (
+//      id integer primary key,
+//      name text NOT NULL,
+//      country_code character varying(255),
+//      imdb_id integer,
+//      name_pcode_nf character varying(5),
+//      name_pcode_sf character varying(5),
+//      md5sum character varying(32)
+// );
+pub struct CN {
+    pub id: Vec<i32>,
+    pub name: Vec<String>,
+    pub country_code: Vec<Option<String>>,
+    pub imdb_id: Vec<Option<i32>>,
+    pub name_pcode_nf: Vec<Option<String>>,
+    pub name_pcode_sf: Vec<Option<String>>,
+    pub md5sum: Vec<Option<String>>,
+}
 
 pub struct Data {
     pub ci: CI,
@@ -187,77 +256,643 @@ pub struct Data {
     pub cct: CCT,
     pub mk: MK,
     pub k: K,
+    pub an: AN,
+    pub rt: RT,
+    pub mc: MC,
+    pub cn: CN,
 }
 
 impl Data {
     pub fn new(imdb: &ImdbData) -> Self {
         Data {
             ci: CI {
-                id: imdb.ci.column("id").unwrap().i32().unwrap().into_no_null_iter().collect(),
-                person_id: imdb.ci.column("person_id").unwrap().i32().unwrap().into_no_null_iter().collect(),
-                movie_id: imdb.ci.column("movie_id").unwrap().i32().unwrap().into_no_null_iter().collect(),
-                person_role_id: imdb.ci.column("person_role_id").unwrap().i32().unwrap().into_iter().collect(),
-                note: imdb.ci.column("note").unwrap().str().unwrap().into_iter().map(|opt| opt.map(|s| s.to_string())).collect(),
-                nr_order: imdb.ci.column("nr_order").unwrap().i32().unwrap().into_iter().collect(),
-                role_id: imdb.ci.column("role_id").unwrap().i32().unwrap().into_no_null_iter().collect(),
+                id: imdb
+                    .ci
+                    .column("id")
+                    .unwrap()
+                    .i32()
+                    .unwrap()
+                    .into_no_null_iter()
+                    .collect(),
+                person_id: imdb
+                    .ci
+                    .column("person_id")
+                    .unwrap()
+                    .i32()
+                    .unwrap()
+                    .into_no_null_iter()
+                    .collect(),
+                movie_id: imdb
+                    .ci
+                    .column("movie_id")
+                    .unwrap()
+                    .i32()
+                    .unwrap()
+                    .into_no_null_iter()
+                    .collect(),
+                person_role_id: imdb
+                    .ci
+                    .column("person_role_id")
+                    .unwrap()
+                    .i32()
+                    .unwrap()
+                    .into_iter()
+                    .collect(),
+                note: imdb
+                    .ci
+                    .column("note")
+                    .unwrap()
+                    .str()
+                    .unwrap()
+                    .into_iter()
+                    .map(|opt| opt.map(|s| s.to_string()))
+                    .collect(),
+                nr_order: imdb
+                    .ci
+                    .column("nr_order")
+                    .unwrap()
+                    .i32()
+                    .unwrap()
+                    .into_iter()
+                    .collect(),
+                role_id: imdb
+                    .ci
+                    .column("role_id")
+                    .unwrap()
+                    .i32()
+                    .unwrap()
+                    .into_no_null_iter()
+                    .collect(),
             },
             chn: CHN {
-                id: imdb.chn.column("id").unwrap().i32().unwrap().into_no_null_iter().collect(),
-                name: imdb.chn.column("name").unwrap().str().unwrap().into_no_null_iter().map(|s| s.to_string()).collect(),
-                imdb_index: imdb.chn.column("imdb_index").unwrap().str().unwrap().into_iter().map(|opt| opt.map(|s| s.to_string())).collect(),
-                imdb_id: imdb.chn.column("imdb_id").unwrap().i32().unwrap().into_iter().collect(),
-                name_pcode_nf: imdb.chn.column("name_pcode_nf").unwrap().str().unwrap().into_iter().map(|opt| opt.map(|s| s.to_string())).collect(),
-                surname_pcode: imdb.chn.column("surname_pcode").unwrap().str().unwrap().into_iter().map(|opt| opt.map(|s| s.to_string())).collect(),
-                md5sum: imdb.chn.column("md5sum").unwrap().str().unwrap().into_iter().map(|opt| opt.map(|s| s.to_string())).collect(),
+                id: imdb
+                    .chn
+                    .column("id")
+                    .unwrap()
+                    .i32()
+                    .unwrap()
+                    .into_no_null_iter()
+                    .collect(),
+                name: imdb
+                    .chn
+                    .column("name")
+                    .unwrap()
+                    .str()
+                    .unwrap()
+                    .into_no_null_iter()
+                    .map(|s| s.to_string())
+                    .collect(),
+                imdb_index: imdb
+                    .chn
+                    .column("imdb_index")
+                    .unwrap()
+                    .str()
+                    .unwrap()
+                    .into_iter()
+                    .map(|opt| opt.map(|s| s.to_string()))
+                    .collect(),
+                imdb_id: imdb
+                    .chn
+                    .column("imdb_id")
+                    .unwrap()
+                    .i32()
+                    .unwrap()
+                    .into_iter()
+                    .collect(),
+                name_pcode_nf: imdb
+                    .chn
+                    .column("name_pcode_nf")
+                    .unwrap()
+                    .str()
+                    .unwrap()
+                    .into_iter()
+                    .map(|opt| opt.map(|s| s.to_string()))
+                    .collect(),
+                surname_pcode: imdb
+                    .chn
+                    .column("surname_pcode")
+                    .unwrap()
+                    .str()
+                    .unwrap()
+                    .into_iter()
+                    .map(|opt| opt.map(|s| s.to_string()))
+                    .collect(),
+                md5sum: imdb
+                    .chn
+                    .column("md5sum")
+                    .unwrap()
+                    .str()
+                    .unwrap()
+                    .into_iter()
+                    .map(|opt| opt.map(|s| s.to_string()))
+                    .collect(),
             },
             t: T {
-                id: imdb.t.column("id").unwrap().i32().unwrap().into_no_null_iter().collect(),
-                title: imdb.t.column("title").unwrap().str().unwrap().into_no_null_iter().map(|s| s.to_string()).collect(),
-                imdb_index: imdb.t.column("imdb_index").unwrap().str().unwrap().into_iter().map(|opt| opt.map(|s| s.to_string())).collect(),
-                kind_id: imdb.t.column("kind_id").unwrap().i32().unwrap().into_no_null_iter().collect(),
-                production_year: imdb.t.column("production_year").unwrap().i32().unwrap().into_iter().collect(),
-                imdb_id: imdb.t.column("imdb_id").unwrap().i32().unwrap().into_iter().collect(),
-                phonetic_code: imdb.t.column("phonetic_code").unwrap().str().unwrap().into_iter().map(|opt| opt.map(|s| s.to_string())).collect(),
-                episode_of_id: imdb.t.column("episode_of_id").unwrap().i32().unwrap().into_iter().collect(),
-                season_nr: imdb.t.column("season_nr").unwrap().i32().unwrap().into_iter().collect(),
-                episode_nr: imdb.t.column("episode_nr").unwrap().i32().unwrap().into_iter().collect(),
-                series_years: imdb.t.column("series_years").unwrap().str().unwrap().into_iter().map(|opt| opt.map(|s| s.to_string())).collect(),
-                md5sum: imdb.t.column("md5sum").unwrap().str().unwrap().into_iter().map(|opt| opt.map(|s| s.to_string())).collect(),
+                id: imdb
+                    .t
+                    .column("id")
+                    .unwrap()
+                    .i32()
+                    .unwrap()
+                    .into_no_null_iter()
+                    .collect(),
+                title: imdb
+                    .t
+                    .column("title")
+                    .unwrap()
+                    .str()
+                    .unwrap()
+                    .into_no_null_iter()
+                    .map(|s| s.to_string())
+                    .collect(),
+                imdb_index: imdb
+                    .t
+                    .column("imdb_index")
+                    .unwrap()
+                    .str()
+                    .unwrap()
+                    .into_iter()
+                    .map(|opt| opt.map(|s| s.to_string()))
+                    .collect(),
+                kind_id: imdb
+                    .t
+                    .column("kind_id")
+                    .unwrap()
+                    .i32()
+                    .unwrap()
+                    .into_no_null_iter()
+                    .collect(),
+                production_year: imdb
+                    .t
+                    .column("production_year")
+                    .unwrap()
+                    .i32()
+                    .unwrap()
+                    .into_iter()
+                    .collect(),
+                imdb_id: imdb
+                    .t
+                    .column("imdb_id")
+                    .unwrap()
+                    .i32()
+                    .unwrap()
+                    .into_iter()
+                    .collect(),
+                phonetic_code: imdb
+                    .t
+                    .column("phonetic_code")
+                    .unwrap()
+                    .str()
+                    .unwrap()
+                    .into_iter()
+                    .map(|opt| opt.map(|s| s.to_string()))
+                    .collect(),
+                episode_of_id: imdb
+                    .t
+                    .column("episode_of_id")
+                    .unwrap()
+                    .i32()
+                    .unwrap()
+                    .into_iter()
+                    .collect(),
+                season_nr: imdb
+                    .t
+                    .column("season_nr")
+                    .unwrap()
+                    .i32()
+                    .unwrap()
+                    .into_iter()
+                    .collect(),
+                episode_nr: imdb
+                    .t
+                    .column("episode_nr")
+                    .unwrap()
+                    .i32()
+                    .unwrap()
+                    .into_iter()
+                    .collect(),
+                series_years: imdb
+                    .t
+                    .column("series_years")
+                    .unwrap()
+                    .str()
+                    .unwrap()
+                    .into_iter()
+                    .map(|opt| opt.map(|s| s.to_string()))
+                    .collect(),
+                md5sum: imdb
+                    .t
+                    .column("md5sum")
+                    .unwrap()
+                    .str()
+                    .unwrap()
+                    .into_iter()
+                    .map(|opt| opt.map(|s| s.to_string()))
+                    .collect(),
             },
             kt: KT {
-                id: imdb.kt.column("id").unwrap().i32().unwrap().into_no_null_iter().collect(),
-                kind: imdb.kt.column("kind").unwrap().str().unwrap().into_no_null_iter().map(|s| s.to_string()).collect(),
+                id: imdb
+                    .kt
+                    .column("id")
+                    .unwrap()
+                    .i32()
+                    .unwrap()
+                    .into_no_null_iter()
+                    .collect(),
+                kind: imdb
+                    .kt
+                    .column("kind")
+                    .unwrap()
+                    .str()
+                    .unwrap()
+                    .into_no_null_iter()
+                    .map(|s| s.to_string())
+                    .collect(),
             },
             n: N {
-                id: imdb.n.column("id").unwrap().i32().unwrap().into_no_null_iter().collect(),
-                name: imdb.n.column("name").unwrap().str().unwrap().into_no_null_iter().map(|s| s.to_string()).collect(),
-                imdb_index: imdb.n.column("imdb_index").unwrap().str().unwrap().into_iter().map(|opt| opt.map(|s| s.to_string())).collect(),
-                imdb_id: imdb.n.column("imdb_id").unwrap().i32().unwrap().into_iter().collect(),
-                gender: imdb.n.column("gender").unwrap().str().unwrap().into_iter().map(|opt| opt.map(|s| s.to_string())).collect(),
-                name_pcode_cf: imdb.n.column("name_pcode_cf").unwrap().str().unwrap().into_iter().map(|opt| opt.map(|s| s.to_string())).collect(),
-                name_pcode_nf: imdb.n.column("name_pcode_nf").unwrap().str().unwrap().into_iter().map(|opt| opt.map(|s| s.to_string())).collect(),
-                surname_pcode: imdb.n.column("surname_pcode").unwrap().str().unwrap().into_iter().map(|opt| opt.map(|s| s.to_string())).collect(),
-                md5sum: imdb.n.column("md5sum").unwrap().str().unwrap().into_iter().map(|opt| opt.map(|s| s.to_string())).collect(),
+                id: imdb
+                    .n
+                    .column("id")
+                    .unwrap()
+                    .i32()
+                    .unwrap()
+                    .into_no_null_iter()
+                    .collect(),
+                name: imdb
+                    .n
+                    .column("name")
+                    .unwrap()
+                    .str()
+                    .unwrap()
+                    .into_no_null_iter()
+                    .map(|s| s.to_string())
+                    .collect(),
+                imdb_index: imdb
+                    .n
+                    .column("imdb_index")
+                    .unwrap()
+                    .str()
+                    .unwrap()
+                    .into_iter()
+                    .map(|opt| opt.map(|s| s.to_string()))
+                    .collect(),
+                imdb_id: imdb
+                    .n
+                    .column("imdb_id")
+                    .unwrap()
+                    .i32()
+                    .unwrap()
+                    .into_iter()
+                    .collect(),
+                gender: imdb
+                    .n
+                    .column("gender")
+                    .unwrap()
+                    .str()
+                    .unwrap()
+                    .into_iter()
+                    .map(|opt| opt.map(|s| s.to_string()))
+                    .collect(),
+                name_pcode_cf: imdb
+                    .n
+                    .column("name_pcode_cf")
+                    .unwrap()
+                    .str()
+                    .unwrap()
+                    .into_iter()
+                    .map(|opt| opt.map(|s| s.to_string()))
+                    .collect(),
+                name_pcode_nf: imdb
+                    .n
+                    .column("name_pcode_nf")
+                    .unwrap()
+                    .str()
+                    .unwrap()
+                    .into_iter()
+                    .map(|opt| opt.map(|s| s.to_string()))
+                    .collect(),
+                surname_pcode: imdb
+                    .n
+                    .column("surname_pcode")
+                    .unwrap()
+                    .str()
+                    .unwrap()
+                    .into_iter()
+                    .map(|opt| opt.map(|s| s.to_string()))
+                    .collect(),
+                md5sum: imdb
+                    .n
+                    .column("md5sum")
+                    .unwrap()
+                    .str()
+                    .unwrap()
+                    .into_iter()
+                    .map(|opt| opt.map(|s| s.to_string()))
+                    .collect(),
             },
             cc: CC {
-                id: imdb.cc.column("id").unwrap().i32().unwrap().into_no_null_iter().collect(),
-                movie_id: imdb.cc.column("movie_id").unwrap().i32().unwrap().into_iter().collect(),
-                subject_id: imdb.cc.column("subject_id").unwrap().i32().unwrap().into_no_null_iter().collect(),
-                status_id: imdb.cc.column("status_id").unwrap().i32().unwrap().into_no_null_iter().collect(),
+                id: imdb
+                    .cc
+                    .column("id")
+                    .unwrap()
+                    .i32()
+                    .unwrap()
+                    .into_no_null_iter()
+                    .collect(),
+                movie_id: imdb
+                    .cc
+                    .column("movie_id")
+                    .unwrap()
+                    .i32()
+                    .unwrap()
+                    .into_iter()
+                    .collect(),
+                subject_id: imdb
+                    .cc
+                    .column("subject_id")
+                    .unwrap()
+                    .i32()
+                    .unwrap()
+                    .into_no_null_iter()
+                    .collect(),
+                status_id: imdb
+                    .cc
+                    .column("status_id")
+                    .unwrap()
+                    .i32()
+                    .unwrap()
+                    .into_no_null_iter()
+                    .collect(),
             },
             cct: CCT {
-                id: imdb.cct.column("id").unwrap().i32().unwrap().into_no_null_iter().collect(),
-                kind: imdb.cct.column("kind").unwrap().str().unwrap().into_no_null_iter().map(|s| s.to_string()).collect(),
+                id: imdb
+                    .cct
+                    .column("id")
+                    .unwrap()
+                    .i32()
+                    .unwrap()
+                    .into_no_null_iter()
+                    .collect(),
+                kind: imdb
+                    .cct
+                    .column("kind")
+                    .unwrap()
+                    .str()
+                    .unwrap()
+                    .into_no_null_iter()
+                    .map(|s| s.to_string())
+                    .collect(),
             },
             mk: MK {
-                id: imdb.mk.column("id").unwrap().i32().unwrap().into_no_null_iter().collect(),
-                movie_id: imdb.mk.column("movie_id").unwrap().i32().unwrap().into_no_null_iter().collect(),
-                keyword_id: imdb.mk.column("keyword_id").unwrap().i32().unwrap().into_no_null_iter().collect(),
+                id: imdb
+                    .mk
+                    .column("id")
+                    .unwrap()
+                    .i32()
+                    .unwrap()
+                    .into_no_null_iter()
+                    .collect(),
+                movie_id: imdb
+                    .mk
+                    .column("movie_id")
+                    .unwrap()
+                    .i32()
+                    .unwrap()
+                    .into_no_null_iter()
+                    .collect(),
+                keyword_id: imdb
+                    .mk
+                    .column("keyword_id")
+                    .unwrap()
+                    .i32()
+                    .unwrap()
+                    .into_no_null_iter()
+                    .collect(),
             },
             k: K {
-                id: imdb.k.column("id").unwrap().i32().unwrap().into_no_null_iter().collect(),
-                keyword: imdb.k.column("keyword").unwrap().str().unwrap().into_no_null_iter().map(|s| s.to_string()).collect(),
-                phonetic_code: imdb.k.column("phonetic_code").unwrap().str().unwrap().into_iter().map(|opt| opt.map(|s| s.to_string())).collect(),
+                id: imdb
+                    .k
+                    .column("id")
+                    .unwrap()
+                    .i32()
+                    .unwrap()
+                    .into_no_null_iter()
+                    .collect(),
+                keyword: imdb
+                    .k
+                    .column("keyword")
+                    .unwrap()
+                    .str()
+                    .unwrap()
+                    .into_no_null_iter()
+                    .map(|s| s.to_string())
+                    .collect(),
+                phonetic_code: imdb
+                    .k
+                    .column("phonetic_code")
+                    .unwrap()
+                    .str()
+                    .unwrap()
+                    .into_iter()
+                    .map(|opt| opt.map(|s| s.to_string()))
+                    .collect(),
+            },
+            an: AN {
+                id: imdb
+                    .an
+                    .column("id")
+                    .unwrap()
+                    .i32()
+                    .unwrap()
+                    .into_no_null_iter()
+                    .collect(),
+                person_id: imdb
+                    .an
+                    .column("person_id")
+                    .unwrap()
+                    .i32()
+                    .unwrap()
+                    .into_no_null_iter()
+                    .collect(),
+                name: imdb
+                    .an
+                    .column("name")
+                    .unwrap()
+                    .str()
+                    .unwrap()
+                    .into_no_null_iter()
+                    .map(|name| name.to_string())
+                    .collect(),
+                imdb_index: imdb
+                    .an
+                    .column("imdb_index")
+                    .unwrap()
+                    .str()
+                    .unwrap()
+                    .into_iter()
+                    .map(|idx| idx.map(|i| i.to_string()))
+                    .collect(),
+                name_pcode_cf: imdb
+                    .an
+                    .column("name_pcode_cf")
+                    .unwrap()
+                    .str()
+                    .unwrap()
+                    .into_iter()
+                    .map(|idx| idx.map(|i| i.to_string()))
+                    .collect(),
+                name_pcode_nf: imdb
+                    .an
+                    .column("name_pcode_nf")
+                    .unwrap()
+                    .str()
+                    .unwrap()
+                    .into_iter()
+                    .map(|idx| idx.map(|i| i.to_string()))
+                    .collect(),
+                surname_pcode: imdb
+                    .an
+                    .column("surname_pcode")
+                    .unwrap()
+                    .str()
+                    .unwrap()
+                    .into_iter()
+                    .map(|idx| idx.map(|i| i.to_string()))
+                    .collect(),
+                md5sum: imdb
+                    .an
+                    .column("md5sum")
+                    .unwrap()
+                    .str()
+                    .unwrap()
+                    .into_iter()
+                    .map(|idx| idx.map(|i| i.to_string()))
+                    .collect(),
+            },
+            rt: RT {
+                id: imdb
+                    .rt
+                    .column("id")
+                    .unwrap()
+                    .i32()
+                    .unwrap()
+                    .into_no_null_iter()
+                    .collect(),
+                role: imdb
+                    .rt
+                    .column("role")
+                    .unwrap()
+                    .str()
+                    .unwrap()
+                    .into_no_null_iter()
+                    .map(|name| name.to_string())
+                    .collect(),
+            },
+            mc: MC {
+                id: imdb
+                    .mc
+                    .column("id")
+                    .unwrap()
+                    .i32()
+                    .unwrap()
+                    .into_no_null_iter()
+                    .collect(),
+                movie_id: imdb
+                    .mc
+                    .column("movie_id")
+                    .unwrap()
+                    .i32()
+                    .unwrap()
+                    .into_no_null_iter()
+                    .collect(),
+                company_id: imdb
+                    .mc
+                    .column("company_id")
+                    .unwrap()
+                    .i32()
+                    .unwrap()
+                    .into_no_null_iter()
+                    .collect(),
+                company_type_id: imdb
+                    .mc
+                    .column("company_type_id")
+                    .unwrap()
+                    .i32()
+                    .unwrap()
+                    .into_no_null_iter()
+                    .collect(),
+                note: imdb
+                    .mc
+                    .column("note")
+                    .unwrap()
+                    .str()
+                    .unwrap()
+                    .into_iter()
+                    .map(|idx| idx.map(|i| i.to_string()))
+                    .collect(),
+            },
+            cn: CN {
+                id: imdb
+                    .cn
+                    .column("id")
+                    .unwrap()
+                    .i32()
+                    .unwrap()
+                    .into_no_null_iter()
+                    .collect(),
+                name: imdb
+                    .cn
+                    .column("name")
+                    .unwrap()
+                    .str()
+                    .unwrap()
+                    .into_no_null_iter()
+                    .map(|s| s.to_string())
+                    .collect(),
+                country_code: imdb
+                    .cn
+                    .column("country_code")
+                    .unwrap()
+                    .str()
+                    .unwrap()
+                    .into_iter()
+                    .map(|opt| opt.map(|s| s.to_string()))
+                    .collect(),
+                imdb_id: imdb
+                    .cn
+                    .column("imdb_id")
+                    .unwrap()
+                    .i32()
+                    .unwrap()
+                    .into_iter()
+                    .collect(),
+                name_pcode_nf: imdb
+                    .cn
+                    .column("name_pcode_nf")
+                    .unwrap()
+                    .str()
+                    .unwrap()
+                    .into_iter()
+                    .map(|opt| opt.map(|s| s.to_string()))
+                    .collect(),
+                name_pcode_sf: imdb
+                    .cn
+                    .column("name_pcode_sf")
+                    .unwrap()
+                    .str()
+                    .unwrap()
+                    .into_iter()
+                    .map(|opt| opt.map(|s| s.to_string()))
+                    .collect(),
+                md5sum: imdb
+                    .cn
+                    .column("md5sum")
+                    .unwrap()
+                    .str()
+                    .unwrap()
+                    .into_iter()
+                    .map(|opt| opt.map(|s| s.to_string()))
+                    .collect(),
             },
         }
     }
@@ -310,9 +945,10 @@ impl ImdbData {
         let mc = ParquetReader::new(std::fs::File::open("imdb/movie_companies.parquet").unwrap())
             .finish()
             .unwrap();
-        let mi_idx = ParquetReader::new(std::fs::File::open("imdb/movie_info_idx.parquet").unwrap())
-            .finish()
-            .unwrap();
+        let mi_idx =
+            ParquetReader::new(std::fs::File::open("imdb/movie_info_idx.parquet").unwrap())
+                .finish()
+                .unwrap();
         let mi = ParquetReader::new(std::fs::File::open("imdb/movie_info.parquet").unwrap())
             .finish()
             .unwrap();

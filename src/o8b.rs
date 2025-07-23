@@ -1,10 +1,11 @@
-use crate::data::ImdbData;
+use crate::data::Data;
 use ahash::HashMap;
 use ahash::HashSet;
+use memchr::memmem;
 use polars::prelude::*;
 use std::time::Instant;
 
-pub fn q8b(db: &ImdbData) -> Result<Option<(&str, &str)>, PolarsError> {
+pub fn q8b(db: &Data) -> Result<Option<(&str, &str)>, PolarsError> {
     let t = &db.t;
     let an = &db.an;
     let n = &db.n;
@@ -13,153 +14,117 @@ pub fn q8b(db: &ImdbData) -> Result<Option<(&str, &str)>, PolarsError> {
     let mc = &db.mc;
     let cn = &db.cn;
 
-    let mut an_m: HashMap<i32, Vec<&str>> = HashMap::default();
+    let an_m: HashMap<i32, Vec<&str>> =
+        an.person_id
+            .iter()
+            .zip(an.name.iter())
+            .fold(HashMap::default(), |mut acc, (id, name)| {
+                acc.entry(*id).or_default().push(name);
+                acc
+            });
 
-    for (id, name) in an
-        .column("person_id")?
-        .i32()?
-        .into_iter()
-        .zip(an.column("name")?.str()?.into_iter())
-    {
-        if let (Some(id), Some(name)) = (id, name) {
-            an_m.entry(id).or_default().push(name);
-        }
-    }
+    let op_finder = memmem::Finder::new("One Piece");
+    let dbz_finder = memmem::Finder::new("Dragon Ball Z");
+    let yo_finder = memmem::Finder::new("Yo");
+    let yu_finder = memmem::Finder::new("Yu");
+    let japan_finder = memmem::Finder::new("(Japan)");
+    let usa_finder = memmem::Finder::new("(USA)");
+    let y2006_finder = memmem::Finder::new("(2006)");
+    let y2007_finder = memmem::Finder::new("(2007)");
 
     let start = Instant::now();
 
-    let t_m: HashMap<i32, Vec<&str>> = t
-        .column("id")?
-        .i32()?
-        .into_iter()
-        .zip(t.column("title")?.str()?)
-        .zip(t.column("production_year")?.i32()?)
-        .filter_map(|((id, title), production_year)| {
-            if let (Some(id), Some(title), Some(production_year)) = (id, title, production_year) {
-                if (2006..=2007).contains(&production_year)
-                    && (title.starts_with("One Piece") || title.starts_with("Dragon Ball Z"))
-                {
-                    Some((id, title))
-                } else {
-                    None
-                }
-            } else {
-                None
-            }
-        })
-        .fold(HashMap::default(), |mut acc, (id, title)| {
-            acc.entry(id).or_default().push(title);
-            acc
-        });
+    let t_m: HashMap<i32, Vec<&str>> =
+        t.id.iter()
+            .zip(t.title.iter())
+            .zip(t.production_year.iter())
+            .filter_map(|((id, title), production_year)| {
+                let title_bytes = title.as_bytes();
+                production_year
+                    .filter(|&year| {
+                        (2006..=2007).contains(&year)
+                            && (op_finder.find(title_bytes) == Some(0)
+                                || dbz_finder.find(title_bytes) == Some(0))
+                    })
+                    .map(|_| (*id, title))
+            })
+            .fold(HashMap::default(), |mut acc, (id, title)| {
+                acc.entry(id).or_default().push(title);
+                acc
+            });
 
     let n_s: HashSet<i32> = n
-        .column("id")?
-        .i32()?
-        .into_iter()
-        .zip(n.column("name")?.str()?)
+        .id
+        .iter()
+        .zip(n.name.iter())
         .filter_map(|(id, name)| {
-            if let (Some(id), Some(name)) = (id, name) {
-                if name.contains("Yo") && !name.contains("Yu") {
-                    Some(id)
-                } else {
-                    None
-                }
-            } else {
-                None
-            }
+            (yo_finder.find(name.as_bytes()).is_some() && yu_finder.find(name.as_bytes()).is_none())
+                .then_some(*id)
         })
         .collect();
 
     let rt_s: HashSet<i32> = rt
-        .column("role")?
-        .str()?
-        .into_iter()
-        .zip(rt.column("id")?.i32()?)
-        .filter_map(|(role, id)| {
-            if let (Some(role), Some(id)) = (role, id) {
-                if role == "actress" { Some(id) } else { None }
-            } else {
-                None
-            }
-        })
+        .role
+        .iter()
+        .zip(rt.id.iter())
+        .filter_map(|(role, id)| (role == "actress").then_some(*id))
         .collect();
 
     let cn_s: HashSet<i32> = cn
-        .column("country_code")?
-        .str()?
-        .into_iter()
-        .zip(cn.column("id")?.i32()?)
+        .country_code
+        .iter()
+        .zip(cn.id.iter())
         .filter_map(|(country_code, id)| {
-            if let (Some(country_code), Some(id)) = (country_code, id) {
-                if country_code == "[jp]" {
-                    Some(id)
-                } else {
-                    None
-                }
-            } else {
-                None
-            }
+            country_code
+                .as_ref()
+                .filter(|&code| code == "[jp]") // Check if the inner value is "[jp]"
+                .map(|_| *id) // If it is, map the result to the id
         })
         .collect();
 
     let mc_s: HashSet<i32> = mc
-        .column("movie_id")?
-        .i32()?
-        .into_iter()
-        .zip(mc.column("note")?.str()?)
-        .zip(mc.column("company_id")?.i32()?)
+        .movie_id
+        .iter()
+        .zip(mc.note.iter())
+        .zip(mc.company_id.iter())
         .filter_map(|((movie_id, note), company_id)| {
-            if let (Some(movie_id), Some(note), Some(company_id)) = (movie_id, note, company_id) {
-                if note.contains("(Japan)")
-                    && !note.contains("(USA)")
-                    && (note.contains("(2006)") || note.contains("(2007)"))
-                    && cn_s.contains(&company_id)
-                {
-                    Some(movie_id)
-                } else {
-                    None
-                }
-            } else {
-                None
-            }
+            note.as_ref()
+                .filter(|note| {
+                    let note_bytes = note.as_bytes();
+                    japan_finder.find(note_bytes).is_some()
+                        && usa_finder.find(note_bytes).is_none()
+                        && (y2006_finder.find(note_bytes).is_some()
+                            || y2007_finder.find(note_bytes).is_some())
+                        && cn_s.contains(&company_id)
+                })
+                .map(|_| *movie_id)
         })
         .collect();
 
     let mut res: Option<(&str, &str)> = None;
 
     for (((movie_id, person_id), role_id), note) in ci
-        .column("movie_id")?
-        .i32()?
-        .into_iter()
-        .zip(ci.column("person_id")?.i32()?.into_iter())
-        .zip(ci.column("role_id")?.i32()?.into_iter())
-        .zip(ci.column("note")?.str()?.into_iter())
+        .movie_id
+        .iter()
+        .zip(ci.person_id.iter())
+        .zip(ci.role_id.iter())
+        .zip(ci.note.iter())
     {
-        if let (Some(movie_id), Some(person_id), Some(role_id), Some(note)) =
-            (movie_id, person_id, role_id, note)
+        if let Some(note) = note
+            && note == "(voice: English version)"
+            && rt_s.contains(&role_id)
+            && n_s.contains(&person_id)
+            && mc_s.contains(&movie_id)
+            && let Some(name) = an_m.get(&person_id)
+            && let Some(title) = t_m.get(&movie_id)
         {
-            if note == "(voice: English version)"
-                && rt_s.contains(&role_id)
-                && n_s.contains(&person_id)
-                && mc_s.contains(&movie_id)
-            {
-                if let (Some(name), Some(title)) = (an_m.get(&person_id), t_m.get(&movie_id)) {
-                    for name in name {
-                        for title in title {
-                            if let Some((old_name, old_title)) = res.as_mut() {
-                                if *old_title > *title {
-                                    *old_title = title;
-                                }
-                                if *old_name > *name {
-                                    *old_name = name;
-                                }
-                            } else {
-                                res = Some((name, title));
-                            }
-                        }
-                    }
-                }
-            }
+            res = match res {
+                Some((old_name, old_title)) => Some((
+                    name.iter().min().unwrap().min(&old_name),
+                    title.iter().min().unwrap().min(&old_title),
+                )),
+                None => Some((name.iter().min().unwrap(), title.iter().min().unwrap())),
+            };
         }
     }
 
@@ -203,7 +168,8 @@ mod test_8b {
     #[test]
     fn test_q8b() -> Result<(), PolarsError> {
         let db = ImdbData::new();
-        let res = q8b(&db)?;
+        let data = Data::new(&db);
+        let res = q8b(&data)?;
         assert_eq!(
             res,
             Some(("Chambers, Linda", "Dragon Ball Z: Shin Budokai"))
