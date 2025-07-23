@@ -13,39 +13,6 @@ pub fn q8c(db: &ImdbData) -> Result<Option<(&str, &str)>, PolarsError> {
     let mc = &db.mc;
     let cn = &db.cn;
 
-    let n_s: HashSet<i32> = n.column("id")?.i32()?.into_iter().flatten().collect();
-
-    let t_m: HashMap<i32, Vec<&str>> = t
-        .column("id")?
-        .i32()?
-        .into_iter()
-        .zip(t.column("title")?.str()?)
-        .filter_map(|(id, title)| {
-            if let (Some(id), Some(title)) = (id, title) {
-                Some((id, title))
-            } else {
-                None
-            }
-        })
-        .fold(HashMap::default(), |mut acc, (id, title)| {
-            acc.entry(id).or_default().push(title);
-            acc
-        });
-
-    let mut ci_m: HashMap<i32, Vec<(i32, i32)>> = HashMap::default();
-
-    for ((rid, mid), pid) in ci
-        .column("role_id")?
-        .i32()?
-        .into_iter()
-        .zip(ci.column("movie_id")?.i32()?.into_iter())
-        .zip(ci.column("person_id")?.i32()?.into_iter())
-    {
-        if let (Some(rid), Some(mid), Some(pid)) = (rid, mid, pid) {
-            ci_m.entry(rid).or_default().push((mid, pid));
-        }
-    }
-
     let mut an_m: HashMap<i32, Vec<&str>> = HashMap::default();
 
     for (id, name) in an
@@ -59,20 +26,41 @@ pub fn q8c(db: &ImdbData) -> Result<Option<(&str, &str)>, PolarsError> {
         }
     }
 
-    let mut mc_m: HashMap<i32, Vec<i32>> = HashMap::default();
-
-    for (mid, cid) in mc
-        .column("movie_id")?
+    let t_m: HashMap<i32, Vec<&str>> = t
+        .column("id")?
         .i32()?
         .into_iter()
-        .zip(mc.column("company_id")?.i32()?.into_iter())
-    {
-        if let (Some(mid), Some(cid)) = (mid, cid) {
-            mc_m.entry(mid).or_default().push(cid);
-        }
-    }
+        .zip(t.column("title")?.str()?)
+        .fold(HashMap::default(), |mut acc, (id, title)| {
+            if let (Some(id), Some(title)) = (id, title) {
+                acc.entry(id).or_default().push(title);
+                acc
+            } else {
+                acc
+            }
+        });
+
+    let n_s: HashSet<i32> = n.column("id")?.i32()?.into_iter().flatten().collect();
 
     let start = Instant::now();
+
+    let rt_s: HashSet<i32> = rt
+        .column("role")?
+        .str()?
+        .into_iter()
+        .zip(rt.column("id")?.i32()?)
+        .filter_map(|(role, id)| {
+            if let (Some(role), Some(id)) = (role, id) {
+                if role == "writer" {
+                    Some(id)
+                } else {
+                    None
+                }
+            } else {
+                None
+            }
+        })
+        .collect();
 
     let cn_s: HashSet<i32> = cn
         .column("country_code")?
@@ -92,93 +80,61 @@ pub fn q8c(db: &ImdbData) -> Result<Option<(&str, &str)>, PolarsError> {
         })
         .collect();
 
-    let mut res: Option<(&str, &str)> = None;
-
-    for (id, role) in rt
-        .column("id")?
+    let mc_s: HashSet<i32> = mc
+        .column("movie_id")?
         .i32()?
         .into_iter()
-        .zip(rt.column("role")?.str()?.into_iter())
-    {
-        if let (Some(id), Some(role)) = (id, role) {
-            if role == "writer" {
-                let mut delete_cim = false;
-                if let Some(movie_persons) = ci_m.get_mut(&id) {
-                    let mut i = 0;
-                    'ci: while i < movie_persons.len() {
-                        let (mid, pid) = movie_persons[i];
-                        let mut delete_mc = false;
-                        if let Some(cids) = mc_m.get_mut(&mid) {
-                            let mut j = 0;
-                            'mc: while j < cids.len() {
-                                let cid = cids[j];
-                                if cn_s.contains(&cid) {
-                                    if n_s.contains(&pid) {
-                                        if let Some(names) = an_m.get(&pid) {
-                                            if let Some(titles) = t_m.get(&mid) {
-                                                for name in names {
-                                                    for title in titles {
-                                                        if let Some((old_name, old_title)) =
-                                                            res.as_mut()
-                                                        {
-                                                            if name < old_name {
-                                                                *old_name = name;
-                                                            }
-                                                            if title < old_title {
-                                                                *old_title = title;
-                                                            }
-                                                        } else {
-                                                            res = Some((name, title));
-                                                        }
-                                                    }
-                                                }
-                                            } else {
-                                                movie_persons.swap_remove(i);
-                                                continue 'ci;
-                                            }
-                                        } else {
-                                            movie_persons.swap_remove(i);
-                                            continue 'ci;
-                                        }
-                                    } else {
-                                        movie_persons.swap_remove(i);
-                                        continue 'ci;
-                                    }
-                                } else {
-                                    cids.swap_remove(j);
-                                    continue 'mc;
-                                }
-                                j += 1;
-                            }
-                            if cids.is_empty() {
-                                delete_mc = true;
-                            }
-                        } else {
-                            movie_persons.swap_remove(i);
-                            continue 'ci;
-                        }
-                        if delete_mc {
-                            mc_m.remove(&mid);
-                        }
-                        i += 1;
-                    }
-                    if movie_persons.is_empty() {
-                        delete_cim = true;
-                    }
+        .zip(mc.column("company_id")?.i32()?)
+        .filter_map(|(movie_id, company_id)| {
+            if let (Some(movie_id), Some(company_id)) = (movie_id, company_id) {
+                if cn_s.contains(&company_id) {
+                    Some(movie_id)
+                } else {
+                    None
                 }
-                if delete_cim {
-                    ci_m.remove(&id);
+            } else {
+                None
+            }
+        })
+        .collect();
+
+    let mut res: Option<(&str, &str)> = None;
+
+    for ((movie_id, person_id), role_id) in ci
+        .column("movie_id")?
+        .i32()?
+        .into_iter()
+        .zip(ci.column("person_id")?.i32()?.into_iter())
+        .zip(ci.column("role_id")?.i32()?.into_iter())
+    {
+        if let (Some(movie_id), Some(person_id), Some(role_id)) = (movie_id, person_id, role_id) {
+            if rt_s.contains(&role_id) && n_s.contains(&person_id) && mc_s.contains(&movie_id) {
+                if let (Some(name), Some(title)) = (an_m.get(&person_id), t_m.get(&movie_id)) {
+                    for name in name {
+                        for title in title {
+                            if let Some((old_name, old_title)) = res.as_mut() {
+                                if *old_title > *title {
+                                    *old_title = title;
+                                }
+                                if *old_name > *name {
+                                    *old_name = name;
+                                }
+                            } else {
+                                res = Some((name, title));
+                            }
+                        }
+                    }
                 }
             }
         }
     }
 
-    println!("8c,{:}", start.elapsed().as_secs_f32());
+    println!("8d,{:}", start.elapsed().as_secs_f32());
 
     Ok(res)
 }
 
-// -- JOB Query 8d
+// -- JOB Query 8c
 // SELECT MIN(an1.name) AS costume_designer_pseudo, MIN(t.title) AS movie_with_costumes
 // FROM aka_name AS an1,
 // cast_info AS ci,
@@ -188,7 +144,7 @@ pub fn q8c(db: &ImdbData) -> Result<Option<(&str, &str)>, PolarsError> {
 // role_type AS rt,
 // title AS t
 // WHERE cn.country_code = '[us]'
-// AND rt.role = 'costume designer'
+// AND rt.role = 'writer'
 // AND an1.person_id = n1.id
 // AND n1.id = ci.person_id
 // AND ci.movie_id = t.id
