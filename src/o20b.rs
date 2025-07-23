@@ -6,7 +6,7 @@ use std::time::Instant;
 use memchr::memmem;
 
 #[inline]
-fn matches(haystack: &str, finder: &memchr::memmem::Finder) -> bool {
+fn matches(haystack: &str, finder: &memmem::Finder) -> bool {
     finder.find(haystack.as_bytes()).is_some()
 }
 
@@ -82,8 +82,10 @@ pub fn q20b(db: &Data) -> Result<Option<&str>, PolarsError> {
         .zip(cc.status_id.iter())
         .zip(cc.movie_id.iter())
         .filter_map(|((subject_id, status_id), movie_id)| {
-            (ci_s.contains(&(*movie_id)?) && cct1_id == *subject_id && cct2_s.contains(&status_id))
-                .then_some((*movie_id)?)
+            movie_id.and_then(|mid| {
+                (ci_s.contains(&mid) && *subject_id == cct1_id && cct2_s.contains(status_id))
+                    .then_some(mid)
+            })
         })
         .collect();
 
@@ -136,11 +138,10 @@ pub fn q20b(db: &Data) -> Result<Option<&str>, PolarsError> {
             && *production_year > 2000
             && kt_id == kind_id
         {
-            match res {
-                None => res = Some(title),
-                Some(current_min) if **title < *current_min => res = Some(title),
-                _ => {}
-            }
+            res = match res {
+                Some(old_title) => Some(title.as_str().min(old_title)),
+                None => Some(title),
+            };
         }
     }
 
@@ -186,7 +187,7 @@ pub fn q20b(db: &Data) -> Result<Option<&str>, PolarsError> {
 #[cfg(test)]
 mod test_20b {
     use super::*;
-    use crate::data::{self, ImdbData};
+    use crate::data::ImdbData;
 
     #[test]
     fn test_q20b() -> Result<(), PolarsError> {
