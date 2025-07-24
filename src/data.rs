@@ -272,6 +272,31 @@ pub struct MIIdx {
     pub note: Vec<Option<String>>,
 }
 
+// CREATE TABLE link_type (
+//     id integer primary key,
+//     link character varying(32) NOT NULL
+// );
+pub struct LT {
+    pub id: Vec<i32>,
+    pub link: Vec<String>,
+}
+
+// CREATE TABLE movie_link (
+//      id integer NOT NULL,
+//      movie_id integer NOT NULL,
+//      linked_movie_id integer NOT NULL,
+//      link_type_id integer NOT NULL
+// --   FOREIGN KEY (linked_movie_id) REFERENCES title(id),
+// --   FOREIGN KEY (movie_id) REFERENCES title(id),
+// --   FOREIGN KEY (link_type_id) REFERENCES link_type(id)
+// );
+pub struct ML {
+    pub id: Vec<i32>,
+    pub movie_id: Vec<i32>,
+    pub linked_movie_id: Vec<i32>,
+    pub link_type_id: Vec<i32>,
+}
+
 pub struct Data {
     pub ci: CI,
     pub chn: CHN,
@@ -288,6 +313,8 @@ pub struct Data {
     pub cn: CN,
     pub it: IT,
     pub mi_idx: MIIdx,
+    pub lt: LT,
+    pub ml: ML,
 }
 
 impl Data {
@@ -983,6 +1010,59 @@ impl Data {
                     .unwrap()
                     .into_iter()
                     .map(|opt| opt.map(|s| s.to_string()))
+                    .collect(),
+            },
+            lt: LT {
+                id: imdb
+                    .lt
+                    .column("id")
+                    .unwrap()
+                    .i32()
+                    .unwrap()
+                    .into_no_null_iter()
+                    .collect(),
+                link: imdb
+                    .lt
+                    .column("link")
+                    .unwrap()
+                    .str()
+                    .unwrap()
+                    .into_no_null_iter()
+                    .map(|s| s.to_string())
+                    .collect(),
+            },
+            ml: ML {
+                id: imdb
+                    .ml
+                    .column("id")
+                    .unwrap()
+                    .i32()
+                    .unwrap()
+                    .into_no_null_iter()
+                    .collect(),
+                movie_id: imdb
+                    .ml
+                    .column("movie_id")
+                    .unwrap()
+                    .i32()
+                    .unwrap()
+                    .into_no_null_iter()
+                    .collect(),
+                linked_movie_id: imdb
+                    .ml
+                    .column("linked_movie_id")
+                    .unwrap()
+                    .i32()
+                    .unwrap()
+                    .into_no_null_iter()
+                    .collect(),
+                link_type_id: imdb
+                    .ml
+                    .column("link_type_id")
+                    .unwrap()
+                    .i32()
+                    .unwrap()
+                    .into_no_null_iter()
                     .collect(),
             },
         }
