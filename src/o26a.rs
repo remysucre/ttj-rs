@@ -1,6 +1,7 @@
-use crate::data::ImdbData;
+use crate::data::Data;
+use ahash::{HashMap, HashSet};
+use memchr::memmem;
 use polars::prelude::*;
-use rustc_hash::{FxBuildHasher, FxHashMap as HashMap, FxHashSet as HashSet};
 use std::time::Instant;
 
 // imdb_int.cast_info(person_id,movie_id,person_role_id,role_id)
@@ -15,10 +16,9 @@ use std::time::Instant;
 // ||imdb.q26a_keyword(keyword_id)
 // |imdb.q26a_movie_info_idx(movie_id,info_type_id)
 // ||imdb.q26a_info_type(info_type_id)
-pub fn q26a(db: &ImdbData) -> Result<Option<(&str, &str, &str, &str)>, PolarsError> {
+pub fn q26a(db: &Data) -> Result<Option<(&str, &str, &str, &str)>, PolarsError> {
     let cc = &db.cc;
-    let cct1 = &db.cct;
-    let cct2 = &db.cct;
+    let cct = &db.cct;
     let chn = &db.chn;
     let ci = &db.ci;
     let it = &db.it;
@@ -29,269 +29,145 @@ pub fn q26a(db: &ImdbData) -> Result<Option<(&str, &str, &str, &str)>, PolarsErr
     let n = &db.n;
     let t = &db.t;
 
-    let n_m: HashMap<i32, &str> = n
-        .column("id")?
-        .i32()?
-        .into_iter()
-        .zip(n.column("name")?.str()?)
-        .fold(
-            HashMap::with_capacity_and_hasher(n.height(), FxBuildHasher),
-            |mut acc, (id, name)| {
-                if let (Some(id), Some(name)) = (id, name) {
-                    acc.insert(id, name);
-                }
-                acc
-            },
-        );
+    let complete_finder = memmem::Finder::new("complete");
+    let man_finder = memmem::Finder::new("man");
+    let man2_finder = memmem::Finder::new("Man");
+
+    let n_m: HashMap<i32, &str> =
+        n.id.iter()
+            .zip(n.name.iter())
+            .map(|(id, name)| (*id, name.as_str()))
+            .collect();
 
     let start = Instant::now();
 
-    let cct1_s: HashSet<i32> = cct1
-        .column("kind")?
-        .str()?
-        .into_iter()
-        .zip(cct1.column("id")?.i32()?)
-        .filter_map(|(kind, id)| {
-            if let (Some(kind), Some(id)) = (kind, id) {
-                if kind == "cast" { Some(id) } else { None }
-            } else {
-                None
-            }
-        })
-        .collect();
+    let mut cct1_id: i32 = 0;
+    let mut cct2_s = HashSet::default();
 
-    let cct2_s: HashSet<i32> = cct2
-        .column("kind")?
-        .str()?
-        .into_iter()
-        .zip(cct2.column("id")?.i32()?)
-        .filter_map(|(kind, id)| {
-            if let (Some(kind), Some(id)) = (kind, id) {
-                if kind.contains("complete") {
-                    Some(id)
-                } else {
-                    None
-                }
-            } else {
-                None
-            }
-        })
-        .collect();
+    for (id, kind) in cct.id.iter().zip(cct.kind.iter()) {
+        if kind == "cast" {
+            cct1_id = *id;
+        } else if complete_finder.find(kind.as_bytes()).is_some() {
+            cct2_s.insert(*id);
+        }
+    }
 
-    let mut cc_s = HashSet::with_capacity_and_hasher(cc.height(), FxBuildHasher);
-
-    cc.column("movie_id")?
-        .i32()?
-        .into_iter()
-        .zip(cc.column("subject_id")?.i32()?)
-        .zip(cc.column("status_id")?.i32()?)
+    let cc_s: HashSet<i32> = cc
+        .movie_id
+        .iter()
+        .zip(cc.subject_id.iter())
+        .zip(cc.status_id.iter())
         .filter_map(|((movie_id, subject_id), status_id)| {
-            if let (Some(movie_id), Some(subject_id), Some(status_id)) =
-                (movie_id, subject_id, status_id)
-            {
-                if cct1_s.contains(&subject_id) && cct2_s.contains(&status_id) {
-                    Some(movie_id)
-                } else {
-                    None
-                }
-            } else {
-                None
-            }
+            (cct1_id == *subject_id && cct2_s.contains(&status_id)).then_some(*movie_id)
         })
-        .for_each(|movie_id| {
-            cc_s.insert(movie_id);
-        });
+        .collect();
 
     let kt_s: HashSet<i32> = kt
-        .column("kind")?
-        .str()?
-        .into_iter()
-        .zip(kt.column("id")?.i32()?)
-        .filter_map(|(kind, id)| {
-            if let (Some(kind), Some(id)) = (kind, id) {
-                if kind == "movie" { Some(id) } else { None }
-            } else {
-                None
-            }
-        })
+        .kind
+        .iter()
+        .zip(kt.id.iter())
+        .filter_map(|(kind, id)| (kind == "movie").then_some(*id))
         .collect();
 
-    let t_m: HashMap<i32, &str> = t
-        .column("id")?
-        .i32()?
-        .into_iter()
-        .zip(t.column("kind_id")?.i32()?)
-        .zip(t.column("title")?.str()?)
-        .zip(t.column("production_year")?.i32()?)
-        .filter_map(|(((id, kind_id), title), production_year)| {
-            if let (Some(id), Some(kind_id), Some(title), Some(production_year)) =
-                (id, kind_id, title, production_year)
-            {
-                if production_year > 2000 && kt_s.contains(&kind_id) && cc_s.contains(&id) {
-                    Some((id, title))
-                } else {
-                    None
-                }
-            } else {
-                None
-            }
-        })
-        .fold(
-            HashMap::with_capacity_and_hasher(t.height(), FxBuildHasher),
-            |mut acc, (id, title)| {
-                acc.insert(id, title);
-                acc
-            },
-        );
+    let t_m: HashMap<i32, &str> =
+        t.id.iter()
+            .zip(t.kind_id.iter())
+            .zip(t.title.iter())
+            .zip(t.production_year.iter())
+            .filter_map(|(((id, kind_id), title), production_year)| {
+                production_year
+                    .filter(|&production_year| {
+                        production_year > 2000 && kt_s.contains(&kind_id) && cc_s.contains(&id)
+                    })
+                    .map(|_| (*id, title.as_str()))
+            })
+            .collect();
 
-    let mut chn_m = HashMap::with_capacity_and_hasher(chn.height(), FxBuildHasher);
-
-    chn.column("name")?
-        .str()?
-        .into_iter()
-        .zip(chn.column("id")?.i32()?)
+    let chn_m: HashMap<i32, &str> = chn
+        .name
+        .iter()
+        .zip(chn.id.iter())
         .filter_map(|(name, id)| {
-            if let (Some(name), Some(id)) = (name, id) {
-                if name.contains("man") || name.contains("Man") {
-                    Some((name, id))
-                } else {
-                    None
-                }
-            } else {
-                None
-            }
+            (man_finder.find(name.as_bytes()).is_some()
+                || man2_finder.find(name.as_bytes()).is_some())
+            .then_some((*id, name.as_str()))
         })
-        .for_each(|(name, id)| {
-            chn_m.insert(id, name);
-        });
+        .collect();
 
     let it_s: HashSet<i32> = it
-        .column("info")?
-        .str()?
-        .into_iter()
-        .zip(it.column("id")?.i32()?)
-        .filter_map(|(info, id)| {
-            if let (Some(info), Some(id)) = (info, id) {
-                if info == "rating" { Some(id) } else { None }
-            } else {
-                None
-            }
+        .info
+        .iter()
+        .zip(it.id.iter())
+        .filter_map(|(info, id)| (info == "rating").then_some(*id))
+        .collect();
+
+    let target_keywords: HashSet<&str> = [
+        "superhero",
+        "marvel-comics",
+        "based-on-comic",
+        "tv-special",
+        "fight",
+        "violence",
+        "magnet",
+        "web",
+        "claw",
+        "laser",
+    ]
+    .into_iter()
+    .collect();
+
+    let k_s: HashSet<i32> =
+        k.id.iter()
+            .zip(k.keyword.iter())
+            .filter_map(|(id, keyword)| target_keywords.contains(keyword.as_str()).then_some(*id))
+            .collect();
+
+    let mk_s: HashSet<i32> = mk
+        .keyword_id
+        .iter()
+        .zip(mk.movie_id.iter())
+        .filter_map(|(keyword_id, movie_id)| {
+            (k_s.contains(&keyword_id) && t_m.contains_key(&movie_id)).then_some(*movie_id)
         })
         .collect();
 
-    let k_s = k
-        .column("id")?
-        .i32()?
-        .into_iter()
-        .zip(k.column("keyword")?.str()?)
-        .filter_map(|(id, keyword)| {
-            if let (Some(id), Some(keyword)) = (id, keyword) {
-                if matches!(
-                    keyword,
-                    "superhero"
-                        | "marvel-comics"
-                        | "based-on-comic"
-                        | "tv-special"
-                        | "fight"
-                        | "violence"
-                        | "magnet"
-                        | "web"
-                        | "claw"
-                        | "laser"
-                ) {
-                    Some(id)
-                } else {
-                    None
-                }
-            } else {
-                None
-            }
-        })
-        .collect::<HashSet<_>>();
-
-    let mut mk_s = HashSet::with_capacity_and_hasher(mk.height(), FxBuildHasher);
-
-    mk.column("keyword_id")?
-        .i32()?
-        .into_iter()
-        .zip(mk.column("movie_id")?.i32()?)
-        .filter_map(|(keyword_id, movie_id)| {
-            if let (Some(keyword_id), Some(movie_id)) = (keyword_id, movie_id) {
-                if k_s.contains(&keyword_id) && t_m.contains_key(&movie_id) {
-                    Some(movie_id)
-                } else {
-                    None
-                }
-            } else {
-                None
-            }
-        })
-        .for_each(|movie_id| {
-            mk_s.insert(movie_id);
-        });
-
     let mi_idx_m: HashMap<i32, Vec<&str>> = mi_idx
-        .column("movie_id")?
-        .i32()?
-        .into_iter()
-        .zip(mi_idx.column("info")?.str()?)
-        .zip(mi_idx.column("info_type_id")?.i32()?)
+        .movie_id
+        .iter()
+        .zip(mi_idx.info.iter())
+        .zip(mi_idx.info_type_id.iter())
         .filter_map(|((movie_id, info), info_type_id)| {
-            if let (Some(movie_id), Some(info), Some(info_type_id)) = (movie_id, info, info_type_id)
-            {
-                if info > "7.0" && it_s.contains(&info_type_id) && mk_s.contains(&movie_id) {
-                    Some((movie_id, info))
-                } else {
-                    None
-                }
-            } else {
-                None
-            }
+            (info.as_str() > "7.0" && it_s.contains(&info_type_id) && mk_s.contains(&movie_id))
+                .then_some((*movie_id, info))
         })
-        .fold(
-            HashMap::with_capacity_and_hasher(mi_idx.height(), FxBuildHasher),
-            |mut acc, (movie_id, info)| {
-                acc.entry(movie_id).or_default().push(info);
-                acc
-            },
-        );
+        .fold(HashMap::default(), |mut acc, (movie_id, info)| {
+            acc.entry(movie_id).or_default().push(info);
+            acc
+        });
 
     let mut res: Option<(&str, &str, &str, &str)> = None;
 
     for ((movie_id, person_id), person_role_id) in ci
-        .column("movie_id")?
-        .i32()?
-        .into_iter()
-        .zip(ci.column("person_id")?.i32()?)
-        .zip(ci.column("person_role_id")?.i32()?)
+        .movie_id
+        .iter()
+        .zip(ci.person_id.iter())
+        .zip(ci.person_role_id.iter())
     {
-        if let (Some(movie_id), Some(person_id), Some(person_role_id)) =
-            (movie_id, person_id, person_role_id)
+        if let Some(person_role_id) = person_role_id
+            && let Some(info) = mi_idx_m.get(&movie_id)
+            && let Some(title) = t_m.get(&movie_id)
+            && let Some(char_name) = chn_m.get(&person_role_id)
+            && let Some(name) = n_m.get(&person_id)
         {
-            if let Some(info) = mi_idx_m.get(&movie_id)
-                && let Some(title) = t_m.get(&movie_id)
-                && let Some(char_name) = chn_m.get(&person_role_id)
-                && let Some(name) = n_m.get(&person_id)
-            {
-                for i in info {
-                    if let Some((old_name, old_title, old_char_name, old_info)) = res.as_mut() {
-                        if name < old_name {
-                            *old_name = *name;
-                        }
-                        if title < old_title {
-                            *old_title = *title;
-                        }
-                        if char_name < old_char_name {
-                            *old_char_name = *char_name;
-                        }
-                        if i < old_info {
-                            *old_info = *i
-                        }
-                    } else {
-                        res = Some((name, title, char_name, i));
-                    }
-                }
-            }
+            res = match res {
+                Some((old_name, old_title, old_char_name, old_info)) => Some((
+                    name.min(&old_name),
+                    title.min(&old_title),
+                    char_name.min(&old_char_name),
+                    info.iter().min().unwrap().min(&old_info),
+                )),
+                None => Some((name, title, char_name, info.iter().min().unwrap())),
+            };
         }
     }
 
@@ -361,7 +237,8 @@ mod test_26a {
     #[test]
     fn test_q26a() -> Result<(), PolarsError> {
         let db = ImdbData::new();
-        let res = q26a(&db)?;
+        let data = Data::new(&db);
+        let res = q26a(&data)?;
         assert_eq!(
             res,
             Some(("Acereda, Hermie", "3:10 to Yuma", "'Agua' Man", "7.1"))

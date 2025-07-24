@@ -82,10 +82,8 @@ pub fn q20b(db: &Data) -> Result<Option<&str>, PolarsError> {
         .zip(cc.status_id.iter())
         .zip(cc.movie_id.iter())
         .filter_map(|((subject_id, status_id), movie_id)| {
-            movie_id.and_then(|mid| {
-                (ci_s.contains(&mid) && *subject_id == cct1_id && cct2_s.contains(status_id))
-                    .then_some(mid)
-            })
+            (ci_s.contains(&movie_id) && *subject_id == cct1_id && cct2_s.contains(status_id))
+                .then_some(*movie_id)
         })
         .collect();
 

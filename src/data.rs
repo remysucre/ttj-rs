@@ -130,14 +130,14 @@ pub struct N {
 
 // CREATE TABLE complete_cast (
 //     id integer NOT NULL PRIMARY KEY,
-//     movie_id integer,
+//     movie_id integer NOT NULL,
 //     subject_id integer NOT NULL,
 //     status_id integer NOT NULL
 // );
 
 pub struct CC {
     pub id: Vec<i32>,
-    pub movie_id: Vec<Option<i32>>,
+    pub movie_id: Vec<i32>,
     pub subject_id: Vec<i32>,
     pub status_id: Vec<i32>,
 }
@@ -246,6 +246,32 @@ pub struct CN {
     pub md5sum: Vec<Option<String>>,
 }
 
+// CREATE TABLE info_type (
+//      id integer primary key,
+//      info character varying(32) NOT NULL
+// );
+pub struct IT {
+    pub id: Vec<i32>,
+    pub info: Vec<String>,
+}
+
+// CREATE TABLE movie_info_idx (
+//      id integer NOT NULL,
+//      movie_id integer NOT NULL,
+//      info_type_id integer NOT NULL,
+//      info text NOT NULL,
+//      note text
+// --   FOREIGN KEY (movie_id) REFERENCES title(id),
+// --   FOREIGN KEY (info_type_id) REFERENCES info_type(id)
+// );
+pub struct MIIdx {
+    pub id: Vec<i32>,
+    pub movie_id: Vec<i32>,
+    pub info_type_id: Vec<i32>,
+    pub info: Vec<String>,
+    pub note: Vec<Option<String>>,
+}
+
 pub struct Data {
     pub ci: CI,
     pub chn: CHN,
@@ -260,6 +286,8 @@ pub struct Data {
     pub rt: RT,
     pub mc: MC,
     pub cn: CN,
+    pub it: IT,
+    pub mi_idx: MIIdx,
 }
 
 impl Data {
@@ -605,7 +633,7 @@ impl Data {
                     .unwrap()
                     .i32()
                     .unwrap()
-                    .into_iter()
+                    .into_no_null_iter()
                     .collect(),
                 subject_id: imdb
                     .cc
@@ -887,6 +915,69 @@ impl Data {
                 md5sum: imdb
                     .cn
                     .column("md5sum")
+                    .unwrap()
+                    .str()
+                    .unwrap()
+                    .into_iter()
+                    .map(|opt| opt.map(|s| s.to_string()))
+                    .collect(),
+            },
+            it: IT {
+                id: imdb
+                    .it
+                    .column("id")
+                    .unwrap()
+                    .i32()
+                    .unwrap()
+                    .into_no_null_iter()
+                    .collect(),
+                info: imdb
+                    .it
+                    .column("info")
+                    .unwrap()
+                    .str()
+                    .unwrap()
+                    .into_no_null_iter()
+                    .map(|s| s.to_string())
+                    .collect(),
+            },
+            mi_idx: MIIdx {
+                id: imdb
+                    .mi_idx
+                    .column("id")
+                    .unwrap()
+                    .i32()
+                    .unwrap()
+                    .into_no_null_iter()
+                    .collect(),
+                movie_id: imdb
+                    .mi_idx
+                    .column("movie_id")
+                    .unwrap()
+                    .i32()
+                    .unwrap()
+                    .into_no_null_iter()
+                    .collect(),
+                info_type_id: imdb
+                    .mi_idx
+                    .column("info_type_id")
+                    .unwrap()
+                    .i32()
+                    .unwrap()
+                    .into_no_null_iter()
+                    .collect(),
+                info: imdb
+                    .mi_idx
+                    .column("info")
+                    .unwrap()
+                    .str()
+                    .unwrap()
+                    .into_no_null_iter()
+                    .map(|s| s.to_string())
+                    .collect(),
+                note: imdb
+                    .mi_idx
+                    .column("note")
                     .unwrap()
                     .str()
                     .unwrap()
