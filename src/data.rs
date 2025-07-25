@@ -297,6 +297,23 @@ pub struct ML {
     pub link_type_id: Vec<i32>,
 }
 
+// CREATE TABLE movie_info (
+//      id integer NOT NULL,
+//      movie_id integer NOT NULL,
+//      info_type_id integer NOT NULL,
+//      info text NOT NULL,
+//      note text
+// --   FOREIGN KEY (movie_id) REFERENCES title(id),
+// --   FOREIGN KEY (info_type_id) REFERENCES info_type(id)
+// );
+pub struct MI {
+    pub id: Vec<i32>,
+    pub movie_id: Vec<i32>,
+    pub info_type_id: Vec<i32>,
+    pub info: Vec<String>,
+    pub note: Vec<Option<String>>,
+}
+
 pub struct Data {
     pub ci: CI,
     pub chn: CHN,
@@ -315,6 +332,7 @@ pub struct Data {
     pub mi_idx: MIIdx,
     pub lt: LT,
     pub ml: ML,
+    pub mi: MI,
 }
 
 impl Data {
@@ -1063,6 +1081,50 @@ impl Data {
                     .i32()
                     .unwrap()
                     .into_no_null_iter()
+                    .collect(),
+            },
+            mi: MI {
+                id: imdb
+                    .mi
+                    .column("id")
+                    .unwrap()
+                    .i32()
+                    .unwrap()
+                    .into_no_null_iter()
+                    .collect(),
+                movie_id: imdb
+                    .mi
+                    .column("movie_id")
+                    .unwrap()
+                    .i32()
+                    .unwrap()
+                    .into_no_null_iter()
+                    .collect(),
+                info_type_id: imdb
+                    .mi
+                    .column("info_type_id")
+                    .unwrap()
+                    .i32()
+                    .unwrap()
+                    .into_no_null_iter()
+                    .collect(),
+                info: imdb
+                    .mi
+                    .column("info")
+                    .unwrap()
+                    .str()
+                    .unwrap()
+                    .into_no_null_iter()
+                    .map(|s| s.to_string())
+                    .collect(),
+                note: imdb
+                    .mi
+                    .column("note")
+                    .unwrap()
+                    .str()
+                    .unwrap()
+                    .into_iter()
+                    .map(|opt| opt.map(|s| s.to_string()))
                     .collect(),
             },
         }
