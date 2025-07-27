@@ -1,0 +1,43 @@
+version = 1
+revision = 2
+requires-python = ">=3.8"
+resolution-markers = [
+    "python_full_version >= '3.9'",
+    "python_full_version < '3.9'",
+]
+
+[[package]]
+name = "codegen"
+version = "0.1.0"
+source = { virtual = "." }
+dependencies = [
+    { name = "sqlglot", version = "26.33.0", source = { registry = "https://pypi.org/simple" }, marker = "python_full_version < '3.9'" },
+    { name = "sqlglot", version = "27.4.0", source = { registry = "https://pypi.org/simple" }, marker = "python_full_version >= '3.9'" },
+]
+
+[package.metadata]
+requires-dist = [{ name = "sqlglot", specifier = ">=26.33.0" }]
+
+[[package]]
+name = "sqlglot"
+version = "26.33.0"
+source = { registry = "https://pypi.org/simple" }
+resolution-markers = [
+    "python_full_version < '3.9'",
+]
+sdist = { url = "https://files.pythonhosted.org/packages/25/9d/fcd59b4612d5ad1e2257c67c478107f073b19e1097d3bfde2fb517884416/sqlglot-26.33.0.tar.gz", hash = "sha256:2817278779fa51d6def43aa0d70690b93a25c83eb18ec97130fdaf707abc0d73", size = 5353340, upload-time = "2025-07-01T13:09:06.311Z" }
+wheels = [
+    { url = "https://files.pythonhosted.org/packages/31/8d/f1d9cb5b18e06aa45689fbeaaea6ebab66d5f01d1e65029a8f7657c06be5/sqlglot-26.33.0-py3-none-any.whl", hash = "sha256:031cee20c0c796a83d26d079a47fdce667604df430598c7eabfa4e4dfd147033", size = 477610, upload-time = "2025-07-01T13:09:03.926Z" },
+]
+
+[[package]]
+name = "sqlglot"
+version = "27.4.0"
+source = { registry = "https://pypi.org/simple" }
+resolution-markers = [
+    "python_full_version >= '3.9'",
+]
+sdist = { url = "https://files.pythonhosted.org/packages/09/5d/5eb339a3a9f70c288ef5069bf404cb68d64eae99a5e97bcb8e7da5294f8f/sqlglot-27.4.0.tar.gz", hash = "sha256:a7358b4c54948cf3fc56176a19f85fa6d85921f31f2dc26353ef61a8a94bc1d3", size = 5396640, upload-time = "2025-07-25T20:41:56.67Z" }
+wheels = [
+    { url = "https://files.pythonhosted.org/packages/73/28/a01811061aa9687a170886115aef8abbc0a9436800a393d77967a19dfd1a/sqlglot-27.4.0-py3-none-any.whl", hash = "sha256:3841c43624cb21845600568f53f80e69d5ac14d9c5d523b7ccfd40aede651255", size = 489422, upload-time = "2025-07-25T20:41:54.499Z" },
+]
