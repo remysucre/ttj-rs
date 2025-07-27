@@ -5,7 +5,7 @@ use polars::prelude::*;
 use std::time::Instant;
 
 pub fn {{ query_name }}(db: &Data) -> Result<{{ result_output }}, PolarsError> {
-    {{ initializeRelationBlock }}
+    {{ initialize_relation_block }}
 
     {{ mainBlock }}
 

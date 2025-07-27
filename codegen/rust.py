@@ -48,25 +48,23 @@ def format_expression_to_dict(expression):
     that matches the desired JSON structure for filters.
     """
     if isinstance(expression, exp.Not):
-        return {
-            "operator": "NOT",
-            "left": format_expression_to_dict(expression.this)
-        }
+        return {"operator": "NOT", "left": format_expression_to_dict(expression.this)}
     if isinstance(expression, exp.In):
         return {
             "operator": "IN",
             "left": format_expression_to_dict(expression.this),
-            "right": [format_expression_to_dict(e) for e in expression.expressions]
+            "right": [format_expression_to_dict(e) for e in expression.expressions],
         }
     if isinstance(expression, exp.Binary):
         return {
             "operator": expression.key.upper(),
             "left": format_expression_to_dict(expression.left),
-            "right": format_expression_to_dict(expression.right)
+            "right": format_expression_to_dict(expression.right),
         }
     else:
         # For literals, columns, or other expressions, convert to SQL string
         return expression.sql()
+
 
 def process_query_and_stats(sql_query, stats_filepath, output_filepath, pks, fks):
     """
@@ -80,9 +78,11 @@ def process_query_and_stats(sql_query, stats_filepath, output_filepath, pks, fks
     """
     # Load the statistics from the provided JSON file
     try:
-        with open(stats_filepath, 'r') as f:
+        with open(stats_filepath, "r") as f:
             stats_data = json.load(f)
-        relation_sizes = stats_data.get("Aggregation Stats", {}).get("relationSizes", {})
+        relation_sizes = stats_data.get("Aggregation Stats", {}).get(
+            "relationSizes", {}
+        )
     except (IOError, json.JSONDecodeError) as e:
         raise ValueError(f"Error reading or parsing statistics file: {e}")
 
@@ -100,7 +100,6 @@ def process_query_and_stats(sql_query, stats_filepath, output_filepath, pks, fks
         # The `flatten()` method correctly breaks down a chain of ANDs into a list of individual conditions.
         all_conditions = list(where_clause.this.flatten())
 
-
     final_output = {}
 
     # Process each table found in the query
@@ -110,7 +109,7 @@ def process_query_and_stats(sql_query, stats_filepath, output_filepath, pks, fks
             "alias": alias,
             "size_after_filters": -1,
             "filters": [],
-            "join_cond": []
+            "join_cond": [],
         }
 
         # Find the corresponding size from the statistics file using a "longest match" strategy.
@@ -119,12 +118,14 @@ def process_query_and_stats(sql_query, stats_filepath, output_filepath, pks, fks
         for stats_key in relation_sizes.keys():
             if name in stats_key and len(stats_key) > len(best_match_key):
                 best_match_key = stats_key
-        
+
         if best_match_key:
             table_info["size_after_filters"] = relation_sizes[best_match_key]
 
         if table_info["size_after_filters"] == -1:
-            raise ValueError(f"Size for table '{name}' not found in statistics file: {stats_filepath}")
+            raise ValueError(
+                f"Size for table '{name}' not found in statistics file: {stats_filepath}"
+            )
 
         # Separate filter conditions and join conditions from the WHERE clause
         filters = []
@@ -136,7 +137,7 @@ def process_query_and_stats(sql_query, stats_filepath, output_filepath, pks, fks
                 filters.append(cond)
             elif len(column_aliases) > 1 and alias in column_aliases:
                 # This is a join condition involving the current table
-                if isinstance(cond, exp.EQ): # Ensure it's an equality join
+                if isinstance(cond, exp.EQ):  # Ensure it's an equality join
                     left_col = cond.left
                     right_col = cond.right
 
@@ -145,10 +146,10 @@ def process_query_and_stats(sql_query, stats_filepath, output_filepath, pks, fks
                         local_col, foreign_col = left_col, right_col
                     else:
                         local_col, foreign_col = right_col, left_col
-                    
+
                     local_table_name = ALIAS_TO_TABLE.get(local_col.table)
                     foreign_table_name = ALIAS_TO_TABLE.get(foreign_col.table)
-                    
+
                     local_key = None
                     if pks.get(local_table_name) == local_col.this.this:
                         local_key = "PK"
@@ -161,24 +162,32 @@ def process_query_and_stats(sql_query, stats_filepath, output_filepath, pks, fks
                     elif fks.get(foreign_table_name, {}).get(foreign_col.this.this):
                         foreign_key = "FK"
 
-                    table_info["join_cond"].append({
-                        "local_column": local_col.this.this,
-                        "key": local_key,
-                        "foreign_table": {
-                            "alias": foreign_col.table,
-                            "column": foreign_col.this.this,
-                            "key": foreign_key
+                    table_info["join_cond"].append(
+                        {
+                            "local_column": local_col.this.this,
+                            "key": local_key,
+                            "foreign_table": {
+                                "alias": foreign_col.table,
+                                "column": foreign_col.this.this,
+                                "key": foreign_key,
+                            },
                         }
-                    })
+                    )
 
         # Combine multiple filter conditions with AND
         if len(filters) > 1:
             # Reconstruct the filter structure for JSON output
             # This logic creates a nested AND structure from a flat list of filters
-            filter_structure = {"operator": "AND", "left": format_expression_to_dict(filters[0])}
+            filter_structure = {
+                "operator": "AND",
+                "left": format_expression_to_dict(filters[0]),
+            }
             current_level = filter_structure
             for i in range(1, len(filters) - 1):
-                new_level = {"operator": "AND", "left": format_expression_to_dict(filters[i])}
+                new_level = {
+                    "operator": "AND",
+                    "left": format_expression_to_dict(filters[i]),
+                }
                 current_level["right"] = new_level
                 current_level = new_level
             current_level["right"] = format_expression_to_dict(filters[-1])
@@ -186,14 +195,13 @@ def process_query_and_stats(sql_query, stats_filepath, output_filepath, pks, fks
         elif filters:
             table_info["filters"] = format_expression_to_dict(filters[0])
         else:
-             table_info["filters"] = None # No filters for this table
-
+            table_info["filters"] = None  # No filters for this table
 
         final_output[alias] = table_info
 
     # Save the processed data to the output JSON file
     try:
-        with open(output_filepath, 'w') as f:
+        with open(output_filepath, "w") as f:
             json.dump(final_output, f, indent=4)
         print(f"Successfully processed query and saved output to '{output_filepath}'")
     except IOError as e:
@@ -206,13 +214,13 @@ def main():
     """
     # Directory containing the SQL query files
     # sql_dir = 'join-order-benchmark/'
-    sql_dir = 'junk/'
+    sql_dir = "junk/"
     # Directory containing the statistics JSON files
     # stats_dir = 'stats_jsons/'
-    stats_dir = 'junk/'
+    stats_dir = "junk/"
     # Directory to save the output JSON files
     # output_dir = 'jsons'
-    output_dir = 'junk/'
+    output_dir = "junk/"
 
     # Create the output directory if it doesn't exist
     if not os.path.exists(output_dir):
@@ -221,26 +229,28 @@ def main():
     pks, fks = parse_sql_schema("imdb-original-mysql.sql")
 
     # Find all .sql files in the specified directory
-    sql_files = glob.glob(os.path.join(sql_dir, '*.sql'))
+    sql_files = glob.glob(os.path.join(sql_dir, "*.sql"))
 
     if not sql_files:
         raise ValueError(f"No .sql files found in '{sql_dir}'")
 
     if not os.path.exists("expected_results.json"):
-        raise ValueError("expected_results.json is missing! Run extract_results.py to create one.")
+        raise ValueError(
+            "expected_results.json is missing! Run extract_results.py to create one."
+        )
 
     # Process each SQL file
     for sql_file_path in sql_files:
         print(f"Processing {sql_file_path}...")
         try:
-            sql_query_name = os.path.basename(sql_file_path).replace('.sql', '')
-            
+            sql_query_name = os.path.basename(sql_file_path).replace(".sql", "")
+
             # Find the corresponding stats file using the specified tokenization logic.
             stats_file_path = None
             for stats_filename in os.listdir(stats_dir):
                 try:
                     # Split the filename by '.' to get tokens
-                    tokens = stats_filename.split('.')
+                    tokens = stats_filename.split(".")
                     if len(tokens) < 3:  # Expecting at least 'name.qualifier.json'
                         continue
 
@@ -259,8 +269,8 @@ def main():
                     marker_idx = query_part.rfind(query_marker)
                     if marker_idx == -1:
                         continue
-                    
-                    stats_query_name = query_part[marker_idx + len(query_marker):]
+
+                    stats_query_name = query_part[marker_idx + len(query_marker) :]
 
                     # Check if the extracted name matches the SQL file's name
                     if sql_query_name.lower() == stats_query_name.lower():
@@ -269,46 +279,55 @@ def main():
                 except Exception:
                     # Ignore files that don't match the expected format
                     continue
-            
+
             if not stats_file_path:
-                raise ValueError(f"Warning: No stats file found for query '{sql_query_name}' in '{stats_dir}'. Skipping.")
+                raise ValueError(
+                    f"Warning: No stats file found for query '{sql_query_name}' in '{stats_dir}'. Skipping."
+                )
 
-            with open(sql_file_path, 'r') as f:
+            with open(sql_file_path, "r") as f:
                 sql_query = f.read()
-            
+
             # Construct the output file path
-            output_file_path = os.path.join(output_dir, f'{sql_query_name}.json')
+            output_file_path = os.path.join(output_dir, f"{sql_query_name}.json")
 
-            process_query_and_stats(sql_query, stats_file_path, output_file_path, pks, fks)
+            process_query_and_stats(
+                sql_query, stats_file_path, output_file_path, pks, fks
+            )
 
-            optimization(sql_query_name)
+            optimization(sql_query_name, output_file_path)
 
         except IOError as e:
             raise ValueError(f"Error reading SQL file {sql_file_path}: {e}")
         except Exception as e:
-            raise ValueError(f"An unexpected error occurred while processing {sql_file_path}: {e}")
+            raise ValueError(
+                f"An unexpected error occurred while processing {sql_file_path}: {e}"
+            )
+
 
 def parse_sql_schema(sql_file_path):
-    with open(sql_file_path, 'r') as f:
+    with open(sql_file_path, "r") as f:
         content = f.read()
 
     pks = {}
     fks = {}
 
-    create_table_blocks = content.split('CREATE TABLE')
+    create_table_blocks = content.split("CREATE TABLE")
     for block in create_table_blocks[1:]:
-        table_name_match = re.search(r'`?(\w+)`?\s*\(', block)
+        table_name_match = re.search(r"`?(\w+)`?\s*\(", block)
         if not table_name_match:
             continue
         table_name = table_name_match.group(1)
-        
+
         # Find PKs
-        pk_matches = re.findall(r'(\w+)\s+integer\s+primary\s+key', block)
+        pk_matches = re.findall(r"(\w+)\s+integer\s+primary\s+key", block)
         if pk_matches:
             pks[table_name] = pk_matches[0]
 
         # Find FKs from comments
-        fk_matches = re.findall(r'--\s*FOREIGN KEY\s*\((\w+)\)\s*REFERENCES\s*(\w+)\s*\((\w+)\)', block)
+        fk_matches = re.findall(
+            r"--\s*FOREIGN KEY\s*\((\w+)\)\s*REFERENCES\s*(\w+)\s*\((\w+)\)", block
+        )
         if table_name not in fks:
             fks[table_name] = {}
         for fk_col, ref_table, ref_col in fk_matches:
@@ -319,40 +338,68 @@ def parse_sql_schema(sql_file_path):
 
 def _result_output_and_expected_result_set(sql_query_name: str) -> Tuple[str, str]:
     try:
-        with open("expected_results.json", 'r') as f:
+        with open("expected_results.json", "r") as f:
             stats_data = json.load(f)
         result_set = stats_data.get(sql_query_name, {})
         if len(result_set) == 1:
             result_output = f"Option<{', '.join(['&str'] * len(result_set))}>"
-            expected_result_set = f"\"{result_set[0]}\""
+            expected_result_set = f'"{result_set[0]}"'
         else:
             result_output = f"Option<({', '.join(['&str'] * len(result_set))})>"
-            expected_result_set = "(" + ", ".join([f'"{element}"' for element in result_set]) + ")"
+            expected_result_set = (
+                "(" + ", ".join([f'"{element}"' for element in result_set]) + ")"
+            )
         return result_output, expected_result_set
     except (IOError, json.JSONDecodeError) as e:
         raise ValueError(f"Error reading or parsing statistics file: {e}")
 
 
-def optimization(sql_query_name) -> None:
+def _initialize_relation_block(sql_query_name: str, output_file_path: str) -> str:
+    try:
+        with open(output_file_path, "r") as f:
+            query_data = json.load(f)
+        aliases = []
+        seen_relations = set()
+        for alias, info in query_data.items():
+            relation = info.get("relation_name")
+            if relation not in seen_relations:
+                aliases.append(re.sub(r"\d+", "", alias))
+                seen_relations.add(relation)
+        return "\n".join([f"let {alias} = &db.{alias};" for alias in aliases])
+    except (IOError, json.JSONDecodeError) as e:
+        raise ValueError(f"Error reading or parsing statistics file: {e}")
+
+
+def optimization(sql_query_name, output_file_path) -> None:
     """
     Generate query implementation based on base.jinja
     """
-    result_output, expected_result_set = _result_output_and_expected_result_set(sql_query_name)
-    template_data = {"result_output": result_output,
-                     "expected_result_set": expected_result_set,
-                     "query_name": "q" + sql_query_name}
+    result_output, expected_result_set = _result_output_and_expected_result_set(
+        sql_query_name
+    )
+    initialize_relation_block = _initialize_relation_block(
+        sql_query_name, output_file_path
+    )
+    template_data = {
+        "result_output": result_output,
+        "expected_result_set": expected_result_set,
+        "query_name": "q" + sql_query_name,
+        "initialize_relation_block": initialize_relation_block,
+    }
     env = Environment(loader=FileSystemLoader("."))
     template = env.get_template("base.jinja")
     query_implementation = template.render(template_data)
     output_dir = "junk"
-    output_file_path = os.path.join(output_dir, f'o{sql_query_name}.rs')
+    output_file_path = os.path.join(output_dir, f"o{sql_query_name}.rs")
     try:
-        with open(output_file_path, 'w') as f:
+        with open(output_file_path, "w") as f:
             f.write(query_implementation)
-        print(f"Successfully processed query and saved query implementation to '{output_file_path}'")
+        print(
+            f"Successfully processed query and saved query implementation to '{output_file_path}'"
+        )
     except IOError as e:
         raise ValueError(f"Error writing to output file: {e}")
+    os.system(f"cargo fmt -- {output_file_path}")
 
-            
-if __name__ == '__main__':
+if __name__ == "__main__":
     main()
