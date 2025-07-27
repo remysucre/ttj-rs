@@ -1,5 +1,5 @@
-[
-    {
+{
+    "an": {
         "relation_name": "aka_name",
         "alias": "an",
         "size_after_filters": 901343,
@@ -25,7 +25,7 @@
             }
         ]
     },
-    {
+    "chn": {
         "relation_name": "char_name",
         "alias": "chn",
         "size_after_filters": 3140339,
@@ -42,7 +42,7 @@
             }
         ]
     },
-    {
+    "ci": {
         "relation_name": "cast_info",
         "alias": "ci",
         "size_after_filters": 867477,
@@ -113,7 +113,7 @@
             }
         ]
     },
-    {
+    "cn": {
         "relation_name": "company_name",
         "alias": "cn",
         "size_after_filters": 84843,
@@ -134,7 +134,7 @@
             }
         ]
     },
-    {
+    "mc": {
         "relation_name": "movie_companies",
         "alias": "mc",
         "size_after_filters": 590994,
@@ -192,7 +192,7 @@
             }
         ]
     },
-    {
+    "n": {
         "relation_name": "name",
         "alias": "n",
         "size_after_filters": 84843,
@@ -230,7 +230,7 @@
             }
         ]
     },
-    {
+    "rt": {
         "relation_name": "role_type",
         "alias": "rt",
         "size_after_filters": 1,
@@ -251,7 +251,7 @@
             }
         ]
     },
-    {
+    "t": {
         "relation_name": "title",
         "alias": "t",
         "size_after_filters": 1107888,
@@ -277,4 +277,4 @@
             }
         ]
     }
-]
+}

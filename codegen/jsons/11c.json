@@ -1,5 +1,5 @@
-[
-    {
+{
+    "cn": {
         "relation_name": "company_name",
         "alias": "cn",
         "size_after_filters": 89,
@@ -36,7 +36,7 @@
             }
         ]
     },
-    {
+    "ct": {
         "relation_name": "company_type",
         "alias": "ct",
         "size_after_filters": 3,
@@ -68,7 +68,7 @@
             }
         ]
     },
-    {
+    "k": {
         "relation_name": "keyword",
         "alias": "k",
         "size_after_filters": 4523930,
@@ -93,7 +93,7 @@
             }
         ]
     },
-    {
+    "lt": {
         "relation_name": "link_type",
         "alias": "lt",
         "size_after_filters": 18,
@@ -110,7 +110,7 @@
             }
         ]
     },
-    {
+    "mc": {
         "relation_name": "movie_companies",
         "alias": "mc",
         "size_after_filters": 1337140,
@@ -170,7 +170,7 @@
             }
         ]
     },
-    {
+    "mk": {
         "relation_name": "movie_keyword",
         "alias": "mk",
         "size_after_filters": 4523930,
@@ -214,7 +214,7 @@
             }
         ]
     },
-    {
+    "ml": {
         "relation_name": "movie_link",
         "alias": "ml",
         "size_after_filters": 29997,
@@ -258,7 +258,7 @@
             }
         ]
     },
-    {
+    "t": {
         "relation_name": "title",
         "alias": "t",
         "size_after_filters": 2287271,
@@ -297,4 +297,4 @@
             }
         ]
     }
-]
+}

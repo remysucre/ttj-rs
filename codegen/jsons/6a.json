@@ -1,5 +1,5 @@
-[
-    {
+{
+    "ci": {
         "relation_name": "cast_info",
         "alias": "ci",
         "size_after_filters": 36244344,
@@ -34,7 +34,7 @@
             }
         ]
     },
-    {
+    "k": {
         "relation_name": "keyword",
         "alias": "k",
         "size_after_filters": 4523930,
@@ -55,7 +55,7 @@
             }
         ]
     },
-    {
+    "mk": {
         "relation_name": "movie_keyword",
         "alias": "mk",
         "size_after_filters": 4523930,
@@ -90,7 +90,7 @@
             }
         ]
     },
-    {
+    "n": {
         "relation_name": "name",
         "alias": "n",
         "size_after_filters": 2,
@@ -111,7 +111,7 @@
             }
         ]
     },
-    {
+    "t": {
         "relation_name": "title",
         "alias": "t",
         "size_after_filters": 391666,
@@ -141,4 +141,4 @@
             }
         ]
     }
-]
+}

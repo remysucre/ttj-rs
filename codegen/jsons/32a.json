@@ -1,5 +1,5 @@
-[
-    {
+{
+    "k": {
         "relation_name": "keyword",
         "alias": "k",
         "size_after_filters": 4523930,
@@ -20,7 +20,7 @@
             }
         ]
     },
-    {
+    "lt": {
         "relation_name": "link_type",
         "alias": "lt",
         "size_after_filters": 18,
@@ -37,7 +37,7 @@
             }
         ]
     },
-    {
+    "mk": {
         "relation_name": "movie_keyword",
         "alias": "mk",
         "size_after_filters": 4523930,
@@ -72,7 +72,7 @@
             }
         ]
     },
-    {
+    "ml": {
         "relation_name": "movie_link",
         "alias": "ml",
         "size_after_filters": 29997,
@@ -107,7 +107,7 @@
             }
         ]
     },
-    {
+    "t1": {
         "relation_name": "title",
         "alias": "t1",
         "size_after_filters": 2528312,
@@ -142,7 +142,7 @@
             }
         ]
     },
-    {
+    "t2": {
         "relation_name": "title",
         "alias": "t2",
         "size_after_filters": 2528312,
@@ -159,4 +159,4 @@
             }
         ]
     }
-]
+}

@@ -1,5 +1,5 @@
-[
-    {
+{
+    "at": {
         "relation_name": "aka_title",
         "alias": "at",
         "size_after_filters": 361472,
@@ -43,7 +43,7 @@
             }
         ]
     },
-    {
+    "cn": {
         "relation_name": "company_name",
         "alias": "cn",
         "size_after_filters": 1,
@@ -72,7 +72,7 @@
             }
         ]
     },
-    {
+    "ct": {
         "relation_name": "company_type",
         "alias": "ct",
         "size_after_filters": 4,
@@ -89,7 +89,7 @@
             }
         ]
     },
-    {
+    "it1": {
         "relation_name": "info_type",
         "alias": "it1",
         "size_after_filters": 1,
@@ -110,7 +110,7 @@
             }
         ]
     },
-    {
+    "k": {
         "relation_name": "keyword",
         "alias": "k",
         "size_after_filters": 4523930,
@@ -127,7 +127,7 @@
             }
         ]
     },
-    {
+    "mc": {
         "relation_name": "movie_companies",
         "alias": "mc",
         "size_after_filters": 61664,
@@ -201,7 +201,7 @@
             }
         ]
     },
-    {
+    "mi": {
         "relation_name": "movie_info",
         "alias": "mi",
         "size_after_filters": 1771,
@@ -266,7 +266,7 @@
             }
         ]
     },
-    {
+    "mk": {
         "relation_name": "movie_keyword",
         "alias": "mk",
         "size_after_filters": 4523930,
@@ -319,7 +319,7 @@
             }
         ]
     },
-    {
+    "t": {
         "relation_name": "title",
         "alias": "t",
         "size_after_filters": 361472,
@@ -363,4 +363,4 @@
             }
         ]
     }
-]
+}

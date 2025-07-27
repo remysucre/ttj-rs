@@ -1,5 +1,5 @@
-[
-    {
+{
+    "cn1": {
         "relation_name": "company_name",
         "alias": "cn1",
         "size_after_filters": 2340,
@@ -20,7 +20,7 @@
             }
         ]
     },
-    {
+    "cn2": {
         "relation_name": "company_name",
         "alias": "cn2",
         "size_after_filters": 2340,
@@ -37,7 +37,7 @@
             }
         ]
     },
-    {
+    "it1": {
         "relation_name": "info_type",
         "alias": "it1",
         "size_after_filters": 1,
@@ -58,7 +58,7 @@
             }
         ]
     },
-    {
+    "it2": {
         "relation_name": "info_type",
         "alias": "it2",
         "size_after_filters": 1,
@@ -79,7 +79,7 @@
             }
         ]
     },
-    {
+    "kt1": {
         "relation_name": "kind_type",
         "alias": "kt1",
         "size_after_filters": 1,
@@ -102,7 +102,7 @@
             }
         ]
     },
-    {
+    "kt2": {
         "relation_name": "kind_type",
         "alias": "kt2",
         "size_after_filters": 1,
@@ -125,7 +125,7 @@
             }
         ]
     },
-    {
+    "lt": {
         "relation_name": "link_type",
         "alias": "lt",
         "size_after_filters": 2,
@@ -146,7 +146,7 @@
             }
         ]
     },
-    {
+    "mc1": {
         "relation_name": "movie_companies",
         "alias": "mc1",
         "size_after_filters": 2609129,
@@ -190,7 +190,7 @@
             }
         ]
     },
-    {
+    "mc2": {
         "relation_name": "movie_companies",
         "alias": "mc2",
         "size_after_filters": 2609129,
@@ -234,7 +234,7 @@
             }
         ]
     },
-    {
+    "mi_idx1": {
         "relation_name": "movie_info_idx",
         "alias": "mi_idx1",
         "size_after_filters": 1380035,
@@ -278,7 +278,7 @@
             }
         ]
     },
-    {
+    "mi_idx2": {
         "relation_name": "movie_info_idx",
         "alias": "mi_idx2",
         "size_after_filters": 1380035,
@@ -326,7 +326,7 @@
             }
         ]
     },
-    {
+    "ml": {
         "relation_name": "movie_link",
         "alias": "ml",
         "size_after_filters": 29997,
@@ -397,7 +397,7 @@
             }
         ]
     },
-    {
+    "t1": {
         "relation_name": "title",
         "alias": "t1",
         "size_after_filters": 2528312,
@@ -441,7 +441,7 @@
             }
         ]
     },
-    {
+    "t2": {
         "relation_name": "title",
         "alias": "t2",
         "size_after_filters": 2528312,
@@ -489,4 +489,4 @@
             }
         ]
     }
-]
+}
