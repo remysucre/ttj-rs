@@ -133,7 +133,7 @@
     {
         "relation_name": "movie_info",
         "alias": "mi",
-        "size_after_filters": 14835720,
+        "size_after_filters": 1380035,
         "filters": null,
         "join_cond": [
             {

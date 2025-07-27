@@ -2,7 +2,7 @@
     {
         "relation_name": "aka_name",
         "alias": "an",
-        "size_after_filters": 0,
+        "size_after_filters": 901343,
         "filters": null,
         "join_cond": [
             {
@@ -24,7 +24,7 @@
     {
         "relation_name": "cast_info",
         "alias": "ci",
-        "size_after_filters": 1244716,
+        "size_after_filters": 93095,
         "filters": {
             "operator": "EQ",
             "left": "ci.note",
@@ -71,7 +71,7 @@
     {
         "relation_name": "company_name",
         "alias": "cn",
-        "size_after_filters": 0,
+        "size_after_filters": 6752,
         "filters": {
             "operator": "EQ",
             "left": "cn.country_code",
@@ -90,7 +90,7 @@
     {
         "relation_name": "movie_companies",
         "alias": "mc",
-        "size_after_filters": 0,
+        "size_after_filters": 8569,
         "filters": {
             "operator": "AND",
             "left": {
@@ -143,7 +143,7 @@
     {
         "relation_name": "name",
         "alias": "n",
-        "size_after_filters": 961555,
+        "size_after_filters": 6752,
         "filters": {
             "operator": "AND",
             "left": {
@@ -173,7 +173,7 @@
     {
         "relation_name": "role_type",
         "alias": "rt",
-        "size_after_filters": 0,
+        "size_after_filters": 1,
         "filters": {
             "operator": "EQ",
             "left": "rt.role",
@@ -192,7 +192,7 @@
     {
         "relation_name": "title",
         "alias": "t",
-        "size_after_filters": 784488,
+        "size_after_filters": 7,
         "filters": {
             "operator": "AND",
             "left": "t.production_year BETWEEN 2006 AND 2007",

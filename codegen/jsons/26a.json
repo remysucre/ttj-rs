@@ -314,7 +314,7 @@
     {
         "relation_name": "name",
         "alias": "n",
-        "size_after_filters": 4167491,
+        "size_after_filters": 180152,
         "filters": null,
         "join_cond": [
             {

@@ -2,7 +2,7 @@
     {
         "relation_name": "company_type",
         "alias": "ct",
-        "size_after_filters": 4,
+        "size_after_filters": 1,
         "filters": {
             "operator": "EQ",
             "left": "ct.kind",
@@ -21,7 +21,7 @@
     {
         "relation_name": "info_type",
         "alias": "it",
-        "size_after_filters": 1,
+        "size_after_filters": 113,
         "filters": null,
         "join_cond": [
             {
@@ -36,7 +36,7 @@
     {
         "relation_name": "movie_companies",
         "alias": "mc",
-        "size_after_filters": 2609129,
+        "size_after_filters": 295628,
         "filters": {
             "operator": "AND",
             "left": "NOT mc.note LIKE '%(TV)%'",
@@ -73,7 +73,7 @@
     {
         "relation_name": "movie_info",
         "alias": "mi",
-        "size_after_filters": 1783,
+        "size_after_filters": 706674,
         "filters": "mi.info IN ('Sweden', 'Norway', 'Germany', 'Denmark', 'Swedish', 'Denish', 'Norwegian', 'German', 'USA', 'American')",
         "join_cond": [
             {

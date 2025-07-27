@@ -40,7 +40,7 @@
     {
         "relation_name": "movie_info_idx",
         "alias": "mi_idx",
-        "size_after_filters": 0,
+        "size_after_filters": 8322,
         "filters": {
             "operator": "GT",
             "left": "mi_idx.info",
@@ -102,7 +102,7 @@
     {
         "relation_name": "title",
         "alias": "t",
-        "size_after_filters": 8,
+        "size_after_filters": 391666,
         "filters": {
             "operator": "GT",
             "left": "t.production_year",

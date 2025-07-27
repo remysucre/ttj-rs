@@ -2,7 +2,7 @@
     {
         "relation_name": "keyword",
         "alias": "k",
-        "size_after_filters": 0,
+        "size_after_filters": 4523930,
         "filters": {
             "operator": "LIKE",
             "left": "k.keyword",
@@ -21,7 +21,7 @@
     {
         "relation_name": "movie_info",
         "alias": "mi",
-        "size_after_filters": 1380035,
+        "size_after_filters": 2287,
         "filters": "mi.info IN ('Bulgaria')",
         "join_cond": [
             {
@@ -43,7 +43,7 @@
     {
         "relation_name": "movie_keyword",
         "alias": "mk",
-        "size_after_filters": 0,
+        "size_after_filters": 4523930,
         "filters": null,
         "join_cond": [
             {
@@ -72,7 +72,7 @@
     {
         "relation_name": "title",
         "alias": "t",
-        "size_after_filters": 2218,
+        "size_after_filters": 391666,
         "filters": {
             "operator": "GT",
             "left": "t.production_year",

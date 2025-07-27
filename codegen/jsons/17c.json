@@ -53,7 +53,7 @@
     {
         "relation_name": "keyword",
         "alias": "k",
-        "size_after_filters": 1,
+        "size_after_filters": 4523930,
         "filters": {
             "operator": "EQ",
             "left": "k.keyword",
@@ -144,7 +144,7 @@
     {
         "relation_name": "name",
         "alias": "n",
-        "size_after_filters": 2664,
+        "size_after_filters": 234997,
         "filters": {
             "operator": "LIKE",
             "left": "n.name",

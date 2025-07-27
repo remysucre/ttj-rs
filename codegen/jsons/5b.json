@@ -2,7 +2,7 @@
     {
         "relation_name": "company_type",
         "alias": "ct",
-        "size_after_filters": 0,
+        "size_after_filters": 1,
         "filters": {
             "operator": "EQ",
             "left": "ct.kind",
@@ -21,7 +21,7 @@
     {
         "relation_name": "info_type",
         "alias": "it",
-        "size_after_filters": 1,
+        "size_after_filters": 113,
         "filters": null,
         "join_cond": [
             {
@@ -36,7 +36,7 @@
     {
         "relation_name": "movie_companies",
         "alias": "mc",
-        "size_after_filters": 0,
+        "size_after_filters": 1418,
         "filters": {
             "operator": "AND",
             "left": {
@@ -85,7 +85,7 @@
     {
         "relation_name": "movie_info",
         "alias": "mi",
-        "size_after_filters": 30801,
+        "size_after_filters": 552777,
         "filters": "mi.info IN ('USA', 'America')",
         "join_cond": [
             {
@@ -114,7 +114,7 @@
     {
         "relation_name": "title",
         "alias": "t",
-        "size_after_filters": 73,
+        "size_after_filters": 391666,
         "filters": {
             "operator": "GT",
             "left": "t.production_year",
