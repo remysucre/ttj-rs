@@ -1,0 +1,34 @@
+use crate::data::Data;
+use ahash::{HashMap, HashSet};
+use memchr::memmem;
+use polars::prelude::*;
+use std::time::Instant;
+
+pub fn {{ queryName }}(db: &Data) -> Result<{{ result_output }}, PolarsError> {
+    {{ initializeRelationBlock }}
+
+    {{ mainBlock }}
+
+    println!("{{ queryName }},{:}", start.elapsed().as_secs_f32());
+    Ok(res)
+}
+
+#[cfg(test)]
+mod test_{{ queryName }} {
+    use super::*;
+    use crate::data::ImdbData;
+
+    #[test]
+    fn test_{{ queryName }}() -> Result<(), PolarsError> {
+        let db = ImdbData::new();
+        let data = Data::new(&db);
+        let res = {{ queryName }}(&data)?;
+        assert_eq!(
+            res,
+            Some(
+                {{ expected_result_set }}
+            )
+        );
+        Ok(())
+    }
+}
