@@ -4,22 +4,22 @@ use memchr::memmem;
 use polars::prelude::*;
 use std::time::Instant;
 
-pub fn {{ queryName }}(db: &Data) -> Result<{{ result_output }}, PolarsError> {
+pub fn {{ query_name }}(db: &Data) -> Result<{{ result_output }}, PolarsError> {
     {{ initializeRelationBlock }}
 
     {{ mainBlock }}
 
-    println!("{{ queryName }},{:}", start.elapsed().as_secs_f32());
+    println!("{{ query_name }},{:}", start.elapsed().as_secs_f32());
     Ok(res)
 }
 
 #[cfg(test)]
-mod test_{{ queryName }} {
+mod test_{{ query_name }} {
     use super::*;
     use crate::data::ImdbData;
 
     #[test]
-    fn test_{{ queryName }}() -> Result<(), PolarsError> {
+    fn test_{{ query_name }}() -> Result<(), PolarsError> {
         let db = ImdbData::new();
         let data = Data::new(&db);
         let res = {{ queryName }}(&data)?;
