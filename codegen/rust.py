@@ -11,6 +11,8 @@ import glob
 import json
 import os
 import re
+import typing
+from dataclasses import dataclass
 from typing import Tuple
 
 import sqlglot
@@ -41,6 +43,91 @@ ALIAS_TO_TABLE = {
     "t": "title",
 }
 
+@dataclass
+class Attribute:
+    attr: str
+    alias: str
+
+@dataclass
+class Relation:
+    """
+    Used to model hyperedge as well.
+    """
+    alias: str
+    relation_name: str
+    attributes: typing.List[Attribute]
+
+class UnionFind:
+    """
+    A Union-Find (or Disjoint Set Union) data structure.
+
+    This implementation uses path compression and union by size/rank optimizations
+    to achieve near-constant time complexity for its operations on average.
+    It is designed to work with any hashable objects.
+    """
+
+    def __init__(self):
+        """
+        Initializes the UnionFind structure.
+        `parent` stores the parent of each element in the set.
+        `size` stores the size of the set for union-by-size optimization.
+        """
+        self.parent = {}
+        self.size = {}
+
+    def find(self, item):
+        """
+        Finds the representative (root) of the set containing the given item.
+        Implements path compression for optimization.
+
+        Args:
+            item: The item to find.
+
+        Returns:
+            The representative of the set containing the item.
+        """
+        if item not in self.parent:
+            self.parent[item] = item
+            self.size[item] = 1
+            return item
+
+        # Path compression
+        if self.parent[item] == item:
+            return item
+        self.parent[item] = self.find(self.parent[item])
+        return self.parent[item]
+
+    def union(self, item1, item2):
+        """
+        Merges the sets containing item1 and item2.
+        Implements union by size to keep the tree structure flat.
+
+        Args:
+            item1: The first item.
+            item2: The second item.
+        """
+        root1 = self.find(item1)
+        root2 = self.find(item2)
+
+        if root1 != root2:
+            # Union by size: attach smaller tree under root of larger tree
+            if self.size[root1] < self.size[root2]:
+                root1, root2 = root2, root1  # Ensure root1 is the larger set
+            self.parent[root2] = root1
+            self.size[root1] += self.size[root2]
+
+    def connected(self, item1, item2) -> bool:
+        """
+        Checks if two items are in the same set.
+
+        Args:
+            item1: The first item.
+            item2: The second item.
+
+        Returns:
+            True if item1 and item2 are in the same set, False otherwise.
+        """
+        return self.find(item1) == self.find(item2)
 
 def format_expression_to_dict(expression):
     """
@@ -355,7 +442,10 @@ def _result_output_and_expected_result_set(sql_query_name: str) -> Tuple[str, st
         raise ValueError(f"Error reading or parsing statistics file: {e}")
 
 
-def _initialize_relation_block(sql_query_name: str, output_file_path: str) -> str:
+def _initialize_relation_block(output_file_path: str, exclude_relations: typing.List) -> str:
+    """
+    exclude_relations is used to implement FK-PK optimization.
+    """
     try:
         with open(output_file_path, "r") as f:
             query_data = json.load(f)
@@ -363,13 +453,17 @@ def _initialize_relation_block(sql_query_name: str, output_file_path: str) -> st
         seen_relations = set()
         for alias, info in query_data.items():
             relation = info.get("relation_name")
-            if relation not in seen_relations:
+            if relation not in seen_relations and relation not in exclude_relations:
                 aliases.append(re.sub(r"\d+", "", alias))
                 seen_relations.add(relation)
         return "\n".join([f"let {alias} = &db.{alias};" for alias in aliases])
     except (IOError, json.JSONDecodeError) as e:
         raise ValueError(f"Error reading or parsing statistics file: {e}")
 
+def decide_join_tree(output_file_path):
+    attributes = UnionFind()
+    hypergraph = UnionFind()
+    
 
 def optimization(sql_query_name, output_file_path) -> None:
     """
@@ -379,7 +473,7 @@ def optimization(sql_query_name, output_file_path) -> None:
         sql_query_name
     )
     initialize_relation_block = _initialize_relation_block(
-        sql_query_name, output_file_path
+        output_file_path, []
     )
     template_data = {
         "result_output": result_output,
