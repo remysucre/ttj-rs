@@ -8,7 +8,10 @@ Steps:
 """
 
 import json
+from typing import Tuple
+
 import sqlglot
+from jinja2 import Environment, FileSystemLoader
 from sqlglot import exp
 import os
 import glob
@@ -197,19 +200,19 @@ def process_query_and_stats(sql_query, stats_filepath, output_filepath, pks, fks
         raise ValueError(f"Error writing to output file: {e}")
 
 
-def generate_files():
+def main():
     """
     Main function to process all .sql files in a directory.
     """
     # Directory containing the SQL query files
-    sql_dir = 'join-order-benchmark/'
-    # sql_dir = 'junk/'
+    # sql_dir = 'join-order-benchmark/'
+    sql_dir = 'junk/'
     # Directory containing the statistics JSON files
-    stats_dir = 'stats_jsons/'
-    # stats_dir = 'junk/'
+    # stats_dir = 'stats_jsons/'
+    stats_dir = 'junk/'
     # Directory to save the output JSON files
-    output_dir = 'jsons'
-    # output_dir = 'junk/'
+    # output_dir = 'jsons'
+    output_dir = 'junk/'
 
     # Create the output directory if it doesn't exist
     if not os.path.exists(output_dir):
@@ -222,6 +225,9 @@ def generate_files():
 
     if not sql_files:
         raise ValueError(f"No .sql files found in '{sql_dir}'")
+
+    if not os.path.exists("expected_results.json"):
+        raise ValueError(f"expected_results.json is missing! Run extract_results.py to create one.")
 
     # Process each SQL file
     for sql_file_path in sql_files:
@@ -275,6 +281,8 @@ def generate_files():
 
             process_query_and_stats(sql_query, stats_file_path, output_file_path, pks, fks)
 
+            optimization(sql_query_name)
+
         except IOError as e:
             raise ValueError(f"Error reading SQL file {sql_file_path}: {e}")
         except Exception as e:
@@ -308,21 +316,40 @@ def parse_sql_schema(sql_file_path):
 
     return pks, fks
 
-def optimization():
+
+def _result_output_and_expected_result_set(sql_query_name: str) -> Tuple[str, str]:
+    try:
+        with open("expected_results.json", 'r') as f:
+            stats_data = json.load(f)
+        result_set = stats_data.get(sql_query_name, {})
+        result_output = f"Option<({', '.join(['&str'] * len(result_set))})>"
+        if len(result_set) == 1:
+            expected_result_set = f"\"{result_set[0]}\""
+        else:
+            expected_result_set = ", ".join([f'"{element}"' for element in result_set])
+        return result_output, expected_result_set
+    except (IOError, json.JSONDecodeError) as e:
+        raise ValueError(f"Error reading or parsing statistics file: {e}")
+
+
+def optimization(sql_query_name) -> None:
     """
-    Generate query implementation template
+    Generate query implementation based on base.jinja
     """
+    result_output, expected_result_set = _result_output_and_expected_result_set(sql_query_name)
+    template_data = {"result_output": result_output, "expected_result_set": expected_result_set}
+    env = Environment(loader=FileSystemLoader("."))
+    template = env.get_template("base.jinja")
+    query_implementation = template.render(template_data)
+    output_dir = "junk"
+    output_file_path = os.path.join(output_dir, f'o{sql_query_name}.rs')
+    try:
+        with open(output_file_path, 'w') as f:
+            f.write(query_implementation)
+        print(f"Successfully processed query and saved query implementation to '{output_file_path}'")
+    except IOError as e:
+        raise ValueError(f"Error writing to output file: {e}")
 
-
-def main():
-    generate_files()
-
-    # The logic to add keys has been moved into generate_files/process_query_and_stats
-    # The following code would be for template rendering if needed.
-    
-    # env = Environment(loader=FileSystemLoader("codegen"))
-    # template = env.get_template("base.jinja")
-    # ... (rest of the logic for rendering templates)
             
 if __name__ == '__main__':
     main()
