@@ -7,15 +7,15 @@ Steps:
 3. Render the template to generate query implementation.
 """
 
+import glob
 import json
+import os
+import re
 from typing import Tuple
 
 import sqlglot
 from jinja2 import Environment, FileSystemLoader
 from sqlglot import exp
-import os
-import glob
-import re
 
 ALIAS_TO_TABLE = {
     "an": "aka_name",
@@ -227,7 +227,7 @@ def main():
         raise ValueError(f"No .sql files found in '{sql_dir}'")
 
     if not os.path.exists("expected_results.json"):
-        raise ValueError(f"expected_results.json is missing! Run extract_results.py to create one.")
+        raise ValueError("expected_results.json is missing! Run extract_results.py to create one.")
 
     # Process each SQL file
     for sql_file_path in sql_files:
@@ -337,7 +337,9 @@ def optimization(sql_query_name) -> None:
     Generate query implementation based on base.jinja
     """
     result_output, expected_result_set = _result_output_and_expected_result_set(sql_query_name)
-    template_data = {"result_output": result_output, "expected_result_set": expected_result_set}
+    template_data = {"result_output": result_output,
+                     "expected_result_set": expected_result_set,
+                     "query_name": "q" + sql_query_name}
     env = Environment(loader=FileSystemLoader("."))
     template = env.get_template("base.jinja")
     query_implementation = template.render(template_data)
