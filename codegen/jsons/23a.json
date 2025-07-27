@@ -1,0 +1,354 @@
+[
+    {
+        "relation_name": "complete_cast",
+        "alias": "cc",
+        "size_after_filters": 135086,
+        "filters": null,
+        "join_cond": [
+            {
+                "local_column": "movie_id",
+                "foreign_table": {
+                    "alias": "t",
+                    "column": "id"
+                }
+            },
+            {
+                "local_column": "movie_id",
+                "foreign_table": {
+                    "alias": "mk",
+                    "column": "movie_id"
+                }
+            },
+            {
+                "local_column": "movie_id",
+                "foreign_table": {
+                    "alias": "mi",
+                    "column": "movie_id"
+                }
+            },
+            {
+                "local_column": "movie_id",
+                "foreign_table": {
+                    "alias": "mc",
+                    "column": "movie_id"
+                }
+            },
+            {
+                "local_column": "status_id",
+                "foreign_table": {
+                    "alias": "cct1",
+                    "column": "id"
+                }
+            }
+        ]
+    },
+    {
+        "relation_name": "comp_cast_type",
+        "alias": "cct1",
+        "size_after_filters": 1,
+        "filters": {
+            "operator": "EQ",
+            "left": "cct1.kind",
+            "right": "'complete+verified'"
+        },
+        "join_cond": [
+            {
+                "local_column": "id",
+                "foreign_table": {
+                    "alias": "cc",
+                    "column": "status_id"
+                }
+            }
+        ]
+    },
+    {
+        "relation_name": "company_name",
+        "alias": "cn",
+        "size_after_filters": 84843,
+        "filters": {
+            "operator": "EQ",
+            "left": "cn.country_code",
+            "right": "'[us]'"
+        },
+        "join_cond": [
+            {
+                "local_column": "id",
+                "foreign_table": {
+                    "alias": "mc",
+                    "column": "company_id"
+                }
+            }
+        ]
+    },
+    {
+        "relation_name": "company_type",
+        "alias": "ct",
+        "size_after_filters": 4,
+        "filters": null,
+        "join_cond": [
+            {
+                "local_column": "id",
+                "foreign_table": {
+                    "alias": "mc",
+                    "column": "company_type_id"
+                }
+            }
+        ]
+    },
+    {
+        "relation_name": "info_type",
+        "alias": "it1",
+        "size_after_filters": 1,
+        "filters": {
+            "operator": "EQ",
+            "left": "it1.info",
+            "right": "'release dates'"
+        },
+        "join_cond": [
+            {
+                "local_column": "id",
+                "foreign_table": {
+                    "alias": "mi",
+                    "column": "info_type_id"
+                }
+            }
+        ]
+    },
+    {
+        "relation_name": "keyword",
+        "alias": "k",
+        "size_after_filters": 4523930,
+        "filters": null,
+        "join_cond": [
+            {
+                "local_column": "id",
+                "foreign_table": {
+                    "alias": "mk",
+                    "column": "keyword_id"
+                }
+            }
+        ]
+    },
+    {
+        "relation_name": "kind_type",
+        "alias": "kt",
+        "size_after_filters": 1,
+        "filters": "kt.kind IN ('movie')",
+        "join_cond": [
+            {
+                "local_column": "id",
+                "foreign_table": {
+                    "alias": "t",
+                    "column": "kind_id"
+                }
+            }
+        ]
+    },
+    {
+        "relation_name": "movie_companies",
+        "alias": "mc",
+        "size_after_filters": 2609129,
+        "filters": null,
+        "join_cond": [
+            {
+                "local_column": "movie_id",
+                "foreign_table": {
+                    "alias": "t",
+                    "column": "id"
+                }
+            },
+            {
+                "local_column": "movie_id",
+                "foreign_table": {
+                    "alias": "mk",
+                    "column": "movie_id"
+                }
+            },
+            {
+                "local_column": "movie_id",
+                "foreign_table": {
+                    "alias": "mi",
+                    "column": "movie_id"
+                }
+            },
+            {
+                "local_column": "movie_id",
+                "foreign_table": {
+                    "alias": "cc",
+                    "column": "movie_id"
+                }
+            },
+            {
+                "local_column": "company_id",
+                "foreign_table": {
+                    "alias": "cn",
+                    "column": "id"
+                }
+            },
+            {
+                "local_column": "company_type_id",
+                "foreign_table": {
+                    "alias": "ct",
+                    "column": "id"
+                }
+            }
+        ]
+    },
+    {
+        "relation_name": "movie_info",
+        "alias": "mi",
+        "size_after_filters": 1783,
+        "filters": {
+            "operator": "AND",
+            "left": {
+                "operator": "LIKE",
+                "left": "mi.note",
+                "right": "'%internet%'"
+            },
+            "right": {
+                "operator": "AND",
+                "left": "NOT mi.info IS NULL",
+                "right": {
+                    "operator": "OR",
+                    "left": {
+                        "operator": "LIKE",
+                        "left": "mi.info",
+                        "right": "'USA:% 199%'"
+                    },
+                    "right": {
+                        "operator": "LIKE",
+                        "left": "mi.info",
+                        "right": "'USA:% 200%'"
+                    }
+                }
+            }
+        },
+        "join_cond": [
+            {
+                "local_column": "movie_id",
+                "foreign_table": {
+                    "alias": "t",
+                    "column": "id"
+                }
+            },
+            {
+                "local_column": "movie_id",
+                "foreign_table": {
+                    "alias": "mk",
+                    "column": "movie_id"
+                }
+            },
+            {
+                "local_column": "movie_id",
+                "foreign_table": {
+                    "alias": "mc",
+                    "column": "movie_id"
+                }
+            },
+            {
+                "local_column": "movie_id",
+                "foreign_table": {
+                    "alias": "cc",
+                    "column": "movie_id"
+                }
+            },
+            {
+                "local_column": "info_type_id",
+                "foreign_table": {
+                    "alias": "it1",
+                    "column": "id"
+                }
+            }
+        ]
+    },
+    {
+        "relation_name": "movie_keyword",
+        "alias": "mk",
+        "size_after_filters": 4523930,
+        "filters": null,
+        "join_cond": [
+            {
+                "local_column": "movie_id",
+                "foreign_table": {
+                    "alias": "t",
+                    "column": "id"
+                }
+            },
+            {
+                "local_column": "movie_id",
+                "foreign_table": {
+                    "alias": "mi",
+                    "column": "movie_id"
+                }
+            },
+            {
+                "local_column": "movie_id",
+                "foreign_table": {
+                    "alias": "mc",
+                    "column": "movie_id"
+                }
+            },
+            {
+                "local_column": "movie_id",
+                "foreign_table": {
+                    "alias": "cc",
+                    "column": "movie_id"
+                }
+            },
+            {
+                "local_column": "keyword_id",
+                "foreign_table": {
+                    "alias": "k",
+                    "column": "id"
+                }
+            }
+        ]
+    },
+    {
+        "relation_name": "title",
+        "alias": "t",
+        "size_after_filters": 1381453,
+        "filters": {
+            "operator": "GT",
+            "left": "t.production_year",
+            "right": "2000"
+        },
+        "join_cond": [
+            {
+                "local_column": "kind_id",
+                "foreign_table": {
+                    "alias": "kt",
+                    "column": "id"
+                }
+            },
+            {
+                "local_column": "id",
+                "foreign_table": {
+                    "alias": "mi",
+                    "column": "movie_id"
+                }
+            },
+            {
+                "local_column": "id",
+                "foreign_table": {
+                    "alias": "mk",
+                    "column": "movie_id"
+                }
+            },
+            {
+                "local_column": "id",
+                "foreign_table": {
+                    "alias": "mc",
+                    "column": "movie_id"
+                }
+            },
+            {
+                "local_column": "id",
+                "foreign_table": {
+                    "alias": "cc",
+                    "column": "movie_id"
+                }
+            }
+        ]
+    }
+]

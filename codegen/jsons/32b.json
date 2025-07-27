@@ -1,0 +1,138 @@
+[
+    {
+        "relation_name": "keyword",
+        "alias": "k",
+        "size_after_filters": 1,
+        "filters": {
+            "operator": "EQ",
+            "left": "k.keyword",
+            "right": "'character-name-in-title'"
+        },
+        "join_cond": [
+            {
+                "local_column": "id",
+                "foreign_table": {
+                    "alias": "mk",
+                    "column": "keyword_id"
+                }
+            }
+        ]
+    },
+    {
+        "relation_name": "link_type",
+        "alias": "lt",
+        "size_after_filters": 18,
+        "filters": null,
+        "join_cond": [
+            {
+                "local_column": "id",
+                "foreign_table": {
+                    "alias": "ml",
+                    "column": "link_type_id"
+                }
+            }
+        ]
+    },
+    {
+        "relation_name": "movie_keyword",
+        "alias": "mk",
+        "size_after_filters": 4523930,
+        "filters": null,
+        "join_cond": [
+            {
+                "local_column": "keyword_id",
+                "foreign_table": {
+                    "alias": "k",
+                    "column": "id"
+                }
+            },
+            {
+                "local_column": "movie_id",
+                "foreign_table": {
+                    "alias": "t1",
+                    "column": "id"
+                }
+            },
+            {
+                "local_column": "movie_id",
+                "foreign_table": {
+                    "alias": "t1",
+                    "column": "id"
+                }
+            }
+        ]
+    },
+    {
+        "relation_name": "movie_link",
+        "alias": "ml",
+        "size_after_filters": 29997,
+        "filters": null,
+        "join_cond": [
+            {
+                "local_column": "movie_id",
+                "foreign_table": {
+                    "alias": "t1",
+                    "column": "id"
+                }
+            },
+            {
+                "local_column": "linked_movie_id",
+                "foreign_table": {
+                    "alias": "t2",
+                    "column": "id"
+                }
+            },
+            {
+                "local_column": "link_type_id",
+                "foreign_table": {
+                    "alias": "lt",
+                    "column": "id"
+                }
+            }
+        ]
+    },
+    {
+        "relation_name": "title",
+        "alias": "t1",
+        "size_after_filters": 2528312,
+        "filters": null,
+        "join_cond": [
+            {
+                "local_column": "id",
+                "foreign_table": {
+                    "alias": "mk",
+                    "column": "movie_id"
+                }
+            },
+            {
+                "local_column": "id",
+                "foreign_table": {
+                    "alias": "ml",
+                    "column": "movie_id"
+                }
+            },
+            {
+                "local_column": "id",
+                "foreign_table": {
+                    "alias": "mk",
+                    "column": "movie_id"
+                }
+            }
+        ]
+    },
+    {
+        "relation_name": "title",
+        "alias": "t2",
+        "size_after_filters": 2528312,
+        "filters": null,
+        "join_cond": [
+            {
+                "local_column": "id",
+                "foreign_table": {
+                    "alias": "ml",
+                    "column": "linked_movie_id"
+                }
+            }
+        ]
+    }
+]

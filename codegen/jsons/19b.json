@@ -1,0 +1,336 @@
+[
+    {
+        "relation_name": "aka_name",
+        "alias": "an",
+        "size_after_filters": 901343,
+        "filters": null,
+        "join_cond": [
+            {
+                "local_column": "person_id",
+                "foreign_table": {
+                    "alias": "n",
+                    "column": "id"
+                }
+            },
+            {
+                "local_column": "person_id",
+                "foreign_table": {
+                    "alias": "ci",
+                    "column": "person_id"
+                }
+            }
+        ]
+    },
+    {
+        "relation_name": "char_name",
+        "alias": "chn",
+        "size_after_filters": 3140339,
+        "filters": null,
+        "join_cond": [
+            {
+                "local_column": "id",
+                "foreign_table": {
+                    "alias": "ci",
+                    "column": "person_role_id"
+                }
+            }
+        ]
+    },
+    {
+        "relation_name": "cast_info",
+        "alias": "ci",
+        "size_after_filters": 713828,
+        "filters": {
+            "operator": "EQ",
+            "left": "ci.note",
+            "right": "'(voice)'"
+        },
+        "join_cond": [
+            {
+                "local_column": "movie_id",
+                "foreign_table": {
+                    "alias": "t",
+                    "column": "id"
+                }
+            },
+            {
+                "local_column": "movie_id",
+                "foreign_table": {
+                    "alias": "mc",
+                    "column": "movie_id"
+                }
+            },
+            {
+                "local_column": "movie_id",
+                "foreign_table": {
+                    "alias": "mi",
+                    "column": "movie_id"
+                }
+            },
+            {
+                "local_column": "person_id",
+                "foreign_table": {
+                    "alias": "n",
+                    "column": "id"
+                }
+            },
+            {
+                "local_column": "role_id",
+                "foreign_table": {
+                    "alias": "rt",
+                    "column": "id"
+                }
+            },
+            {
+                "local_column": "person_id",
+                "foreign_table": {
+                    "alias": "an",
+                    "column": "person_id"
+                }
+            },
+            {
+                "local_column": "person_role_id",
+                "foreign_table": {
+                    "alias": "chn",
+                    "column": "id"
+                }
+            }
+        ]
+    },
+    {
+        "relation_name": "company_name",
+        "alias": "cn",
+        "size_after_filters": 84843,
+        "filters": {
+            "operator": "EQ",
+            "left": "cn.country_code",
+            "right": "'[us]'"
+        },
+        "join_cond": [
+            {
+                "local_column": "id",
+                "foreign_table": {
+                    "alias": "mc",
+                    "column": "company_id"
+                }
+            }
+        ]
+    },
+    {
+        "relation_name": "info_type",
+        "alias": "it",
+        "size_after_filters": 1,
+        "filters": {
+            "operator": "EQ",
+            "left": "it.info",
+            "right": "'release dates'"
+        },
+        "join_cond": [
+            {
+                "local_column": "id",
+                "foreign_table": {
+                    "alias": "mi",
+                    "column": "info_type_id"
+                }
+            }
+        ]
+    },
+    {
+        "relation_name": "movie_companies",
+        "alias": "mc",
+        "size_after_filters": 198519,
+        "filters": {
+            "operator": "AND",
+            "left": {
+                "operator": "LIKE",
+                "left": "mc.note",
+                "right": "'%(200%)%'"
+            },
+            "right": {
+                "operator": "OR",
+                "left": {
+                    "operator": "LIKE",
+                    "left": "mc.note",
+                    "right": "'%(USA)%'"
+                },
+                "right": {
+                    "operator": "LIKE",
+                    "left": "mc.note",
+                    "right": "'%(worldwide)%'"
+                }
+            }
+        },
+        "join_cond": [
+            {
+                "local_column": "movie_id",
+                "foreign_table": {
+                    "alias": "t",
+                    "column": "id"
+                }
+            },
+            {
+                "local_column": "movie_id",
+                "foreign_table": {
+                    "alias": "ci",
+                    "column": "movie_id"
+                }
+            },
+            {
+                "local_column": "movie_id",
+                "foreign_table": {
+                    "alias": "mi",
+                    "column": "movie_id"
+                }
+            },
+            {
+                "local_column": "company_id",
+                "foreign_table": {
+                    "alias": "cn",
+                    "column": "id"
+                }
+            }
+        ]
+    },
+    {
+        "relation_name": "movie_info",
+        "alias": "mi",
+        "size_after_filters": 69478,
+        "filters": {
+            "operator": "AND",
+            "left": "NOT mi.info IS NULL",
+            "right": {
+                "operator": "OR",
+                "left": {
+                    "operator": "LIKE",
+                    "left": "mi.info",
+                    "right": "'Japan:%2007%'"
+                },
+                "right": {
+                    "operator": "LIKE",
+                    "left": "mi.info",
+                    "right": "'USA:%2008%'"
+                }
+            }
+        },
+        "join_cond": [
+            {
+                "local_column": "movie_id",
+                "foreign_table": {
+                    "alias": "t",
+                    "column": "id"
+                }
+            },
+            {
+                "local_column": "movie_id",
+                "foreign_table": {
+                    "alias": "mc",
+                    "column": "movie_id"
+                }
+            },
+            {
+                "local_column": "movie_id",
+                "foreign_table": {
+                    "alias": "ci",
+                    "column": "movie_id"
+                }
+            },
+            {
+                "local_column": "info_type_id",
+                "foreign_table": {
+                    "alias": "it",
+                    "column": "id"
+                }
+            }
+        ]
+    },
+    {
+        "relation_name": "name",
+        "alias": "n",
+        "size_after_filters": 3140339,
+        "filters": {
+            "operator": "AND",
+            "left": {
+                "operator": "EQ",
+                "left": "n.gender",
+                "right": "'f'"
+            },
+            "right": {
+                "operator": "LIKE",
+                "left": "n.name",
+                "right": "'%Angel%'"
+            }
+        },
+        "join_cond": [
+            {
+                "local_column": "id",
+                "foreign_table": {
+                    "alias": "ci",
+                    "column": "person_id"
+                }
+            },
+            {
+                "local_column": "id",
+                "foreign_table": {
+                    "alias": "an",
+                    "column": "person_id"
+                }
+            }
+        ]
+    },
+    {
+        "relation_name": "role_type",
+        "alias": "rt",
+        "size_after_filters": 1,
+        "filters": {
+            "operator": "EQ",
+            "left": "rt.role",
+            "right": "'actress'"
+        },
+        "join_cond": [
+            {
+                "local_column": "id",
+                "foreign_table": {
+                    "alias": "ci",
+                    "column": "role_id"
+                }
+            }
+        ]
+    },
+    {
+        "relation_name": "title",
+        "alias": "t",
+        "size_after_filters": 7,
+        "filters": {
+            "operator": "AND",
+            "left": "t.production_year BETWEEN 2007 AND 2008",
+            "right": {
+                "operator": "LIKE",
+                "left": "t.title",
+                "right": "'%Kung%Fu%Panda%'"
+            }
+        },
+        "join_cond": [
+            {
+                "local_column": "id",
+                "foreign_table": {
+                    "alias": "mi",
+                    "column": "movie_id"
+                }
+            },
+            {
+                "local_column": "id",
+                "foreign_table": {
+                    "alias": "mc",
+                    "column": "movie_id"
+                }
+            },
+            {
+                "local_column": "id",
+                "foreign_table": {
+                    "alias": "ci",
+                    "column": "movie_id"
+                }
+            }
+        ]
+    }
+]

@@ -1,0 +1,132 @@
+[
+    {
+        "relation_name": "company_type",
+        "alias": "ct",
+        "size_after_filters": 1,
+        "filters": {
+            "operator": "EQ",
+            "left": "ct.kind",
+            "right": "'production companies'"
+        },
+        "join_cond": [
+            {
+                "local_column": "id",
+                "foreign_table": {
+                    "alias": "mc",
+                    "column": "company_type_id"
+                }
+            }
+        ]
+    },
+    {
+        "relation_name": "info_type",
+        "alias": "it",
+        "size_after_filters": 113,
+        "filters": null,
+        "join_cond": [
+            {
+                "local_column": "id",
+                "foreign_table": {
+                    "alias": "mi",
+                    "column": "info_type_id"
+                }
+            }
+        ]
+    },
+    {
+        "relation_name": "movie_companies",
+        "alias": "mc",
+        "size_after_filters": 24025,
+        "filters": {
+            "operator": "AND",
+            "left": {
+                "operator": "LIKE",
+                "left": "mc.note",
+                "right": "'%(theatrical)%'"
+            },
+            "right": {
+                "operator": "LIKE",
+                "left": "mc.note",
+                "right": "'%(France)%'"
+            }
+        },
+        "join_cond": [
+            {
+                "local_column": "movie_id",
+                "foreign_table": {
+                    "alias": "t",
+                    "column": "id"
+                }
+            },
+            {
+                "local_column": "movie_id",
+                "foreign_table": {
+                    "alias": "mi",
+                    "column": "movie_id"
+                }
+            },
+            {
+                "local_column": "company_type_id",
+                "foreign_table": {
+                    "alias": "ct",
+                    "column": "id"
+                }
+            }
+        ]
+    },
+    {
+        "relation_name": "movie_info",
+        "alias": "mi",
+        "size_after_filters": 153897,
+        "filters": "mi.info IN ('Sweden', 'Norway', 'Germany', 'Denmark', 'Swedish', 'Denish', 'Norwegian', 'German')",
+        "join_cond": [
+            {
+                "local_column": "movie_id",
+                "foreign_table": {
+                    "alias": "t",
+                    "column": "id"
+                }
+            },
+            {
+                "local_column": "movie_id",
+                "foreign_table": {
+                    "alias": "mc",
+                    "column": "movie_id"
+                }
+            },
+            {
+                "local_column": "info_type_id",
+                "foreign_table": {
+                    "alias": "it",
+                    "column": "id"
+                }
+            }
+        ]
+    },
+    {
+        "relation_name": "title",
+        "alias": "t",
+        "size_after_filters": 1012920,
+        "filters": {
+            "operator": "GT",
+            "left": "t.production_year",
+            "right": "2005"
+        },
+        "join_cond": [
+            {
+                "local_column": "id",
+                "foreign_table": {
+                    "alias": "mi",
+                    "column": "movie_id"
+                }
+            },
+            {
+                "local_column": "id",
+                "foreign_table": {
+                    "alias": "mc",
+                    "column": "movie_id"
+                }
+            }
+        ]
+    }
+]

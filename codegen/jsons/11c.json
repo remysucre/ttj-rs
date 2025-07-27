@@ -1,0 +1,238 @@
+[
+    {
+        "relation_name": "company_name",
+        "alias": "cn",
+        "size_after_filters": 89,
+        "filters": {
+            "operator": "AND",
+            "left": {
+                "operator": "NEQ",
+                "left": "cn.country_code",
+                "right": "'[pl]'"
+            },
+            "right": {
+                "operator": "OR",
+                "left": {
+                    "operator": "LIKE",
+                    "left": "cn.name",
+                    "right": "'20th Century Fox%'"
+                },
+                "right": {
+                    "operator": "LIKE",
+                    "left": "cn.name",
+                    "right": "'Twentieth Century Fox%'"
+                }
+            }
+        },
+        "join_cond": [
+            {
+                "local_column": "id",
+                "foreign_table": {
+                    "alias": "mc",
+                    "column": "company_id"
+                }
+            }
+        ]
+    },
+    {
+        "relation_name": "company_type",
+        "alias": "ct",
+        "size_after_filters": 3,
+        "filters": {
+            "operator": "AND",
+            "left": {
+                "operator": "NEQ",
+                "left": "ct.kind",
+                "right": "'production companies'"
+            },
+            "right": "NOT ct.kind IS NULL"
+        },
+        "join_cond": [
+            {
+                "local_column": "id",
+                "foreign_table": {
+                    "alias": "mc",
+                    "column": "company_type_id"
+                }
+            }
+        ]
+    },
+    {
+        "relation_name": "keyword",
+        "alias": "k",
+        "size_after_filters": 3,
+        "filters": "k.keyword IN ('sequel', 'revenge', 'based-on-novel')",
+        "join_cond": [
+            {
+                "local_column": "id",
+                "foreign_table": {
+                    "alias": "mk",
+                    "column": "keyword_id"
+                }
+            }
+        ]
+    },
+    {
+        "relation_name": "link_type",
+        "alias": "lt",
+        "size_after_filters": 18,
+        "filters": null,
+        "join_cond": [
+            {
+                "local_column": "id",
+                "foreign_table": {
+                    "alias": "ml",
+                    "column": "link_type_id"
+                }
+            }
+        ]
+    },
+    {
+        "relation_name": "movie_companies",
+        "alias": "mc",
+        "size_after_filters": 1337140,
+        "filters": "NOT mc.note IS NULL",
+        "join_cond": [
+            {
+                "local_column": "movie_id",
+                "foreign_table": {
+                    "alias": "t",
+                    "column": "id"
+                }
+            },
+            {
+                "local_column": "company_type_id",
+                "foreign_table": {
+                    "alias": "ct",
+                    "column": "id"
+                }
+            },
+            {
+                "local_column": "company_id",
+                "foreign_table": {
+                    "alias": "cn",
+                    "column": "id"
+                }
+            },
+            {
+                "local_column": "movie_id",
+                "foreign_table": {
+                    "alias": "ml",
+                    "column": "movie_id"
+                }
+            },
+            {
+                "local_column": "movie_id",
+                "foreign_table": {
+                    "alias": "mk",
+                    "column": "movie_id"
+                }
+            }
+        ]
+    },
+    {
+        "relation_name": "movie_keyword",
+        "alias": "mk",
+        "size_after_filters": 4523930,
+        "filters": null,
+        "join_cond": [
+            {
+                "local_column": "movie_id",
+                "foreign_table": {
+                    "alias": "t",
+                    "column": "id"
+                }
+            },
+            {
+                "local_column": "keyword_id",
+                "foreign_table": {
+                    "alias": "k",
+                    "column": "id"
+                }
+            },
+            {
+                "local_column": "movie_id",
+                "foreign_table": {
+                    "alias": "ml",
+                    "column": "movie_id"
+                }
+            },
+            {
+                "local_column": "movie_id",
+                "foreign_table": {
+                    "alias": "mc",
+                    "column": "movie_id"
+                }
+            }
+        ]
+    },
+    {
+        "relation_name": "movie_link",
+        "alias": "ml",
+        "size_after_filters": 29997,
+        "filters": null,
+        "join_cond": [
+            {
+                "local_column": "link_type_id",
+                "foreign_table": {
+                    "alias": "lt",
+                    "column": "id"
+                }
+            },
+            {
+                "local_column": "movie_id",
+                "foreign_table": {
+                    "alias": "t",
+                    "column": "id"
+                }
+            },
+            {
+                "local_column": "movie_id",
+                "foreign_table": {
+                    "alias": "mk",
+                    "column": "movie_id"
+                }
+            },
+            {
+                "local_column": "movie_id",
+                "foreign_table": {
+                    "alias": "mc",
+                    "column": "movie_id"
+                }
+            }
+        ]
+    },
+    {
+        "relation_name": "title",
+        "alias": "t",
+        "size_after_filters": 2287271,
+        "filters": {
+            "operator": "GT",
+            "left": "t.production_year",
+            "right": "1950"
+        },
+        "join_cond": [
+            {
+                "local_column": "id",
+                "foreign_table": {
+                    "alias": "ml",
+                    "column": "movie_id"
+                }
+            },
+            {
+                "local_column": "id",
+                "foreign_table": {
+                    "alias": "mk",
+                    "column": "movie_id"
+                }
+            },
+            {
+                "local_column": "id",
+                "foreign_table": {
+                    "alias": "mc",
+                    "column": "movie_id"
+                }
+            }
+        ]
+    }
+]

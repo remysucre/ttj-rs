@@ -1,6 +1,8 @@
 import json
 import sqlglot
 from sqlglot import exp
+import os
+import glob
 
 def format_expression_to_dict(expression):
     """
@@ -128,43 +130,59 @@ def process_query_and_stats(sql_query, stats_filepath, output_filepath):
         print(f"Error writing to output file: {e}")
 
 
-if __name__ == '__main__':
-    # The SQL query provided by the user
-    sql = """
-    SELECT MIN(an.name) AS alternative_name,
-           MIN(chn.name) AS voiced_character,
-           MIN(n.name) AS voicing_actress,
-           MIN(t.title) AS american_movie
-    FROM aka_name AS an,
-         char_name AS chn,
-         cast_info AS ci,
-         company_name AS cn,
-         movie_companies AS mc,
-         name AS n,
-         role_type AS rt,
-         title AS t
-    WHERE ci.note = '(voice)'
-      AND cn.country_code ='[us]'
-      AND mc.note LIKE '%(200%)%'
-      AND (mc.note LIKE '%(USA)%' OR mc.note LIKE '%(worldwide)%')
-      AND n.gender ='f'
-      AND n.name LIKE '%Angel%'
-      AND rt.role ='actress'
-      AND t.production_year BETWEEN 2007 AND 2010
-      AND ci.movie_id = t.id
-      AND t.id = mc.movie_id
-      AND ci.movie_id = mc.movie_id
-      AND mc.company_id = cn.id
-      AND ci.role_id = rt.id
-      AND n.id = ci.person_id
-      AND chn.id = ci.person_role_id
-      AND an.person_id = n.id
-      AND an.person_id = ci.person_id;
+def main():
     """
+    Main function to process all .sql files in a directory.
+    """
+    # Directory containing the SQL query files
+    sql_dir = 'join-order-benchmark/'
+    # Directory containing the statistics JSON files
+    stats_dir = 'stats_jsons/'
+    # Directory to save the output JSON files
+    output_dir = 'jsons'
 
-    # Path to the uploaded statistics file and the desired output file
-    # NOTE: You must have the 'sqlglot' library installed: pip install sqlglot
-    stats_file = '/Users/niyixuan/projects/treetracker-ubuntu/results/others/simple-cost-model-with-predicates/hj_ordering_hj/job/TTJHP_org.zhu45.treetracker.benchmark.job.q9.Query9bOptJoinTreeOptOrderingShallowHJOrdering.json'
-    output_file = 'query_plan_details.json'
+    # Create the output directory if it doesn't exist
+    if not os.path.exists(output_dir):
+        os.makedirs(output_dir)
 
-    process_query_and_stats(sql, stats_file, output_file)
+    # Find all .sql files in the specified directory
+    sql_files = glob.glob(os.path.join(sql_dir, '*.sql'))
+
+    if not sql_files:
+        print(f"No .sql files found in '{sql_dir}'")
+        return
+
+    # Process each SQL file
+    for sql_file_path in sql_files:
+        print(f"Processing {sql_file_path}...")
+        try:
+            query_name = os.path.basename(sql_file_path).replace('.sql', '')
+            
+            # Find the corresponding stats file
+            stats_file_path = None
+            # The query name in stats file might have different capitalization
+            # e.g. 9b vs Query9b. So we search case-insensitively.
+            for f in os.listdir(stats_dir):
+                if query_name.lower() in f.lower():
+                    stats_file_path = os.path.join(stats_dir, f)
+                    break
+            
+            if not stats_file_path:
+                print(f"Warning: No stats file found for query '{query_name}' in '{stats_dir}'. Skipping.")
+                continue
+
+            with open(sql_file_path, 'r') as f:
+                sql_query = f.read()
+            
+            # Construct the output file path
+            output_file_path = os.path.join(output_dir, f'{query_name}.json')
+
+            process_query_and_stats(sql_query, stats_file_path, output_file_path)
+
+        except IOError as e:
+            print(f"Error reading SQL file {sql_file_path}: {e}")
+        except Exception as e:
+            print(f"An unexpected error occurred while processing {sql_file_path}: {e}")
+
+if __name__ == '__main__':
+    main()
