@@ -166,7 +166,14 @@
             },
             "right": {
                 "operator": "AND",
-                "left": "NOT mi.info IS NULL",
+                "left": {
+                    "operator": "NOT",
+                    "left": {
+                        "operator": "IS",
+                        "left": "mi.info",
+                        "right": "NULL"
+                    }
+                },
                 "right": {
                     "operator": "OR",
                     "left": {

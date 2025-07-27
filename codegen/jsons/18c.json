@@ -3,7 +3,17 @@
         "relation_name": "cast_info",
         "alias": "ci",
         "size_after_filters": 1244716,
-        "filters": "ci.note IN ('(writer)', '(head writer)', '(written by)', '(story)', '(story editor)')",
+        "filters": {
+            "operator": "IN",
+            "left": "ci.note",
+            "right": [
+                "'(writer)'",
+                "'(head writer)'",
+                "'(written by)'",
+                "'(story)'",
+                "'(story editor)'"
+            ]
+        },
         "join_cond": [
             {
                 "local_column": "movie_id",
@@ -77,7 +87,18 @@
         "relation_name": "movie_info",
         "alias": "mi",
         "size_after_filters": 1380035,
-        "filters": "mi.info IN ('Horror', 'Action', 'Sci-Fi', 'Thriller', 'Crime', 'War')",
+        "filters": {
+            "operator": "IN",
+            "left": "mi.info",
+            "right": [
+                "'Horror'",
+                "'Action'",
+                "'Sci-Fi'",
+                "'Thriller'",
+                "'Crime'",
+                "'War'"
+            ]
+        },
         "join_cond": [
             {
                 "local_column": "movie_id",

@@ -22,7 +22,13 @@
         "relation_name": "movie_info",
         "alias": "mi",
         "size_after_filters": 2287,
-        "filters": "mi.info IN ('Bulgaria')",
+        "filters": {
+            "operator": "IN",
+            "left": "mi.info",
+            "right": [
+                "'Bulgaria'"
+            ]
+        },
         "join_cond": [
             {
                 "local_column": "movie_id",

@@ -93,7 +93,14 @@
         "size_after_filters": 180152,
         "filters": {
             "operator": "AND",
-            "left": "NOT chn.name IS NULL",
+            "left": {
+                "operator": "NOT",
+                "left": {
+                    "operator": "IS",
+                    "left": "chn.name",
+                    "right": "NULL"
+                }
+            },
             "right": {
                 "operator": "OR",
                 "left": {
@@ -191,7 +198,22 @@
         "relation_name": "keyword",
         "alias": "k",
         "size_after_filters": 4523930,
-        "filters": "k.keyword IN ('superhero', 'marvel-comics', 'based-on-comic', 'tv-special', 'fight', 'violence', 'magnet', 'web', 'claw', 'laser')",
+        "filters": {
+            "operator": "IN",
+            "left": "k.keyword",
+            "right": [
+                "'superhero'",
+                "'marvel-comics'",
+                "'based-on-comic'",
+                "'tv-special'",
+                "'fight'",
+                "'violence'",
+                "'magnet'",
+                "'web'",
+                "'claw'",
+                "'laser'"
+            ]
+        },
         "join_cond": [
             {
                 "local_column": "id",

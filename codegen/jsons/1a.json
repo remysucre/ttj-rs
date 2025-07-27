@@ -43,7 +43,14 @@
         "size_after_filters": 28889,
         "filters": {
             "operator": "AND",
-            "left": "NOT mc.note LIKE '%(as Metro-Goldwyn-Mayer Pictures)%'",
+            "left": {
+                "operator": "NOT",
+                "left": {
+                    "operator": "LIKE",
+                    "left": "mc.note",
+                    "right": "'%(as Metro-Goldwyn-Mayer Pictures)%'"
+                }
+            },
             "right": {
                 "operator": "OR",
                 "left": {

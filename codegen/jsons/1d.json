@@ -41,7 +41,14 @@
         "relation_name": "movie_companies",
         "alias": "mc",
         "size_after_filters": 1337088,
-        "filters": "NOT mc.note LIKE '%(as Metro-Goldwyn-Mayer Pictures)%'",
+        "filters": {
+            "operator": "NOT",
+            "left": {
+                "operator": "LIKE",
+                "left": "mc.note",
+                "right": "'%(as Metro-Goldwyn-Mayer Pictures)%'"
+            }
+        },
         "join_cond": [
             {
                 "local_column": "company_type_id",
