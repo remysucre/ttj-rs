@@ -149,7 +149,21 @@
         "relation_name": "movie_info",
         "alias": "mi",
         "size_after_filters": 936223,
-        "filters": "mi.info IN ('Sweden', 'Norway', 'Germany', 'Denmark', 'Swedish', 'Denish', 'Norwegian', 'German', 'English')",
+        "filters": {
+            "operator": "IN",
+            "left": "mi.info",
+            "right": [
+                "'Sweden'",
+                "'Norway'",
+                "'Germany'",
+                "'Denmark'",
+                "'Swedish'",
+                "'Denish'",
+                "'Norwegian'",
+                "'German'",
+                "'English'"
+            ]
+        },
         "join_cond": [
             {
                 "local_column": "movie_id",

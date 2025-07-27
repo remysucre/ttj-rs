@@ -5,7 +5,14 @@
         "size_after_filters": 686095,
         "filters": {
             "operator": "AND",
-            "left": "NOT an.name IS NULL",
+            "left": {
+                "operator": "NOT",
+                "left": {
+                    "operator": "IS",
+                    "left": "an.name",
+                    "right": "NULL"
+                }
+            },
             "right": {
                 "operator": "OR",
                 "left": {
@@ -110,7 +117,16 @@
         "relation_name": "link_type",
         "alias": "lt",
         "size_after_filters": 4,
-        "filters": "lt.link IN ('references', 'referenced in', 'features', 'featured in')",
+        "filters": {
+            "operator": "IN",
+            "left": "lt.link",
+            "right": [
+                "'references'",
+                "'referenced in'",
+                "'features'",
+                "'featured in'"
+            ]
+        },
         "join_cond": [
             {
                 "local_column": "id",
@@ -195,7 +211,14 @@
         "relation_name": "person_info",
         "alias": "pi",
         "size_after_filters": 84183,
-        "filters": "NOT pi.note IS NULL",
+        "filters": {
+            "operator": "NOT",
+            "left": {
+                "operator": "IS",
+                "left": "pi.note",
+                "right": "NULL"
+            }
+        },
         "join_cond": [
             {
                 "local_column": "person_id",

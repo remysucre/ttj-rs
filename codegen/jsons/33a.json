@@ -75,7 +75,13 @@
         "relation_name": "kind_type",
         "alias": "kt1",
         "size_after_filters": 1,
-        "filters": "kt1.kind IN ('tv series')",
+        "filters": {
+            "operator": "IN",
+            "left": "kt1.kind",
+            "right": [
+                "'tv series'"
+            ]
+        },
         "join_cond": [
             {
                 "local_column": "id",
@@ -90,7 +96,13 @@
         "relation_name": "kind_type",
         "alias": "kt2",
         "size_after_filters": 1,
-        "filters": "kt2.kind IN ('tv series')",
+        "filters": {
+            "operator": "IN",
+            "left": "kt2.kind",
+            "right": [
+                "'tv series'"
+            ]
+        },
         "join_cond": [
             {
                 "local_column": "id",
@@ -105,7 +117,15 @@
         "relation_name": "link_type",
         "alias": "lt",
         "size_after_filters": 2,
-        "filters": "lt.link IN ('sequel', 'follows', 'followed by')",
+        "filters": {
+            "operator": "IN",
+            "left": "lt.link",
+            "right": [
+                "'sequel'",
+                "'follows'",
+                "'followed by'"
+            ]
+        },
         "join_cond": [
             {
                 "local_column": "id",

@@ -122,7 +122,16 @@
         "relation_name": "movie_info",
         "alias": "mi",
         "size_after_filters": 192839,
-        "filters": "mi.info IN ('Drama', 'Horror', 'Western', 'Family')",
+        "filters": {
+            "operator": "IN",
+            "left": "mi.info",
+            "right": [
+                "'Drama'",
+                "'Horror'",
+                "'Western'",
+                "'Family'"
+            ]
+        },
         "join_cond": [
             {
                 "local_column": "movie_id",

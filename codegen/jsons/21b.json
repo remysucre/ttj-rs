@@ -149,7 +149,14 @@
         "relation_name": "movie_info",
         "alias": "mi",
         "size_after_filters": 116559,
-        "filters": "mi.info IN ('Germany', 'German')",
+        "filters": {
+            "operator": "IN",
+            "left": "mi.info",
+            "right": [
+                "'Germany'",
+                "'German'"
+            ]
+        },
         "join_cond": [
             {
                 "local_column": "movie_id",

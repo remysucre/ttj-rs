@@ -60,7 +60,14 @@
         "relation_name": "comp_cast_type",
         "alias": "cct1",
         "size_after_filters": 1,
-        "filters": "cct1.kind IN ('cast', 'crew')",
+        "filters": {
+            "operator": "IN",
+            "left": "cct1.kind",
+            "right": [
+                "'cast'",
+                "'crew'"
+            ]
+        },
         "join_cond": [
             {
                 "local_column": "id",
@@ -94,7 +101,17 @@
         "relation_name": "cast_info",
         "alias": "ci",
         "size_after_filters": 1244716,
-        "filters": "ci.note IN ('(writer)', '(head writer)', '(written by)', '(story)', '(story editor)')",
+        "filters": {
+            "operator": "IN",
+            "left": "ci.note",
+            "right": [
+                "'(writer)'",
+                "'(head writer)'",
+                "'(written by)'",
+                "'(story)'",
+                "'(story editor)'"
+            ]
+        },
         "join_cond": [
             {
                 "local_column": "movie_id",
@@ -182,7 +199,19 @@
         "relation_name": "keyword",
         "alias": "k",
         "size_after_filters": 4523930,
-        "filters": "k.keyword IN ('murder', 'violence', 'blood', 'gore', 'death', 'female-nudity', 'hospital')",
+        "filters": {
+            "operator": "IN",
+            "left": "k.keyword",
+            "right": [
+                "'murder'",
+                "'violence'",
+                "'blood'",
+                "'gore'",
+                "'death'",
+                "'female-nudity'",
+                "'hospital'"
+            ]
+        },
         "join_cond": [
             {
                 "local_column": "id",
@@ -197,7 +226,14 @@
         "relation_name": "movie_info",
         "alias": "mi",
         "size_after_filters": 1380035,
-        "filters": "mi.info IN ('Horror', 'Thriller')",
+        "filters": {
+            "operator": "IN",
+            "left": "mi.info",
+            "right": [
+                "'Horror'",
+                "'Thriller'"
+            ]
+        },
         "join_cond": [
             {
                 "local_column": "movie_id",

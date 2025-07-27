@@ -133,7 +133,16 @@
         "relation_name": "kind_type",
         "alias": "kt",
         "size_after_filters": 4,
-        "filters": "kt.kind IN ('movie', 'tv movie', 'video movie', 'video game')",
+        "filters": {
+            "operator": "IN",
+            "left": "kt.kind",
+            "right": [
+                "'movie'",
+                "'tv movie'",
+                "'video movie'",
+                "'video game'"
+            ]
+        },
         "join_cond": [
             {
                 "local_column": "id",
@@ -207,7 +216,14 @@
             },
             "right": {
                 "operator": "AND",
-                "left": "NOT mi.info IS NULL",
+                "left": {
+                    "operator": "NOT",
+                    "left": {
+                        "operator": "IS",
+                        "left": "mi.info",
+                        "right": "NULL"
+                    }
+                },
                 "right": {
                     "operator": "OR",
                     "left": {

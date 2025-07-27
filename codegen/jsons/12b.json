@@ -24,7 +24,14 @@
         "size_after_filters": 2,
         "filters": {
             "operator": "AND",
-            "left": "NOT ct.kind IS NULL",
+            "left": {
+                "operator": "NOT",
+                "left": {
+                    "operator": "IS",
+                    "left": "ct.kind",
+                    "right": "NULL"
+                }
+            },
             "right": {
                 "operator": "OR",
                 "left": {

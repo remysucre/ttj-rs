@@ -100,7 +100,14 @@
             },
             "right": {
                 "operator": "AND",
-                "left": "NOT mc.note LIKE '%(USA)%'",
+                "left": {
+                    "operator": "NOT",
+                    "left": {
+                        "operator": "LIKE",
+                        "left": "mc.note",
+                        "right": "'%(USA)%'"
+                    }
+                },
                 "right": {
                     "operator": "OR",
                     "left": {
@@ -151,7 +158,14 @@
                 "left": "n.name",
                 "right": "'%Yo%'"
             },
-            "right": "NOT n.name LIKE '%Yu%'"
+            "right": {
+                "operator": "NOT",
+                "left": {
+                    "operator": "LIKE",
+                    "left": "n.name",
+                    "right": "'%Yu%'"
+                }
+            }
         },
         "join_cond": [
             {
