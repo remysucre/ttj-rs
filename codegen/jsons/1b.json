@@ -1,5 +1,5 @@
-[
-    {
+{
+    "ct": {
         "relation_name": "company_type",
         "alias": "ct",
         "size_after_filters": 1,
@@ -20,7 +20,7 @@
             }
         ]
     },
-    {
+    "it": {
         "relation_name": "info_type",
         "alias": "it",
         "size_after_filters": 1,
@@ -41,7 +41,7 @@
             }
         ]
     },
-    {
+    "mc": {
         "relation_name": "movie_companies",
         "alias": "mc",
         "size_after_filters": 1337088,
@@ -83,7 +83,7 @@
             }
         ]
     },
-    {
+    "mi_idx": {
         "relation_name": "movie_info_idx",
         "alias": "mi_idx",
         "size_after_filters": 1380035,
@@ -118,7 +118,7 @@
             }
         ]
     },
-    {
+    "t": {
         "relation_name": "title",
         "alias": "t",
         "size_after_filters": 716259,
@@ -144,4 +144,4 @@
             }
         ]
     }
-]
+}

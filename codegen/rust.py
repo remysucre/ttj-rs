@@ -98,7 +98,7 @@ def process_query_and_stats(sql_query, stats_filepath, output_filepath, pks, fks
         all_conditions = list(where_clause.this.flatten())
 
 
-    final_output = []
+    final_output = {}
 
     # Process each table found in the query
     for alias, name in table_details.items():
@@ -186,7 +186,7 @@ def process_query_and_stats(sql_query, stats_filepath, output_filepath, pks, fks
              table_info["filters"] = None # No filters for this table
 
 
-        final_output.append(table_info)
+        final_output[alias] = table_info
 
     # Save the processed data to the output JSON file
     try:

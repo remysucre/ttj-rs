@@ -1,5 +1,5 @@
-[
-    {
+{
+    "cn": {
         "relation_name": "company_name",
         "alias": "cn",
         "size_after_filters": 126230,
@@ -20,7 +20,7 @@
             }
         ]
     },
-    {
+    "ct": {
         "relation_name": "company_type",
         "alias": "ct",
         "size_after_filters": 4,
@@ -37,7 +37,7 @@
             }
         ]
     },
-    {
+    "it1": {
         "relation_name": "info_type",
         "alias": "it1",
         "size_after_filters": 1,
@@ -58,7 +58,7 @@
             }
         ]
     },
-    {
+    "it2": {
         "relation_name": "info_type",
         "alias": "it2",
         "size_after_filters": 1,
@@ -79,7 +79,7 @@
             }
         ]
     },
-    {
+    "k": {
         "relation_name": "keyword",
         "alias": "k",
         "size_after_filters": 4523930,
@@ -105,7 +105,7 @@
             }
         ]
     },
-    {
+    "kt": {
         "relation_name": "kind_type",
         "alias": "kt",
         "size_after_filters": 2,
@@ -129,7 +129,7 @@
             }
         ]
     },
-    {
+    "mc": {
         "relation_name": "movie_companies",
         "alias": "mc",
         "size_after_filters": 303271,
@@ -206,7 +206,7 @@
             }
         ]
     },
-    {
+    "mi": {
         "relation_name": "movie_info",
         "alias": "mi",
         "size_after_filters": 1172960,
@@ -268,7 +268,7 @@
             }
         ]
     },
-    {
+    "mi_idx": {
         "relation_name": "movie_info_idx",
         "alias": "mi_idx",
         "size_after_filters": 1172960,
@@ -325,7 +325,7 @@
             }
         ]
     },
-    {
+    "mk": {
         "relation_name": "movie_keyword",
         "alias": "mk",
         "size_after_filters": 4523930,
@@ -378,7 +378,7 @@
             }
         ]
     },
-    {
+    "t": {
         "relation_name": "title",
         "alias": "t",
         "size_after_filters": 662065,
@@ -435,4 +435,4 @@
             }
         ]
     }
-]
+}

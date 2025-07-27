@@ -1,5 +1,5 @@
-[
-    {
+{
+    "an": {
         "relation_name": "aka_name",
         "alias": "an",
         "size_after_filters": 674692,
@@ -38,7 +38,7 @@
             }
         ]
     },
-    {
+    "ci": {
         "relation_name": "cast_info",
         "alias": "ci",
         "size_after_filters": 36244344,
@@ -91,7 +91,7 @@
             }
         ]
     },
-    {
+    "it": {
         "relation_name": "info_type",
         "alias": "it",
         "size_after_filters": 1,
@@ -112,7 +112,7 @@
             }
         ]
     },
-    {
+    "lt": {
         "relation_name": "link_type",
         "alias": "lt",
         "size_after_filters": 1,
@@ -133,7 +133,7 @@
             }
         ]
     },
-    {
+    "ml": {
         "relation_name": "movie_link",
         "alias": "ml",
         "size_after_filters": 29997,
@@ -168,7 +168,7 @@
             }
         ]
     },
-    {
+    "n": {
         "relation_name": "name",
         "alias": "n",
         "size_after_filters": 674692,
@@ -215,7 +215,7 @@
             }
         ]
     },
-    {
+    "pi": {
         "relation_name": "person_info",
         "alias": "pi",
         "size_after_filters": 64,
@@ -263,7 +263,7 @@
             }
         ]
     },
-    {
+    "t": {
         "relation_name": "title",
         "alias": "t",
         "size_after_filters": 76065,
@@ -289,4 +289,4 @@
             }
         ]
     }
-]
+}
