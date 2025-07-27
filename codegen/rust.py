@@ -14,6 +14,12 @@ def format_expression_to_dict(expression):
             "operator": "NOT",
             "left": format_expression_to_dict(expression.this)
         }
+    if isinstance(expression, exp.In):
+        return {
+            "operator": "IN",
+            "left": format_expression_to_dict(expression.this),
+            "right": [format_expression_to_dict(e) for e in expression.expressions]
+        }
     if isinstance(expression, exp.Binary):
         return {
             "operator": expression.key.upper(),
