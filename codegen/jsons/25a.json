@@ -1,5 +1,5 @@
-[
-    {
+{
+    "ci": {
         "relation_name": "cast_info",
         "alias": "ci",
         "size_after_filters": 1244716,
@@ -62,7 +62,7 @@
             }
         ]
     },
-    {
+    "it1": {
         "relation_name": "info_type",
         "alias": "it1",
         "size_after_filters": 1,
@@ -83,7 +83,7 @@
             }
         ]
     },
-    {
+    "it2": {
         "relation_name": "info_type",
         "alias": "it2",
         "size_after_filters": 1,
@@ -104,7 +104,7 @@
             }
         ]
     },
-    {
+    "k": {
         "relation_name": "keyword",
         "alias": "k",
         "size_after_filters": 4523930,
@@ -131,7 +131,7 @@
             }
         ]
     },
-    {
+    "mi": {
         "relation_name": "movie_info",
         "alias": "mi",
         "size_after_filters": 1380035,
@@ -188,7 +188,7 @@
             }
         ]
     },
-    {
+    "mi_idx": {
         "relation_name": "movie_info_idx",
         "alias": "mi_idx",
         "size_after_filters": 1380035,
@@ -241,7 +241,7 @@
             }
         ]
     },
-    {
+    "mk": {
         "relation_name": "movie_keyword",
         "alias": "mk",
         "size_after_filters": 4523930,
@@ -294,7 +294,7 @@
             }
         ]
     },
-    {
+    "n": {
         "relation_name": "name",
         "alias": "n",
         "size_after_filters": 1739579,
@@ -315,7 +315,7 @@
             }
         ]
     },
-    {
+    "t": {
         "relation_name": "title",
         "alias": "t",
         "size_after_filters": 2528312,
@@ -359,4 +359,4 @@
             }
         ]
     }
-]
+}

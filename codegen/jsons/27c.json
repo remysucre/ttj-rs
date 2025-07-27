@@ -1,5 +1,5 @@
-[
-    {
+{
+    "cc": {
         "relation_name": "complete_cast",
         "alias": "cc",
         "size_after_filters": 135086,
@@ -70,7 +70,7 @@
             }
         ]
     },
-    {
+    "cct1": {
         "relation_name": "comp_cast_type",
         "alias": "cct1",
         "size_after_filters": 2,
@@ -91,7 +91,7 @@
             }
         ]
     },
-    {
+    "cct2": {
         "relation_name": "comp_cast_type",
         "alias": "cct2",
         "size_after_filters": 2,
@@ -112,7 +112,7 @@
             }
         ]
     },
-    {
+    "cn": {
         "relation_name": "company_name",
         "alias": "cn",
         "size_after_filters": 48302,
@@ -149,7 +149,7 @@
             }
         ]
     },
-    {
+    "ct": {
         "relation_name": "company_type",
         "alias": "ct",
         "size_after_filters": 1,
@@ -170,7 +170,7 @@
             }
         ]
     },
-    {
+    "k": {
         "relation_name": "keyword",
         "alias": "k",
         "size_after_filters": 4523930,
@@ -191,7 +191,7 @@
             }
         ]
     },
-    {
+    "lt": {
         "relation_name": "link_type",
         "alias": "lt",
         "size_after_filters": 2,
@@ -212,7 +212,7 @@
             }
         ]
     },
-    {
+    "mc": {
         "relation_name": "movie_companies",
         "alias": "mc",
         "size_after_filters": 1271989,
@@ -287,7 +287,7 @@
             }
         ]
     },
-    {
+    "mi": {
         "relation_name": "movie_info",
         "alias": "mi",
         "size_after_filters": 936223,
@@ -354,7 +354,7 @@
             }
         ]
     },
-    {
+    "mk": {
         "relation_name": "movie_keyword",
         "alias": "mk",
         "size_after_filters": 4523930,
@@ -416,7 +416,7 @@
             }
         ]
     },
-    {
+    "ml": {
         "relation_name": "movie_link",
         "alias": "ml",
         "size_after_filters": 29997,
@@ -478,7 +478,7 @@
             }
         ]
     },
-    {
+    "t": {
         "relation_name": "title",
         "alias": "t",
         "size_after_filters": 1900368,
@@ -531,4 +531,4 @@
             }
         ]
     }
-]
+}

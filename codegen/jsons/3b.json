@@ -1,5 +1,5 @@
-[
-    {
+{
+    "k": {
         "relation_name": "keyword",
         "alias": "k",
         "size_after_filters": 4523930,
@@ -20,7 +20,7 @@
             }
         ]
     },
-    {
+    "mi": {
         "relation_name": "movie_info",
         "alias": "mi",
         "size_after_filters": 2287,
@@ -52,7 +52,7 @@
             }
         ]
     },
-    {
+    "mk": {
         "relation_name": "movie_keyword",
         "alias": "mk",
         "size_after_filters": 4523930,
@@ -87,7 +87,7 @@
             }
         ]
     },
-    {
+    "t": {
         "relation_name": "title",
         "alias": "t",
         "size_after_filters": 391666,
@@ -117,4 +117,4 @@
             }
         ]
     }
-]
+}

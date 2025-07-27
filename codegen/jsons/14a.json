@@ -1,5 +1,5 @@
-[
-    {
+{
+    "it1": {
         "relation_name": "info_type",
         "alias": "it1",
         "size_after_filters": 1,
@@ -20,7 +20,7 @@
             }
         ]
     },
-    {
+    "it2": {
         "relation_name": "info_type",
         "alias": "it2",
         "size_after_filters": 1,
@@ -41,7 +41,7 @@
             }
         ]
     },
-    {
+    "k": {
         "relation_name": "keyword",
         "alias": "k",
         "size_after_filters": 4523930,
@@ -67,7 +67,7 @@
             }
         ]
     },
-    {
+    "kt": {
         "relation_name": "kind_type",
         "alias": "kt",
         "size_after_filters": 1,
@@ -88,7 +88,7 @@
             }
         ]
     },
-    {
+    "mi": {
         "relation_name": "movie_info",
         "alias": "mi",
         "size_after_filters": 1337634,
@@ -147,7 +147,7 @@
             }
         ]
     },
-    {
+    "mi_idx": {
         "relation_name": "movie_info_idx",
         "alias": "mi_idx",
         "size_after_filters": 1337634,
@@ -195,7 +195,7 @@
             }
         ]
     },
-    {
+    "mk": {
         "relation_name": "movie_keyword",
         "alias": "mk",
         "size_after_filters": 4523930,
@@ -239,7 +239,7 @@
             }
         ]
     },
-    {
+    "t": {
         "relation_name": "title",
         "alias": "t",
         "size_after_filters": 391666,
@@ -287,4 +287,4 @@
             }
         ]
     }
-]
+}
