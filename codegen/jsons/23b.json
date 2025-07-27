@@ -118,7 +118,16 @@
         "relation_name": "keyword",
         "alias": "k",
         "size_after_filters": 4523930,
-        "filters": "k.keyword IN ('nerd', 'loner', 'alienation', 'dignity')",
+        "filters": {
+            "operator": "IN",
+            "left": "k.keyword",
+            "right": [
+                "'nerd'",
+                "'loner'",
+                "'alienation'",
+                "'dignity'"
+            ]
+        },
         "join_cond": [
             {
                 "local_column": "id",
@@ -133,7 +142,13 @@
         "relation_name": "kind_type",
         "alias": "kt",
         "size_after_filters": 1,
-        "filters": "kt.kind IN ('movie')",
+        "filters": {
+            "operator": "IN",
+            "left": "kt.kind",
+            "right": [
+                "'movie'"
+            ]
+        },
         "join_cond": [
             {
                 "local_column": "id",

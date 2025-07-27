@@ -197,7 +197,14 @@
         "size_after_filters": 69478,
         "filters": {
             "operator": "AND",
-            "left": "NOT mi.info IS NULL",
+            "left": {
+                "operator": "NOT",
+                "left": {
+                    "operator": "IS",
+                    "left": "mi.info",
+                    "right": "NULL"
+                }
+            },
             "right": {
                 "operator": "OR",
                 "left": {

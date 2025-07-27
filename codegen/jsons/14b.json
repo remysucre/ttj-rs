@@ -41,7 +41,14 @@
         "relation_name": "keyword",
         "alias": "k",
         "size_after_filters": 4523930,
-        "filters": "k.keyword IN ('murder', 'murder-in-title')",
+        "filters": {
+            "operator": "IN",
+            "left": "k.keyword",
+            "right": [
+                "'murder'",
+                "'murder-in-title'"
+            ]
+        },
         "join_cond": [
             {
                 "local_column": "id",
@@ -75,7 +82,22 @@
         "relation_name": "movie_info",
         "alias": "mi",
         "size_after_filters": 373409,
-        "filters": "mi.info IN ('Sweden', 'Norway', 'Germany', 'Denmark', 'Swedish', 'Denish', 'Norwegian', 'German', 'USA', 'American')",
+        "filters": {
+            "operator": "IN",
+            "left": "mi.info",
+            "right": [
+                "'Sweden'",
+                "'Norway'",
+                "'Germany'",
+                "'Denmark'",
+                "'Swedish'",
+                "'Denish'",
+                "'Norwegian'",
+                "'German'",
+                "'USA'",
+                "'American'"
+            ]
+        },
         "join_cond": [
             {
                 "local_column": "movie_id",

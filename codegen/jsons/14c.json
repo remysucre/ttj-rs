@@ -43,8 +43,24 @@
         "size_after_filters": 4523930,
         "filters": {
             "operator": "AND",
-            "left": "NOT k.keyword IS NULL",
-            "right": "k.keyword IN ('murder', 'murder-in-title', 'blood', 'violence')"
+            "left": {
+                "operator": "NOT",
+                "left": {
+                    "operator": "IS",
+                    "left": "k.keyword",
+                    "right": "NULL"
+                }
+            },
+            "right": {
+                "operator": "IN",
+                "left": "k.keyword",
+                "right": [
+                    "'murder'",
+                    "'murder-in-title'",
+                    "'blood'",
+                    "'violence'"
+                ]
+            }
         },
         "join_cond": [
             {
@@ -60,7 +76,14 @@
         "relation_name": "kind_type",
         "alias": "kt",
         "size_after_filters": 2,
-        "filters": "kt.kind IN ('movie', 'episode')",
+        "filters": {
+            "operator": "IN",
+            "left": "kt.kind",
+            "right": [
+                "'movie'",
+                "'episode'"
+            ]
+        },
         "join_cond": [
             {
                 "local_column": "id",
@@ -75,7 +98,22 @@
         "relation_name": "movie_info",
         "alias": "mi",
         "size_after_filters": 1337634,
-        "filters": "mi.info IN ('Sweden', 'Norway', 'Germany', 'Denmark', 'Swedish', 'Danish', 'Norwegian', 'German', 'USA', 'American')",
+        "filters": {
+            "operator": "IN",
+            "left": "mi.info",
+            "right": [
+                "'Sweden'",
+                "'Norway'",
+                "'Germany'",
+                "'Denmark'",
+                "'Swedish'",
+                "'Danish'",
+                "'Norwegian'",
+                "'German'",
+                "'USA'",
+                "'American'"
+            ]
+        },
         "join_cond": [
             {
                 "local_column": "movie_id",

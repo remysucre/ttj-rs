@@ -75,7 +75,16 @@
         "relation_name": "keyword",
         "alias": "k",
         "size_after_filters": 4523930,
-        "filters": "k.keyword IN ('murder', 'murder-in-title', 'blood', 'violence')",
+        "filters": {
+            "operator": "IN",
+            "left": "k.keyword",
+            "right": [
+                "'murder'",
+                "'murder-in-title'",
+                "'blood'",
+                "'violence'"
+            ]
+        },
         "join_cond": [
             {
                 "local_column": "id",
@@ -90,7 +99,14 @@
         "relation_name": "kind_type",
         "alias": "kt",
         "size_after_filters": 2,
-        "filters": "kt.kind IN ('movie', 'episode')",
+        "filters": {
+            "operator": "IN",
+            "left": "kt.kind",
+            "right": [
+                "'movie'",
+                "'episode'"
+            ]
+        },
         "join_cond": [
             {
                 "local_column": "id",
@@ -155,7 +171,22 @@
         "relation_name": "movie_info",
         "alias": "mi",
         "size_after_filters": 1337634,
-        "filters": "mi.info IN ('Sweden', 'Norway', 'Germany', 'Denmark', 'Swedish', 'Danish', 'Norwegian', 'German', 'USA', 'American')",
+        "filters": {
+            "operator": "IN",
+            "left": "mi.info",
+            "right": [
+                "'Sweden'",
+                "'Norway'",
+                "'Germany'",
+                "'Denmark'",
+                "'Swedish'",
+                "'Danish'",
+                "'Norwegian'",
+                "'German'",
+                "'USA'",
+                "'American'"
+            ]
+        },
         "join_cond": [
             {
                 "local_column": "movie_id",

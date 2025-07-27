@@ -45,7 +45,14 @@
                 "left": "ct.kind",
                 "right": "'production companies'"
             },
-            "right": "NOT ct.kind IS NULL"
+            "right": {
+                "operator": "NOT",
+                "left": {
+                    "operator": "IS",
+                    "left": "ct.kind",
+                    "right": "NULL"
+                }
+            }
         },
         "join_cond": [
             {
@@ -61,7 +68,15 @@
         "relation_name": "keyword",
         "alias": "k",
         "size_after_filters": 4523930,
-        "filters": "k.keyword IN ('sequel', 'revenge', 'based-on-novel')",
+        "filters": {
+            "operator": "IN",
+            "left": "k.keyword",
+            "right": [
+                "'sequel'",
+                "'revenge'",
+                "'based-on-novel'"
+            ]
+        },
         "join_cond": [
             {
                 "local_column": "id",
@@ -91,7 +106,14 @@
         "relation_name": "movie_companies",
         "alias": "mc",
         "size_after_filters": 1337140,
-        "filters": "NOT mc.note IS NULL",
+        "filters": {
+            "operator": "NOT",
+            "left": {
+                "operator": "IS",
+                "left": "mc.note",
+                "right": "NULL"
+            }
+        },
         "join_cond": [
             {
                 "local_column": "movie_id",

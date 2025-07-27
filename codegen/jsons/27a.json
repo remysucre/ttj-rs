@@ -60,7 +60,14 @@
         "relation_name": "comp_cast_type",
         "alias": "cct1",
         "size_after_filters": 2,
-        "filters": "cct1.kind IN ('cast', 'crew')",
+        "filters": {
+            "operator": "IN",
+            "left": "cct1.kind",
+            "right": [
+                "'cast'",
+                "'crew'"
+            ]
+        },
         "join_cond": [
             {
                 "local_column": "id",
@@ -247,7 +254,16 @@
         "relation_name": "movie_info",
         "alias": "mi",
         "size_after_filters": 134239,
-        "filters": "mi.info IN ('Sweden', 'Germany', 'Swedish', 'German')",
+        "filters": {
+            "operator": "IN",
+            "left": "mi.info",
+            "right": [
+                "'Sweden'",
+                "'Germany'",
+                "'Swedish'",
+                "'German'"
+            ]
+        },
         "join_cond": [
             {
                 "local_column": "movie_id",

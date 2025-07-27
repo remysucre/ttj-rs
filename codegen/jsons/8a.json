@@ -98,7 +98,14 @@
                 "left": "mc.note",
                 "right": "'%(Japan)%'"
             },
-            "right": "NOT mc.note LIKE '%(USA)%'"
+            "right": {
+                "operator": "NOT",
+                "left": {
+                    "operator": "LIKE",
+                    "left": "mc.note",
+                    "right": "'%(USA)%'"
+                }
+            }
         },
         "join_cond": [
             {
@@ -135,7 +142,14 @@
                 "left": "n1.name",
                 "right": "'%Yo%'"
             },
-            "right": "NOT n1.name LIKE '%Yu%'"
+            "right": {
+                "operator": "NOT",
+                "left": {
+                    "operator": "LIKE",
+                    "left": "n1.name",
+                    "right": "'%Yu%'"
+                }
+            }
         },
         "join_cond": [
             {

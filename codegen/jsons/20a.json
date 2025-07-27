@@ -86,7 +86,14 @@
         "size_after_filters": 30,
         "filters": {
             "operator": "AND",
-            "left": "NOT chn.name LIKE '%Sherlock%'",
+            "left": {
+                "operator": "NOT",
+                "left": {
+                    "operator": "LIKE",
+                    "left": "chn.name",
+                    "right": "'%Sherlock%'"
+                }
+            },
             "right": {
                 "operator": "OR",
                 "left": {
@@ -158,7 +165,20 @@
         "relation_name": "keyword",
         "alias": "k",
         "size_after_filters": 4523930,
-        "filters": "k.keyword IN ('superhero', 'sequel', 'second-part', 'marvel-comics', 'based-on-comic', 'tv-special', 'fight', 'violence')",
+        "filters": {
+            "operator": "IN",
+            "left": "k.keyword",
+            "right": [
+                "'superhero'",
+                "'sequel'",
+                "'second-part'",
+                "'marvel-comics'",
+                "'based-on-comic'",
+                "'tv-special'",
+                "'fight'",
+                "'violence'"
+            ]
+        },
         "join_cond": [
             {
                 "local_column": "id",

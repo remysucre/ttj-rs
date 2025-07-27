@@ -39,7 +39,14 @@
         "size_after_filters": 295628,
         "filters": {
             "operator": "AND",
-            "left": "NOT mc.note LIKE '%(TV)%'",
+            "left": {
+                "operator": "NOT",
+                "left": {
+                    "operator": "LIKE",
+                    "left": "mc.note",
+                    "right": "'%(TV)%'"
+                }
+            },
             "right": {
                 "operator": "LIKE",
                 "left": "mc.note",
@@ -74,7 +81,22 @@
         "relation_name": "movie_info",
         "alias": "mi",
         "size_after_filters": 706674,
-        "filters": "mi.info IN ('Sweden', 'Norway', 'Germany', 'Denmark', 'Swedish', 'Denish', 'Norwegian', 'German', 'USA', 'American')",
+        "filters": {
+            "operator": "IN",
+            "left": "mi.info",
+            "right": [
+                "'Sweden'",
+                "'Norway'",
+                "'Germany'",
+                "'Denmark'",
+                "'Swedish'",
+                "'Denish'",
+                "'Norwegian'",
+                "'German'",
+                "'USA'",
+                "'American'"
+            ]
+        },
         "join_cond": [
             {
                 "local_column": "movie_id",
