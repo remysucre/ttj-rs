@@ -1,0 +1,128 @@
+[
+    {
+        "relation_name": "info_type",
+        "alias": "it",
+        "size_after_filters": 1,
+        "filters": {
+            "operator": "EQ",
+            "left": "it.info",
+            "right": "'rating'"
+        },
+        "join_cond": [
+            {
+                "local_column": "id",
+                "foreign_table": {
+                    "alias": "mi_idx",
+                    "column": "info_type_id"
+                }
+            }
+        ]
+    },
+    {
+        "relation_name": "keyword",
+        "alias": "k",
+        "size_after_filters": 4523930,
+        "filters": {
+            "operator": "LIKE",
+            "left": "k.keyword",
+            "right": "'%sequel%'"
+        },
+        "join_cond": [
+            {
+                "local_column": "id",
+                "foreign_table": {
+                    "alias": "mk",
+                    "column": "keyword_id"
+                }
+            }
+        ]
+    },
+    {
+        "relation_name": "movie_info_idx",
+        "alias": "mi_idx",
+        "size_after_filters": 0,
+        "filters": {
+            "operator": "GT",
+            "left": "mi_idx.info",
+            "right": "'5.0'"
+        },
+        "join_cond": [
+            {
+                "local_column": "movie_id",
+                "foreign_table": {
+                    "alias": "t",
+                    "column": "id"
+                }
+            },
+            {
+                "local_column": "movie_id",
+                "foreign_table": {
+                    "alias": "mk",
+                    "column": "movie_id"
+                }
+            },
+            {
+                "local_column": "info_type_id",
+                "foreign_table": {
+                    "alias": "it",
+                    "column": "id"
+                }
+            }
+        ]
+    },
+    {
+        "relation_name": "movie_keyword",
+        "alias": "mk",
+        "size_after_filters": 4523930,
+        "filters": null,
+        "join_cond": [
+            {
+                "local_column": "movie_id",
+                "foreign_table": {
+                    "alias": "t",
+                    "column": "id"
+                }
+            },
+            {
+                "local_column": "movie_id",
+                "foreign_table": {
+                    "alias": "mi_idx",
+                    "column": "movie_id"
+                }
+            },
+            {
+                "local_column": "keyword_id",
+                "foreign_table": {
+                    "alias": "k",
+                    "column": "id"
+                }
+            }
+        ]
+    },
+    {
+        "relation_name": "title",
+        "alias": "t",
+        "size_after_filters": 391666,
+        "filters": {
+            "operator": "GT",
+            "left": "t.production_year",
+            "right": "2005"
+        },
+        "join_cond": [
+            {
+                "local_column": "id",
+                "foreign_table": {
+                    "alias": "mi_idx",
+                    "column": "movie_id"
+                }
+            },
+            {
+                "local_column": "id",
+                "foreign_table": {
+                    "alias": "mk",
+                    "column": "movie_id"
+                }
+            }
+        ]
+    }
+]

@@ -1,0 +1,120 @@
+[
+    {
+        "relation_name": "company_type",
+        "alias": "ct",
+        "size_after_filters": 1,
+        "filters": {
+            "operator": "EQ",
+            "left": "ct.kind",
+            "right": "'production companies'"
+        },
+        "join_cond": [
+            {
+                "local_column": "id",
+                "foreign_table": {
+                    "alias": "mc",
+                    "column": "company_type_id"
+                }
+            }
+        ]
+    },
+    {
+        "relation_name": "info_type",
+        "alias": "it",
+        "size_after_filters": 1,
+        "filters": {
+            "operator": "EQ",
+            "left": "it.info",
+            "right": "'bottom 10 rank'"
+        },
+        "join_cond": [
+            {
+                "local_column": "id",
+                "foreign_table": {
+                    "alias": "mi_idx",
+                    "column": "info_type_id"
+                }
+            }
+        ]
+    },
+    {
+        "relation_name": "movie_companies",
+        "alias": "mc",
+        "size_after_filters": 1337088,
+        "filters": "NOT mc.note LIKE '%(as Metro-Goldwyn-Mayer Pictures)%'",
+        "join_cond": [
+            {
+                "local_column": "company_type_id",
+                "foreign_table": {
+                    "alias": "ct",
+                    "column": "id"
+                }
+            },
+            {
+                "local_column": "movie_id",
+                "foreign_table": {
+                    "alias": "t",
+                    "column": "id"
+                }
+            },
+            {
+                "local_column": "movie_id",
+                "foreign_table": {
+                    "alias": "mi_idx",
+                    "column": "movie_id"
+                }
+            }
+        ]
+    },
+    {
+        "relation_name": "movie_info_idx",
+        "alias": "mi_idx",
+        "size_after_filters": 1380035,
+        "filters": null,
+        "join_cond": [
+            {
+                "local_column": "movie_id",
+                "foreign_table": {
+                    "alias": "t",
+                    "column": "id"
+                }
+            },
+            {
+                "local_column": "movie_id",
+                "foreign_table": {
+                    "alias": "mc",
+                    "column": "movie_id"
+                }
+            },
+            {
+                "local_column": "info_type_id",
+                "foreign_table": {
+                    "alias": "it",
+                    "column": "id"
+                }
+            }
+        ]
+    },
+    {
+        "relation_name": "title",
+        "alias": "t",
+        "size_after_filters": 716259,
+        "filters": "t.production_year BETWEEN 2005 AND 2010",
+        "join_cond": [
+            {
+                "local_column": "id",
+                "foreign_table": {
+                    "alias": "mc",
+                    "column": "movie_id"
+                }
+            },
+            {
+                "local_column": "id",
+                "foreign_table": {
+                    "alias": "mi_idx",
+                    "column": "movie_id"
+                }
+            }
+        ]
+    }
+]
