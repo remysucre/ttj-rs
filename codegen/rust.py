@@ -12,6 +12,32 @@ import sqlglot
 from sqlglot import exp
 import os
 import glob
+import re
+
+ALIAS_TO_TABLE = {
+    "an": "aka_name",
+    "at": "aka_title",
+    "ci": "cast_info",
+    "chn": "char_name",
+    "cct": "comp_cast_type",
+    "cn": "company_name",
+    "ct": "company_type",
+    "cc": "complete_cast",
+    "it": "info_type",
+    "k": "keyword",
+    "kt": "kind_type",
+    "lt": "link_type",
+    "mc": "movie_companies",
+    "mi_idx": "movie_info_idx",
+    "mk": "movie_keyword",
+    "ml": "movie_link",
+    "mi": "movie_info",
+    "n": "name",
+    "pi": "person_info",
+    "rt": "role_type",
+    "t": "title",
+}
+
 
 def format_expression_to_dict(expression):
     """
@@ -39,7 +65,7 @@ def format_expression_to_dict(expression):
         # For literals, columns, or other expressions, convert to SQL string
         return expression.sql()
 
-def process_query_and_stats(sql_query, stats_filepath, output_filepath):
+def process_query_and_stats(sql_query, stats_filepath, output_filepath, pks, fks):
     """
     Parses an SQL query, extracts metadata for each table, combines it
     with statistics from a file, and saves the result to a JSON file.
@@ -116,12 +142,29 @@ def process_query_and_stats(sql_query, stats_filepath, output_filepath):
                         local_col, foreign_col = left_col, right_col
                     else:
                         local_col, foreign_col = right_col, left_col
+                    
+                    local_table_name = ALIAS_TO_TABLE.get(local_col.table)
+                    foreign_table_name = ALIAS_TO_TABLE.get(foreign_col.table)
+                    
+                    local_key = None
+                    if pks.get(local_table_name) == local_col.this.this:
+                        local_key = "PK"
+                    elif fks.get(local_table_name, {}).get(local_col.this.this):
+                        local_key = "FK"
+
+                    foreign_key = None
+                    if pks.get(foreign_table_name) == foreign_col.this.this:
+                        foreign_key = "PK"
+                    elif fks.get(foreign_table_name, {}).get(foreign_col.this.this):
+                        foreign_key = "FK"
 
                     table_info["join_cond"].append({
                         "local_column": local_col.this.this,
+                        "key": local_key,
                         "foreign_table": {
                             "alias": foreign_col.table,
-                            "column": foreign_col.this.this
+                            "column": foreign_col.this.this,
+                            "key": foreign_key
                         }
                     })
 
@@ -159,18 +202,20 @@ def generate_files():
     Main function to process all .sql files in a directory.
     """
     # Directory containing the SQL query files
-    # sql_dir = 'join-order-benchmark/'
-    sql_dir = 'junk/'
+    sql_dir = 'join-order-benchmark/'
+    # sql_dir = 'junk/'
     # Directory containing the statistics JSON files
-    # stats_dir = 'stats_jsons/'
-    stats_dir = 'junk/'
+    stats_dir = 'stats_jsons/'
+    # stats_dir = 'junk/'
     # Directory to save the output JSON files
-    # output_dir = 'jsons'
-    output_dir = 'junk/'
+    output_dir = 'jsons'
+    # output_dir = 'junk/'
 
     # Create the output directory if it doesn't exist
     if not os.path.exists(output_dir):
         os.makedirs(output_dir)
+
+    pks, fks = parse_sql_schema("imdb-original-mysql.sql")
 
     # Find all .sql files in the specified directory
     sql_files = glob.glob(os.path.join(sql_dir, '*.sql'))
@@ -228,12 +273,40 @@ def generate_files():
             # Construct the output file path
             output_file_path = os.path.join(output_dir, f'{sql_query_name}.json')
 
-            process_query_and_stats(sql_query, stats_file_path, output_file_path)
+            process_query_and_stats(sql_query, stats_file_path, output_file_path, pks, fks)
 
         except IOError as e:
             raise ValueError(f"Error reading SQL file {sql_file_path}: {e}")
         except Exception as e:
             raise ValueError(f"An unexpected error occurred while processing {sql_file_path}: {e}")
+
+def parse_sql_schema(sql_file_path):
+    with open(sql_file_path, 'r') as f:
+        content = f.read()
+
+    pks = {}
+    fks = {}
+
+    create_table_blocks = content.split('CREATE TABLE')
+    for block in create_table_blocks[1:]:
+        table_name_match = re.search(r'`?(\w+)`?\s*\(', block)
+        if not table_name_match:
+            continue
+        table_name = table_name_match.group(1)
+        
+        # Find PKs
+        pk_matches = re.findall(r'(\w+)\s+integer\s+primary\s+key', block)
+        if pk_matches:
+            pks[table_name] = pk_matches[0]
+
+        # Find FKs from comments
+        fk_matches = re.findall(r'--\s*FOREIGN KEY\s*\((\w+)\)\s*REFERENCES\s*(\w+)\s*\((\w+)\)', block)
+        if table_name not in fks:
+            fks[table_name] = {}
+        for fk_col, ref_table, ref_col in fk_matches:
+            fks[table_name][fk_col] = (ref_table, ref_col)
+
+    return pks, fks
 
 def optimization():
     """
@@ -244,6 +317,12 @@ def optimization():
 def main():
     generate_files()
 
-
+    # The logic to add keys has been moved into generate_files/process_query_and_stats
+    # The following code would be for template rendering if needed.
+    
+    # env = Environment(loader=FileSystemLoader("codegen"))
+    # template = env.get_template("base.jinja")
+    # ... (rest of the logic for rendering templates)
+            
 if __name__ == '__main__':
     main()

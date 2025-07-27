@@ -7,37 +7,47 @@
         "join_cond": [
             {
                 "local_column": "movie_id",
+                "key": "FK",
                 "foreign_table": {
                     "alias": "t",
-                    "column": "id"
+                    "column": "id",
+                    "key": "PK"
                 }
             },
             {
                 "local_column": "movie_id",
+                "key": "FK",
                 "foreign_table": {
                     "alias": "mk",
-                    "column": "movie_id"
+                    "column": "movie_id",
+                    "key": "FK"
                 }
             },
             {
                 "local_column": "movie_id",
+                "key": "FK",
                 "foreign_table": {
                     "alias": "ci",
-                    "column": "movie_id"
+                    "column": "movie_id",
+                    "key": "FK"
                 }
             },
             {
                 "local_column": "subject_id",
+                "key": "FK",
                 "foreign_table": {
                     "alias": "cct1",
-                    "column": "id"
+                    "column": "id",
+                    "key": null
                 }
             },
             {
                 "local_column": "status_id",
+                "key": "FK",
                 "foreign_table": {
                     "alias": "cct2",
-                    "column": "id"
+                    "column": "id",
+                    "key": null
                 }
             }
         ]
@@ -54,9 +64,11 @@
         "join_cond": [
             {
                 "local_column": "id",
+                "key": null,
                 "foreign_table": {
                     "alias": "cc",
-                    "column": "subject_id"
+                    "column": "subject_id",
+                    "key": "FK"
                 }
             }
         ]
@@ -73,9 +85,11 @@
         "join_cond": [
             {
                 "local_column": "id",
+                "key": null,
                 "foreign_table": {
                     "alias": "cc",
-                    "column": "status_id"
+                    "column": "status_id",
+                    "key": "FK"
                 }
             }
         ]
@@ -111,9 +125,11 @@
         "join_cond": [
             {
                 "local_column": "id",
+                "key": "PK",
                 "foreign_table": {
                     "alias": "ci",
-                    "column": "person_role_id"
+                    "column": "person_role_id",
+                    "key": null
                 }
             }
         ]
@@ -126,37 +142,47 @@
         "join_cond": [
             {
                 "local_column": "movie_id",
+                "key": "FK",
                 "foreign_table": {
                     "alias": "t",
-                    "column": "id"
+                    "column": "id",
+                    "key": "PK"
                 }
             },
             {
                 "local_column": "movie_id",
+                "key": "FK",
                 "foreign_table": {
                     "alias": "mk",
-                    "column": "movie_id"
+                    "column": "movie_id",
+                    "key": "FK"
                 }
             },
             {
                 "local_column": "movie_id",
+                "key": "FK",
                 "foreign_table": {
                     "alias": "cc",
-                    "column": "movie_id"
+                    "column": "movie_id",
+                    "key": "FK"
                 }
             },
             {
                 "local_column": "person_role_id",
+                "key": null,
                 "foreign_table": {
                     "alias": "chn",
-                    "column": "id"
+                    "column": "id",
+                    "key": "PK"
                 }
             },
             {
                 "local_column": "person_id",
+                "key": "FK",
                 "foreign_table": {
                     "alias": "n",
-                    "column": "id"
+                    "column": "id",
+                    "key": "PK"
                 }
             }
         ]
@@ -184,9 +210,11 @@
         "join_cond": [
             {
                 "local_column": "id",
+                "key": "PK",
                 "foreign_table": {
                     "alias": "mk",
-                    "column": "keyword_id"
+                    "column": "keyword_id",
+                    "key": "FK"
                 }
             }
         ]
@@ -203,9 +231,11 @@
         "join_cond": [
             {
                 "local_column": "id",
+                "key": "PK",
                 "foreign_table": {
                     "alias": "t",
-                    "column": "kind_id"
+                    "column": "kind_id",
+                    "key": "FK"
                 }
             }
         ]
@@ -218,30 +248,38 @@
         "join_cond": [
             {
                 "local_column": "movie_id",
+                "key": "FK",
                 "foreign_table": {
                     "alias": "t",
-                    "column": "id"
+                    "column": "id",
+                    "key": "PK"
                 }
             },
             {
                 "local_column": "movie_id",
+                "key": "FK",
                 "foreign_table": {
                     "alias": "ci",
-                    "column": "movie_id"
+                    "column": "movie_id",
+                    "key": "FK"
                 }
             },
             {
                 "local_column": "movie_id",
+                "key": "FK",
                 "foreign_table": {
                     "alias": "cc",
-                    "column": "movie_id"
+                    "column": "movie_id",
+                    "key": "FK"
                 }
             },
             {
                 "local_column": "keyword_id",
+                "key": "FK",
                 "foreign_table": {
                     "alias": "k",
-                    "column": "id"
+                    "column": "id",
+                    "key": "PK"
                 }
             }
         ]
@@ -254,9 +292,11 @@
         "join_cond": [
             {
                 "local_column": "id",
+                "key": "PK",
                 "foreign_table": {
                     "alias": "ci",
-                    "column": "person_id"
+                    "column": "person_id",
+                    "key": "FK"
                 }
             }
         ]
@@ -273,30 +313,38 @@
         "join_cond": [
             {
                 "local_column": "kind_id",
+                "key": "FK",
                 "foreign_table": {
                     "alias": "kt",
-                    "column": "id"
+                    "column": "id",
+                    "key": "PK"
                 }
             },
             {
                 "local_column": "id",
+                "key": "PK",
                 "foreign_table": {
                     "alias": "mk",
-                    "column": "movie_id"
+                    "column": "movie_id",
+                    "key": "FK"
                 }
             },
             {
                 "local_column": "id",
+                "key": "PK",
                 "foreign_table": {
                     "alias": "ci",
-                    "column": "movie_id"
+                    "column": "movie_id",
+                    "key": "FK"
                 }
             },
             {
                 "local_column": "id",
+                "key": "PK",
                 "foreign_table": {
                     "alias": "cc",
-                    "column": "movie_id"
+                    "column": "movie_id",
+                    "key": "FK"
                 }
             }
         ]
