@@ -2,7 +2,7 @@
     {
         "relation_name": "aka_name",
         "alias": "an",
-        "size_after_filters": 0,
+        "size_after_filters": 674692,
         "filters": {
             "operator": "LIKE",
             "left": "an.name",
@@ -35,7 +35,7 @@
     {
         "relation_name": "cast_info",
         "alias": "ci",
-        "size_after_filters": 0,
+        "size_after_filters": 36244344,
         "filters": null,
         "join_cond": [
             {
@@ -78,7 +78,7 @@
     {
         "relation_name": "info_type",
         "alias": "it",
-        "size_after_filters": 0,
+        "size_after_filters": 1,
         "filters": {
             "operator": "EQ",
             "left": "it.info",
@@ -97,7 +97,7 @@
     {
         "relation_name": "link_type",
         "alias": "lt",
-        "size_after_filters": 2,
+        "size_after_filters": 1,
         "filters": {
             "operator": "EQ",
             "left": "lt.link",
@@ -145,7 +145,7 @@
     {
         "relation_name": "name",
         "alias": "n",
-        "size_after_filters": 48302,
+        "size_after_filters": 674692,
         "filters": {
             "operator": "AND",
             "left": {
@@ -186,7 +186,7 @@
     {
         "relation_name": "person_info",
         "alias": "pi",
-        "size_after_filters": 0,
+        "size_after_filters": 64,
         "filters": {
             "operator": "EQ",
             "left": "pi.note",
@@ -226,7 +226,7 @@
     {
         "relation_name": "title",
         "alias": "t",
-        "size_after_filters": 46583,
+        "size_after_filters": 76065,
         "filters": "t.production_year BETWEEN 1980 AND 1984",
         "join_cond": [
             {

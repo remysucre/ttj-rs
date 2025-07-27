@@ -35,8 +35,7 @@ def process_query_and_stats(sql_query, stats_filepath, output_filepath):
             stats_data = json.load(f)
         relation_sizes = stats_data.get("Aggregation Stats", {}).get("relationSizes", {})
     except (IOError, json.JSONDecodeError) as e:
-        print(f"Error reading or parsing statistics file: {e}")
-        return
+        raise ValueError(f"Error reading or parsing statistics file: {e}")
 
     # Parse the SQL query using sqlglot
     parsed_query = sqlglot.parse_one(sql_query)
@@ -60,18 +59,23 @@ def process_query_and_stats(sql_query, stats_filepath, output_filepath):
         table_info = {
             "relation_name": name,
             "alias": alias,
-            "size_after_filters": 0,
+            "size_after_filters": -1,
             "filters": [],
             "join_cond": []
         }
 
-        # Find the corresponding size from the statistics file.
-        # The keys in the stats file have prefixes (e.g., 'imdb.q9b_'), so we search for a key
-        # that ends with the table name, preceded by either a '_' or '.' character.
-        for stats_key, size in relation_sizes.items():
-            if name in stats_key:
-                table_info["size_after_filters"] = size
-                break
+        # Find the corresponding size from the statistics file using a "longest match" strategy.
+        # This prevents incorrect matches for tables with similar names (e.g., 'info_type' vs 'movie_info_type').
+        best_match_key = ""
+        for stats_key in relation_sizes.keys():
+            if name in stats_key and len(stats_key) > len(best_match_key):
+                best_match_key = stats_key
+        
+        if best_match_key:
+            table_info["size_after_filters"] = relation_sizes[best_match_key]
+
+        if table_info["size_after_filters"] == -1:
+            raise ValueError(f"Size for table '{name}' not found in statistics file: {stats_filepath}")
 
         # Separate filter conditions and join conditions from the WHERE clause
         filters = []
@@ -127,7 +131,7 @@ def process_query_and_stats(sql_query, stats_filepath, output_filepath):
             json.dump(final_output, f, indent=4)
         print(f"Successfully processed query and saved output to '{output_filepath}'")
     except IOError as e:
-        print(f"Error writing to output file: {e}")
+        raise ValueError(f"Error writing to output file: {e}")
 
 
 def main():
@@ -149,40 +153,64 @@ def main():
     sql_files = glob.glob(os.path.join(sql_dir, '*.sql'))
 
     if not sql_files:
-        print(f"No .sql files found in '{sql_dir}'")
-        return
+        raise ValueError(f"No .sql files found in '{sql_dir}'")
 
     # Process each SQL file
     for sql_file_path in sql_files:
         print(f"Processing {sql_file_path}...")
         try:
-            query_name = os.path.basename(sql_file_path).replace('.sql', '')
+            sql_query_name = os.path.basename(sql_file_path).replace('.sql', '')
             
-            # Find the corresponding stats file
+            # Find the corresponding stats file using the specified tokenization logic.
             stats_file_path = None
-            # The query name in stats file might have different capitalization
-            # e.g. 9b vs Query9b. So we search case-insensitively.
-            for f in os.listdir(stats_dir):
-                if query_name.lower() in f.lower():
-                    stats_file_path = os.path.join(stats_dir, f)
-                    break
+            for stats_filename in os.listdir(stats_dir):
+                try:
+                    # Split the filename by '.' to get tokens
+                    tokens = stats_filename.split('.')
+                    if len(tokens) < 3:  # Expecting at least 'name.qualifier.json'
+                        continue
+
+                    # Extract the second-to-last token
+                    second_to_last_token = tokens[-2]
+
+                    # Find the substring before "OptJoinTreeOptOrdering"
+                    sentinel = "OptJoinTreeOptOrdering"
+                    idx = second_to_last_token.find(sentinel)
+                    if idx == -1:
+                        continue
+                    query_part = second_to_last_token[:idx]
+
+                    # Extract the identifier after "Query"
+                    query_marker = "Query"
+                    marker_idx = query_part.rfind(query_marker)
+                    if marker_idx == -1:
+                        continue
+                    
+                    stats_query_name = query_part[marker_idx + len(query_marker):]
+
+                    # Check if the extracted name matches the SQL file's name
+                    if sql_query_name.lower() == stats_query_name.lower():
+                        stats_file_path = os.path.join(stats_dir, stats_filename)
+                        break
+                except Exception:
+                    # Ignore files that don't match the expected format
+                    continue
             
             if not stats_file_path:
-                print(f"Warning: No stats file found for query '{query_name}' in '{stats_dir}'. Skipping.")
-                continue
+                raise ValueError(f"Warning: No stats file found for query '{sql_query_name}' in '{stats_dir}'. Skipping.")
 
             with open(sql_file_path, 'r') as f:
                 sql_query = f.read()
             
             # Construct the output file path
-            output_file_path = os.path.join(output_dir, f'{query_name}.json')
+            output_file_path = os.path.join(output_dir, f'{sql_query_name}.json')
 
             process_query_and_stats(sql_query, stats_file_path, output_file_path)
 
         except IOError as e:
-            print(f"Error reading SQL file {sql_file_path}: {e}")
+            raise ValueError(f"Error reading SQL file {sql_file_path}: {e}")
         except Exception as e:
-            print(f"An unexpected error occurred while processing {sql_file_path}: {e}")
+            raise ValueError(f"An unexpected error occurred while processing {sql_file_path}: {e}")
 
 if __name__ == '__main__':
     main()

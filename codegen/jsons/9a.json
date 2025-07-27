@@ -153,7 +153,7 @@
     {
         "relation_name": "name",
         "alias": "n",
-        "size_after_filters": 3140339,
+        "size_after_filters": 84843,
         "filters": {
             "operator": "AND",
             "left": {
@@ -206,7 +206,7 @@
     {
         "relation_name": "title",
         "alias": "t",
-        "size_after_filters": 574556,
+        "size_after_filters": 1107888,
         "filters": "t.production_year BETWEEN 2005 AND 2015",
         "join_cond": [
             {

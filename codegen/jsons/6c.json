@@ -79,7 +79,7 @@
     {
         "relation_name": "name",
         "alias": "n",
-        "size_after_filters": 901343,
+        "size_after_filters": 2,
         "filters": {
             "operator": "LIKE",
             "left": "n.name",
@@ -98,7 +98,7 @@
     {
         "relation_name": "title",
         "alias": "t",
-        "size_after_filters": 946906,
+        "size_after_filters": 438,
         "filters": {
             "operator": "GT",
             "left": "t.production_year",

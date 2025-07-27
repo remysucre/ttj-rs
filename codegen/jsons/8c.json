@@ -2,7 +2,7 @@
     {
         "relation_name": "aka_name",
         "alias": "a1",
-        "size_after_filters": 0,
+        "size_after_filters": 901343,
         "filters": null,
         "join_cond": [
             {
@@ -24,7 +24,7 @@
     {
         "relation_name": "cast_info",
         "alias": "ci",
-        "size_after_filters": 0,
+        "size_after_filters": 36244344,
         "filters": null,
         "join_cond": [
             {
@@ -67,7 +67,7 @@
     {
         "relation_name": "company_name",
         "alias": "cn",
-        "size_after_filters": 126230,
+        "size_after_filters": 84843,
         "filters": {
             "operator": "EQ",
             "left": "cn.country_code",
@@ -86,7 +86,7 @@
     {
         "relation_name": "movie_companies",
         "alias": "mc",
-        "size_after_filters": 303271,
+        "size_after_filters": 2609129,
         "filters": null,
         "join_cond": [
             {
@@ -115,7 +115,7 @@
     {
         "relation_name": "name",
         "alias": "n1",
-        "size_after_filters": 126230,
+        "size_after_filters": 84843,
         "filters": null,
         "join_cond": [
             {
@@ -137,7 +137,7 @@
     {
         "relation_name": "role_type",
         "alias": "rt",
-        "size_after_filters": 0,
+        "size_after_filters": 1,
         "filters": {
             "operator": "EQ",
             "left": "rt.role",
@@ -156,7 +156,7 @@
     {
         "relation_name": "title",
         "alias": "t",
-        "size_after_filters": 1012920,
+        "size_after_filters": 2528312,
         "filters": null,
         "join_cond": [
             {

@@ -2,7 +2,7 @@
     {
         "relation_name": "company_name",
         "alias": "cn",
-        "size_after_filters": 126230,
+        "size_after_filters": 1,
         "filters": {
             "operator": "EQ",
             "left": "cn.country_code",
@@ -21,7 +21,7 @@
     {
         "relation_name": "keyword",
         "alias": "k",
-        "size_after_filters": 3,
+        "size_after_filters": 4523930,
         "filters": {
             "operator": "EQ",
             "left": "k.keyword",
@@ -40,7 +40,7 @@
     {
         "relation_name": "movie_companies",
         "alias": "mc",
-        "size_after_filters": 303271,
+        "size_after_filters": 2609129,
         "filters": null,
         "join_cond": [
             {
@@ -98,7 +98,7 @@
     {
         "relation_name": "title",
         "alias": "t",
-        "size_after_filters": 1012920,
+        "size_after_filters": 2528312,
         "filters": null,
         "join_cond": [
             {

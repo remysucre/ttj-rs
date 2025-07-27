@@ -177,7 +177,7 @@
     {
         "relation_name": "name",
         "alias": "n",
-        "size_after_filters": 901343,
+        "size_after_filters": 84843,
         "filters": null,
         "join_cond": [
             {

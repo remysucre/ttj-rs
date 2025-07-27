@@ -127,7 +127,7 @@
     {
         "relation_name": "name",
         "alias": "n1",
-        "size_after_filters": 901343,
+        "size_after_filters": 6752,
         "filters": {
             "operator": "AND",
             "left": {

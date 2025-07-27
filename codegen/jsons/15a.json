@@ -266,7 +266,7 @@
     {
         "relation_name": "title",
         "alias": "t",
-        "size_after_filters": 1381453,
+        "size_after_filters": 361472,
         "filters": {
             "operator": "GT",
             "left": "t.production_year",

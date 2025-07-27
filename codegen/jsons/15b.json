@@ -274,7 +274,7 @@
     {
         "relation_name": "title",
         "alias": "t",
-        "size_after_filters": 716259,
+        "size_after_filters": 361472,
         "filters": "t.production_year BETWEEN 2005 AND 2010",
         "join_cond": [
             {
