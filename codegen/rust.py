@@ -303,6 +303,7 @@ def main():
             raise ValueError(
                 f"An unexpected error occurred while processing {sql_file_path}: {e}"
             )
+    os.system(f"cargo fmt -- {os.path.join(output_dir, '*.rs')}")
 
 
 def parse_sql_schema(sql_file_path):
@@ -399,7 +400,6 @@ def optimization(sql_query_name, output_file_path) -> None:
         )
     except IOError as e:
         raise ValueError(f"Error writing to output file: {e}")
-    os.system(f"cargo fmt -- {output_file_path}")
 
 if __name__ == "__main__":
     main()
