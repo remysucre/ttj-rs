@@ -1,3 +1,12 @@
+"""
+Generate Rust implementations inside https://github.com/remysucre/ttj-rs/
+Steps:
+1. Use sqlglot to parse JOB queries and also parse stats files to extract
+   necessary information. All this information is combined into a json file.
+2. Generate query implementation template, which is based on the above json file.
+3. Render the template to generate query implementation.
+"""
+
 import json
 import sqlglot
 from sqlglot import exp
@@ -145,7 +154,7 @@ def process_query_and_stats(sql_query, stats_filepath, output_filepath):
         raise ValueError(f"Error writing to output file: {e}")
 
 
-def main():
+def generate_files():
     """
     Main function to process all .sql files in a directory.
     """
@@ -225,6 +234,16 @@ def main():
             raise ValueError(f"Error reading SQL file {sql_file_path}: {e}")
         except Exception as e:
             raise ValueError(f"An unexpected error occurred while processing {sql_file_path}: {e}")
+
+def optimization():
+    """
+    Generate query implementation template
+    """
+
+
+def main():
+    generate_files()
+
 
 if __name__ == '__main__':
     main()
