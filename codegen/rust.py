@@ -322,10 +322,11 @@ def _result_output_and_expected_result_set(sql_query_name: str) -> Tuple[str, st
         with open("expected_results.json", 'r') as f:
             stats_data = json.load(f)
         result_set = stats_data.get(sql_query_name, {})
-        result_output = f"Option<({', '.join(['&str'] * len(result_set))})>"
         if len(result_set) == 1:
+            result_output = f"Option<{', '.join(['&str'] * len(result_set))}>"
             expected_result_set = f"\"{result_set[0]}\""
         else:
+            result_output = f"Option<({', '.join(['&str'] * len(result_set))})>"
             expected_result_set = "(" + ", ".join([f'"{element}"' for element in result_set]) + ")"
         return result_output, expected_result_set
     except (IOError, json.JSONDecodeError) as e:
