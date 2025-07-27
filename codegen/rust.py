@@ -9,6 +9,11 @@ def format_expression_to_dict(expression):
     Recursively formats a sqlglot expression into a dictionary
     that matches the desired JSON structure for filters.
     """
+    if isinstance(expression, exp.Not):
+        return {
+            "operator": "NOT",
+            "left": format_expression_to_dict(expression.this)
+        }
     if isinstance(expression, exp.Binary):
         return {
             "operator": expression.key.upper(),
@@ -139,11 +144,14 @@ def main():
     Main function to process all .sql files in a directory.
     """
     # Directory containing the SQL query files
-    sql_dir = 'join-order-benchmark/'
+    # sql_dir = 'join-order-benchmark/'
+    sql_dir = 'junk/'
     # Directory containing the statistics JSON files
-    stats_dir = 'stats_jsons/'
+    # stats_dir = 'stats_jsons/'
+    stats_dir = 'junk/'
     # Directory to save the output JSON files
-    output_dir = 'jsons'
+    # output_dir = 'jsons'
+    output_dir = 'junk/'
 
     # Create the output directory if it doesn't exist
     if not os.path.exists(output_dir):
