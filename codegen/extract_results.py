@@ -25,7 +25,7 @@ results = {}
 # \)
 # The Some(...) part is to capture tuples like ("a", "b", "c")
 # The None part is for queries that have no result.
-regex = re.compile(r"assert_eq!\(res,\s*(Some\(\((.*?)\)\)|None)\s*\);", re.DOTALL)
+regex = re.compile(r"assert_eq!\((?:.|\n)*?,\s*(Some\(([\s\S]+?)\)|None)\s*\);", re.DOTALL)
 
 for file_path in files:
     with open(file_path, 'r') as f:
@@ -34,17 +34,28 @@ for file_path in files:
         if match:
             query_name = os.path.basename(file_path)[1:-3]
             result_str = match.group(1)
-            if result_str == "None":
+            if result_str is None or result_str.strip() == "None":
                 results[query_name] = None
             else:
-                # Extract the tuple content
-                tuple_content = match.group(2)
-                # Split by comma and strip quotes and whitespace
-                if tuple_content:
-                    extracted_results = [s.strip().strip('"') for s in tuple_content.split(',')]
-                    results[query_name] = extracted_results
-                else: # Handle empty Some(()) case
-                    results[query_name] = []
+                # Extract the content of Some()
+                some_content = match.group(2).strip()
+                if some_content.startswith('('):
+                    # It's a tuple
+                    tuple_content = some_content[1:-1].strip() # remove parens
+                    if tuple_content:
+                        extracted_results = re.findall(r'"((?:[^"\\]|\\.)*)"\s*,?|(\d+)\s*,?', tuple_content)
+                        cleaned_results = [item[0] if item[0] else item[1] for item in extracted_results]
+                        results[query_name] = cleaned_results
+                    else: # Handle empty Some(()) case
+                        results[query_name] = []
+                else:
+                    # It's a single value
+                    if some_content.startswith('"') and some_content.endswith('"'):
+                        results[query_name] = [some_content[1:-1]]
+                    else:
+                        results[query_name] = [some_content]
+        else:
+            raise ValueError(f"No test found in {file_path}")
 
 
 with open('expected_results.json', 'w') as f:
