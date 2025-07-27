@@ -2,7 +2,7 @@
     {
         "relation_name": "company_type",
         "alias": "ct",
-        "size_after_filters": 3,
+        "size_after_filters": 1,
         "filters": {
             "operator": "EQ",
             "left": "ct.kind",
@@ -21,7 +21,7 @@
     {
         "relation_name": "info_type",
         "alias": "it",
-        "size_after_filters": 0,
+        "size_after_filters": 1,
         "filters": {
             "operator": "EQ",
             "left": "it.info",
@@ -40,7 +40,7 @@
     {
         "relation_name": "movie_companies",
         "alias": "mc",
-        "size_after_filters": 1337140,
+        "size_after_filters": 1337088,
         "filters": "NOT mc.note LIKE '%(as Metro-Goldwyn-Mayer Pictures)%'",
         "join_cond": [
             {
@@ -69,7 +69,7 @@
     {
         "relation_name": "movie_info_idx",
         "alias": "mi_idx",
-        "size_after_filters": 0,
+        "size_after_filters": 1380035,
         "filters": null,
         "join_cond": [
             {
@@ -98,7 +98,7 @@
     {
         "relation_name": "title",
         "alias": "t",
-        "size_after_filters": 2287271,
+        "size_after_filters": 1381453,
         "filters": {
             "operator": "GT",
             "left": "t.production_year",

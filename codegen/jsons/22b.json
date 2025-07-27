@@ -162,7 +162,7 @@
     {
         "relation_name": "movie_info",
         "alias": "mi",
-        "size_after_filters": 669336,
+        "size_after_filters": 1172960,
         "filters": "mi.info IN ('Germany', 'German', 'USA', 'American')",
         "join_cond": [
             {

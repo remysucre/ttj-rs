@@ -227,7 +227,7 @@
     {
         "relation_name": "name",
         "alias": "n",
-        "size_after_filters": 2,
+        "size_after_filters": 30,
         "filters": {
             "operator": "LIKE",
             "left": "n.name",

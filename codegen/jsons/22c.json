@@ -74,7 +74,7 @@
     {
         "relation_name": "keyword",
         "alias": "k",
-        "size_after_filters": 3,
+        "size_after_filters": 4523930,
         "filters": "k.keyword IN ('murder', 'murder-in-title', 'blood', 'violence')",
         "join_cond": [
             {

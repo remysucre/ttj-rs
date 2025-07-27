@@ -121,7 +121,7 @@
     {
         "relation_name": "movie_info",
         "alias": "mi",
-        "size_after_filters": 327313,
+        "size_after_filters": 192839,
         "filters": "mi.info IN ('Drama', 'Horror', 'Western', 'Family')",
         "join_cond": [
             {

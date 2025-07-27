@@ -2,7 +2,7 @@
     {
         "relation_name": "keyword",
         "alias": "k",
-        "size_after_filters": 0,
+        "size_after_filters": 4523930,
         "filters": {
             "operator": "LIKE",
             "left": "k.keyword",
@@ -21,7 +21,7 @@
     {
         "relation_name": "movie_info",
         "alias": "mi",
-        "size_after_filters": 674828,
+        "size_after_filters": 153897,
         "filters": "mi.info IN ('Sweden', 'Norway', 'Germany', 'Denmark', 'Swedish', 'Denish', 'Norwegian', 'German')",
         "join_cond": [
             {
@@ -43,7 +43,7 @@
     {
         "relation_name": "movie_keyword",
         "alias": "mk",
-        "size_after_filters": 0,
+        "size_after_filters": 4523930,
         "filters": null,
         "join_cond": [
             {
@@ -72,7 +72,7 @@
     {
         "relation_name": "title",
         "alias": "t",
-        "size_after_filters": 445860,
+        "size_after_filters": 1012920,
         "filters": {
             "operator": "GT",
             "left": "t.production_year",

@@ -83,7 +83,7 @@
     {
         "relation_name": "keyword",
         "alias": "k",
-        "size_after_filters": 7,
+        "size_after_filters": 4523930,
         "filters": "k.keyword IN ('murder', 'violence', 'blood', 'gore', 'death', 'female-nudity', 'hospital')",
         "join_cond": [
             {
@@ -98,7 +98,7 @@
     {
         "relation_name": "movie_info",
         "alias": "mi",
-        "size_after_filters": 188971,
+        "size_after_filters": 1380035,
         "filters": "mi.info IN ('Horror', 'Action', 'Sci-Fi', 'Thriller', 'Crime', 'War')",
         "join_cond": [
             {

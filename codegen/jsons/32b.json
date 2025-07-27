@@ -2,7 +2,7 @@
     {
         "relation_name": "keyword",
         "alias": "k",
-        "size_after_filters": 1,
+        "size_after_filters": 4523930,
         "filters": {
             "operator": "EQ",
             "left": "k.keyword",
