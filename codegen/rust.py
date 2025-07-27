@@ -43,7 +43,7 @@ ALIAS_TO_TABLE = {
     "t": "title",
 }
 
-@dataclass
+@dataclass(frozen=True)
 class Attribute:
     attr: str
     alias: str
@@ -128,6 +128,29 @@ class UnionFind:
             True if item1 and item2 are in the same set, False otherwise.
         """
         return self.find(item1) == self.find(item2)
+    
+    def __str__(self) -> str:
+        """
+        Returns a string representation of the sets in the Union-Find structure.
+        Groups elements by their set representative.
+        """
+        sets = {}
+        if not self.parent:
+            return "UnionFind is empty."
+
+        for item in self.parent:
+            root = self.find(item)
+            if root not in sets:
+                sets[root] = []
+            sets[root].append(item)
+
+        output_lines = []
+        for i, (root, members) in enumerate(sets.items()):
+            # Sort members for consistent output, converting to string for safety
+            sorted_members = sorted(map(str, members))
+            output_lines.append(f"Group {i+1} (root: {root}): {{{', '.join(sorted_members)}}}")
+
+        return "\n".join(output_lines)
 
 def format_expression_to_dict(expression):
     """
@@ -463,12 +486,27 @@ def _initialize_relation_block(output_file_path: str, exclude_relations: typing.
 def decide_join_tree(output_file_path):
     attributes = UnionFind()
     hypergraph = UnionFind()
-    
+    try:
+        with open(output_file_path, "r") as f:
+            query_data = json.load(f)
+    except (IOError, json.JSONDecodeError) as e:
+        raise ValueError(f"Error reading or parsing query data file: {e}")
+
+    for alias, info in query_data.items():
+        for join_cond in info.get("join_cond", []):
+            local_attr = Attribute(attr=join_cond["local_column"], alias=alias)
+            foreign_table_info = join_cond["foreign_table"]
+            foreign_attr = Attribute(
+                attr=foreign_table_info["column"], alias=foreign_table_info["alias"]
+            )
+            attributes.union(local_attr, foreign_attr)
+    print(attributes)
 
 def optimization(sql_query_name, output_file_path) -> None:
     """
     Generate query implementation based on base.jinja
     """
+    decide_join_tree(output_file_path)
     result_output, expected_result_set = _result_output_and_expected_result_set(
         sql_query_name
     )
