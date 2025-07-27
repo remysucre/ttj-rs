@@ -340,10 +340,7 @@ mod test_q30c {
     fn test_q30c() -> Result<(), PolarsError> {
         let db = ImdbData::new();
         let res = q30c(&db)?;
-
-        let expected = Some(("Abernathy, Lewis", "Action", "100356", "$"));
-
-        assert_eq!(res, expected);
+        assert_eq!(res, Some(("Abernathy, Lewis", "Action", "100356", "$")));
         Ok(())
     }
 }

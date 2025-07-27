@@ -229,17 +229,17 @@ mod test_q33a {
     fn test_q33a() -> Result<(), PolarsError> {
         let db = ImdbData::new();
         let res = q33a(&db)?;
-
-        let expected = Some((
-            "495 Productions",
-            "495 Productions",
-            "3.3",
-            "2.7",
-            "A Double Shot at Love",
-            "A Shot at Love with Tila Tequila",
-        ));
-
-        assert_eq!(res, expected);
+        assert_eq!(
+            res,
+            Some((
+                "495 Productions",
+                "495 Productions",
+                "3.3",
+                "2.7",
+                "A Double Shot at Love",
+                "A Shot at Love with Tila Tequila",
+            ))
+        );
         Ok(())
     }
 }

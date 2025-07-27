@@ -155,14 +155,14 @@ mod test_q6f {
     fn test_q6f() -> Result<(), PolarsError> {
         let db = ImdbData::new();
         let res = q6f(&db)?;
-
-        let expected = Some((
-            "\"Steff\", Stefanie Oxmann Mcgaha",
-            "based-on-comic",
-            "& Teller 2",
-        ));
-
-        assert_eq!(res, expected);
+        assert_eq!(
+            res,
+            Some((
+                "\"Steff\", Stefanie Oxmann Mcgaha",
+                "based-on-comic",
+                "& Teller 2",
+            ))
+        );
         Ok(())
     }
 }

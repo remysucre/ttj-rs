@@ -469,9 +469,7 @@ mod test_q23a {
         let db = ImdbData::new();
         let res = q23a(&db)?;
 
-        let expected = Some(("movie", "The Analysts"));
-
-        assert_eq!(res, expected);
+        assert_eq!(res, Some(("movie", "The Analysts")));
         Ok(())
     }
 }

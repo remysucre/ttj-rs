@@ -261,10 +261,7 @@ mod test_q25c {
     fn test_q25c() -> Result<(), PolarsError> {
         let db = ImdbData::new();
         let res = q25c(&db)?;
-
-        let expected = Some(("Aakeson, Kim Fupz", "$", "Action", "10"));
-
-        assert_eq!(res, expected);
+        assert_eq!(res, Some(("Aakeson, Kim Fupz", "$", "Action", "10")));
         Ok(())
     }
 }

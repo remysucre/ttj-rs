@@ -285,14 +285,14 @@ mod test_21a {
     fn test_q21a() -> Result<(), PolarsError> {
         let db = ImdbData::new();
         let res = q21a(&db)?;
-
-        let expected = Some((
-            "Det Danske Filminstitut",
-            "followed by",
-            "Der Serienkiller - Klinge des Todes",
-        ));
-
-        assert_eq!(res, expected);
+        assert_eq!(
+            res,
+            Some((
+                "Det Danske Filminstitut",
+                "followed by",
+                "Der Serienkiller - Klinge des Todes",
+            ))
+        );
         Ok(())
     }
 }

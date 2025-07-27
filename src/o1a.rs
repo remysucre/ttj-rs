@@ -150,10 +150,7 @@ mod test_1a {
     fn test_q1a() -> Result<(), PolarsError> {
         let db = ImdbData::new();
         let res = q1a(&db)?;
-
-        let expected = Some(("A Clockwork Orange", 1934));
-
-        assert_eq!(res, expected);
+        assert_eq!(res, Some(("A Clockwork Orange", 1934)));
         Ok(())
     }
 }

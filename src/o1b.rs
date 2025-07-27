@@ -165,16 +165,14 @@ mod test_1b {
     fn test_q1b() -> Result<(), PolarsError> {
         let db = ImdbData::new();
         let res = q1b(&db)?;
-
-        // The expected tuple should match the SQL SELECT order:
-        // (production_note, movie_title, movie_year)
-        let expected = Some((
-            "(Set Decoration Rentals) (uncredited)",
-            "Disaster Movie",
-            2008,
-        ));
-
-        assert_eq!(res, expected);
+        assert_eq!(
+            res,
+            Some((
+                "(Set Decoration Rentals) (uncredited)",
+                "Disaster Movie",
+                2008,
+            ))
+        );
         Ok(())
     }
 }

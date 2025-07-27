@@ -429,10 +429,7 @@ mod test_q29a {
     fn test_q29a() -> Result<(), PolarsError> {
         let db = ImdbData::new();
         let res = q29a(&db)?;
-
-        let expected = Some(("Andrews, Julie", "Queen", "Shrek 2"));
-
-        assert_eq!(res, expected);
+        assert_eq!(res, Some(("Andrews, Julie", "Queen", "Shrek 2")));
         Ok(())
     }
 }

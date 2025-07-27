@@ -233,10 +233,7 @@ mod test_q9a {
     fn test_q9a() -> Result<(), PolarsError> {
         let db = ImdbData::new();
         let res = q9a(&db)?;
-
-        let expected = Some(("AJ", "Airport Announcer", "Blue Harvest"));
-
-        assert_eq!(res, expected);
+        assert_eq!(res, Some(("AJ", "Airport Announcer", "Blue Harvest")));
         Ok(())
     }
 }

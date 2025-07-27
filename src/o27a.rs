@@ -323,10 +323,10 @@ mod test_q27a {
     fn test_q27a() -> Result<(), PolarsError> {
         let db = ImdbData::new();
         let res = q27a(&db)?;
-
-        let expected = Some(("Det Danske Filminstitut", "followed by", "Spår i mörker"));
-
-        assert_eq!(res, expected);
+        assert_eq!(
+            res,
+            Some(("Det Danske Filminstitut", "followed by", "Spår i mörker"))
+        );
         Ok(())
     }
 }

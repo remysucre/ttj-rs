@@ -143,10 +143,7 @@ mod test_q5a {
     fn test_q5a() -> Result<(), PolarsError> {
         let db = ImdbData::new();
         let res = q5a(&db)?;
-
-        let expected = None;
-
-        assert_eq!(res, expected);
+        assert_eq!(res, None);
         Ok(())
     }
 }
