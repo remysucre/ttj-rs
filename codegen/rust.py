@@ -504,34 +504,27 @@ def decide_join_tree(output_file_path):
         raise ValueError(f"Error reading or parsing query data file: {e}")
 
     for alias, info in query_data.items():
+        relation_attributes = []
         for join_cond in info.get("join_cond", []):
             local_attr = Attribute(attr=join_cond["local_column"], alias=alias)
+            relation_attributes.append(local_attr)
             foreign_table_info = join_cond["foreign_table"]
             foreign_attr = Attribute(
                 attr=foreign_table_info["column"], alias=foreign_table_info["alias"]
             )
             attributes.union(local_attr, foreign_attr)
-    print(attributes)
-    print(attributes.num_sets())
-    relations = {}
-    for alias, info in query_data.items():
-        relation_name = info["relation_name"]
-        
-        relation_attributes = []
-        for join_cond in info.get("join_cond", []):
-            local_attr = Attribute(attr=join_cond["local_column"], alias=alias)
-            relation_attributes.append(local_attr)
-
         relation_obj = Relation(
             alias=alias,
-            relation_name=relation_name,
+            relation_name=info["relation_name"],
             attributes=tuple(relation_attributes)
         )
-        relations[alias] = relation_obj
         hypergraph.find(relation_obj)
-
+    print(attributes)
+    print(attributes.num_sets())
     print(hypergraph)
     print(hypergraph.num_sets())
+    while hypergraph.num_sets() > 1:
+        
 
 
 def optimization(sql_query_name, output_file_path) -> None:
