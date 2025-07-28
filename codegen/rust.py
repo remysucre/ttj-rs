@@ -56,6 +56,18 @@ class Relation:
     alias: str
     relation_name: str
     attributes: typing.Tuple[Attribute, ...]
+    size: int
+
+@dataclass
+class SemiJoin:
+    """
+    score is used to implement different optimization idea.
+    For example, score could be the size of parent after this semijoin.
+    Or, score could be the size of the ear relation.
+    """
+    ear: Relation
+    parent: Relation
+    score: int
 
 class UnionFind:
     """
@@ -162,6 +174,12 @@ class UnionFind:
         # Each root of a tree represents a unique set.
         # We can find the number of sets by counting the number of unique roots.
         return len({self.find(item) for item in self.parent})
+    
+    def get_all_elements(self) -> typing.List:
+        """
+        Returns a list of all elements in the Union-Find structure.
+        """
+        return list(self.parent.keys())
 
 def format_expression_to_dict(expression):
     """
@@ -495,6 +513,17 @@ def _initialize_relation_block(output_file_path: str, exclude_relations: typing.
         raise ValueError(f"Error reading or parsing statistics file: {e}")
 
 def decide_join_tree(output_file_path):
+    def check_ear_consume(one: Relation, two: Relation, pure: bool) -> typing.Union[Tuple[Relation, Relation], Tuple[None, None]]:
+        """
+        check if one of relation is an ear and is consumed by the other.
+        If pure is true, we further check if the ear relation
+        has all of its attributes contained by the other; only if this condition holds, the method returns [ear, parent].
+        Otherwise, returns None.
+        If pure is false, we return [ear, parent] whenever we find an ear and its parent without enforcing the above
+        fully-attribute-contained condition.
+        """
+        pass
+
     attributes = UnionFind()
     hypergraph = UnionFind()
     try:
@@ -516,16 +545,31 @@ def decide_join_tree(output_file_path):
         relation_obj = Relation(
             alias=alias,
             relation_name=info["relation_name"],
-            attributes=tuple(relation_attributes)
+            attributes=tuple(relation_attributes),
+            size=info["size_after_filters"]
         )
         hypergraph.find(relation_obj)
+    num_relations = len(query_data.items())
     print(attributes)
     print(attributes.num_sets())
     print(hypergraph)
     print(hypergraph.num_sets())
+    semijoin_program = []
     while hypergraph.num_sets() > 1:
-        
-
+        all_elements = hypergraph.get_all_elements()
+        num_elements = len(all_elements)
+        for i in range(num_elements):
+            for j in range(num_elements):
+                if i != j:
+                    ear, parent = check_ear_consume(all_elements[i], all_elements[j], num_relations == all_elements)
+                    if ear is not None:
+                        semijoin_program.append(SemiJoin(ear=ear, parent=parent, score=ear.size))
+                        hypergraph.union(ear, parent)
+                        # todo: implement the special optimization logic (idea2 in google doc) using score
+                        #  the idea is to first merge semijoins in semijoin_program whenever a pair of semijoins
+                        #  shares the same parent. Then, we update the score by the sum of filters size (note
+                        #  this is not what we have in idea2 but we stick with this for now). Then, we sort the
+                        #  semijoins in after-merged semijoin program by score in non-decreasing order.
 
 def optimization(sql_query_name, output_file_path) -> None:
     """
