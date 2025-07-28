@@ -151,6 +151,17 @@ class UnionFind:
             output_lines.append(f"Group {i+1} (root: {root}): {{{', '.join(sorted_members)}}}")
 
         return "\n".join(output_lines)
+    
+    def num_sets(self) -> int:
+        """
+        Returns the number of disjoint sets (groups).
+        """
+        if not self.parent:
+            return 0
+        
+        # Each root of a tree represents a unique set.
+        # We can find the number of sets by counting the number of unique roots.
+        return len({self.find(item) for item in self.parent})
 
 def format_expression_to_dict(expression):
     """
@@ -501,6 +512,8 @@ def decide_join_tree(output_file_path):
             )
             attributes.union(local_attr, foreign_attr)
     print(attributes)
+    print(attributes.num_sets())
+
 
 def optimization(sql_query_name, output_file_path) -> None:
     """
