@@ -48,14 +48,14 @@ class Attribute:
     attr: str
     alias: str
 
-@dataclass
+@dataclass(frozen=True)
 class Relation:
     """
     Used to model hyperedge as well.
     """
     alias: str
     relation_name: str
-    attributes: typing.List[Attribute]
+    attributes: typing.Tuple[Attribute, ...]
 
 class UnionFind:
     """
@@ -513,6 +513,25 @@ def decide_join_tree(output_file_path):
             attributes.union(local_attr, foreign_attr)
     print(attributes)
     print(attributes.num_sets())
+    relations = {}
+    for alias, info in query_data.items():
+        relation_name = info["relation_name"]
+        
+        relation_attributes = []
+        for join_cond in info.get("join_cond", []):
+            local_attr = Attribute(attr=join_cond["local_column"], alias=alias)
+            relation_attributes.append(local_attr)
+
+        relation_obj = Relation(
+            alias=alias,
+            relation_name=relation_name,
+            attributes=tuple(relation_attributes)
+        )
+        relations[alias] = relation_obj
+        hypergraph.find(relation_obj)
+
+    print(hypergraph)
+    print(hypergraph.num_sets())
 
 
 def optimization(sql_query_name, output_file_path) -> None:
