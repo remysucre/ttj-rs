@@ -69,6 +69,12 @@ class SemiJoin:
     parent: Relation
     score: int
 
+@dataclass
+class MergedSemiJoin:
+    ears: typing.List[Relation]
+    parent: Relation
+    score: int
+
 class SemiJoinProgram:
     def __init__(self):
         self.program = []
@@ -90,6 +96,25 @@ class SemiJoinProgram:
         # If the relation is not an ear in any semi-join, it's the root.
         return relation
 
+    def merge(self) -> MergedSemiJoin:
+        parent_groups = {}
+        for sj in self.program:
+            if sj.parent not in parent_groups:
+                parent_groups[sj.parent] = []
+            parent_groups[sj.parent].append(sj)
+
+        merged_semijoins = MergedSemiJoinProgram()
+        for parent, semijoins in parent_groups.items():
+            ears = [sj.ear for sj in semijoins]
+            total_score = sum(sj.score for sj in semijoins)
+            merged_semijoins.append(
+            MergedSemiJoin(ears=ears, parent=parent, score=total_score)
+            )
+
+        # Sort by score in non-decreasing order
+        merged_semijoins.program.sort(key=lambda x: x.score)
+        return merged_semijoins
+
     def __str__(self):
         if not self.program:
             return "SemiJoinProgram is empty."
@@ -98,6 +123,25 @@ class SemiJoinProgram:
         for sj in self.program:
             output_lines.append(f"ear: {sj.ear.alias}, parent: {sj.parent.alias}, score: {sj.score}")
         return "\n".join(output_lines)
+
+class MergedSemiJoinProgram(SemiJoinProgram):
+    def __init__(self):
+        super().__init__()
+        self.program = []
+
+    def append(self, merged_semi_join: MergedSemiJoin):
+        if merged_semi_join not in self.program:
+            self.program.append(merged_semi_join)
+
+    def __str__(self):
+        if not self.program:
+            return "MergedSemiJoinProgram is empty."
+
+        output_lines = []
+        for sj in self.program:
+            output_lines.append(f"ears: {[ear.alias for ear in sj.ears]}, parent: {sj.parent.alias}, score: {sj.score}")
+        return "\n".join(output_lines)
+
 
 class UnionFind:
     """
@@ -721,6 +765,8 @@ def decide_join_tree(output_file_path):
                         hypergraph.union(ear, parent)
         print(semijoin_program)
         print(hypergraph)
+    merged_semijoin_program = semijoin_program.merge()
+    print(merged_semijoin_program)
                         # todo: implement the special optimization logic (idea2 in google doc) using score
                         #  the idea is to first merge semijoins in semijoin_program whenever a pair of semijoins
                         #  shares the same parent. Then, we update the score by the sum of filters size (note
