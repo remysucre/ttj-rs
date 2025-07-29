@@ -44,20 +44,24 @@ ALIAS_TO_TABLE = {
     "t": "title",
 }
 
+
 @dataclass(frozen=True)
 class Attribute:
     attr: str
     alias: str
+
 
 @dataclass(frozen=True)
 class Relation:
     """
     Used to model hyperedge as well.
     """
+
     alias: str
     relation_name: str
     attributes: typing.Tuple[Attribute, ...]
     size: int
+
 
 @dataclass
 class SemiJoin:
@@ -66,15 +70,18 @@ class SemiJoin:
     For example, score could be the size of parent after this semijoin.
     Or, score could be the size of the ear relation.
     """
+
     ear: Relation
     parent: Relation
     score: int
+
 
 @dataclass
 class MergedSemiJoin:
     ears: typing.List[Relation]
     parent: Relation
     score: int
+
 
 class Level:
     def __init__(self):
@@ -84,8 +91,9 @@ class Level:
         return iter(self.level)
 
     def append(self, semi_join: SemiJoin):
-        if semi_join not in self.level and semi_join.ear not in [sj.ear for sj in self.level]:
-            # if semi_join not in self.program:
+        if semi_join not in self.level and semi_join.ear not in [
+            sj.ear for sj in self.level
+        ]:
             self.level.append(semi_join)
 
     def get_parent(self, relation: Relation) -> Relation:
@@ -100,108 +108,37 @@ class Level:
         # If the relation is not an ear in any semi-join, it's the root.
         return relation
 
-    # def merge(self):
-    #     parent_groups = {}
-    #     for sj in self.level:
-    #         if sj.parent not in parent_groups:
-    #             parent_groups[sj.parent] = []
-    #         parent_groups[sj.parent].append(sj)
-    #
-    #     new_level = MergedLevel()
-    #     for parent, semijoins in parent_groups.items():
-    #         ears = [sj.ear for sj in semijoins]
-    #         total_score = sum(sj.score for sj in semijoins)
-    #         new_level.append(MergedSemiJoin(ears=ears, parent=parent, score=total_score))
-    #
-    #     # Sort by score in non-decreasing order
-    #     new_level.level.sort(key=lambda x: x.score)
-    #     return new_level
-
     def __str__(self):
         if not self.level:
             return "SemiJoinProgram is empty."
 
         output_lines = []
         for sj in self.level:
-            output_lines.append(f"ear: {sj.ear.alias}, parent: {sj.parent.alias}, score: {sj.score}")
+            output_lines.append(
+                f"ear: {sj.ear.alias}, parent: {sj.parent.alias}, score: {sj.score}"
+            )
         return "\n".join(output_lines)
 
-# class MergedLevel:
-#     def __init__(self):
-#         self.level = []
-#
-#     def append(self, merged_semi_join : MergedSemiJoin):
-#         if merged_semi_join not in self.level:
-#             self.level.append(merged_semi_join)
-#
-#     def __str__(self):
-#         if not self.level:
-#             return "MergedSemiJoinProgram is empty."
-#
-#         output_lines = []
-#         for sj in self.level:
-#             output_lines.append(f"ears: {[ear.alias for ear in sj.ears]}, parent: {sj.parent.alias}, score: {sj.score}")
-#         return "\n".join(output_lines)
 
 class SemiJoinProgram:
     def __init__(self):
         self.program = []
 
-    def append(self, level : Level):
+    def append(self, level: Level):
         self.program.append(level)
-
-    # def merge(self):
-    #     parent_groups = {}
-    #     merged_semijoins = MergedSemiJoinProgram()
-    #
-    #     for level in self.program:
-    #         for sj in level:
-    #             if sj.parent not in parent_groups:
-    #                 parent_groups[sj.parent] = []
-    #             parent_groups[sj.parent].append(sj)
-    #
-    #         new_level = Level()
-    #         for parent, semijoins in parent_groups.items():
-    #             ears = [sj.ear for sj in semijoins]
-    #             total_score = sum(sj.score for sj in semijoins)
-    #             new_level.append_merged(MergedSemiJoin(ears=ears, parent=parent, score=total_score))
-    #
-    #         # Sort by score in non-decreasing order
-    #         new_level.level.sort(key=lambda x: x.score)
-    #         merged_semijoins.append(new_level)
-    #     return merged_semijoins
-
-    def last_level(self):
-        return self.program[-1]
 
     def __str__(self):
         if not self.program:
             return "SemiJoinProgram is empty."
-        
+
         output_lines = []
         for i, level in enumerate(self.program):
             output_lines.append(f"level: {i}")
             for sj in level:
-                output_lines.append(f"ear: {sj.ear.alias}, parent: {sj.parent.alias}, score: {sj.score}")
+                output_lines.append(
+                    f"ear: {sj.ear.alias}, parent: {sj.parent.alias}, score: {sj.score}"
+                )
         return "\n".join(output_lines)
-
-# class MergedSemiJoinProgram:
-#     def __init__(self):
-#         self.program = []
-#
-#     def append(self, level):
-#         self.program.append(level)
-#
-#     def __str__(self):
-#         if not self.program:
-#             return "MergedSemiJoinProgram is empty."
-#
-#         output_lines = []
-#         for i, level in enumerate(self.program):
-#             output_lines.append(f"level: {i}")
-#             for sj in level:
-#                 output_lines.append(f"ears: {[ear.alias for ear in sj.ears]}, parent: {sj.parent.alias}, score: {sj.score}")
-#         return "\n".join(output_lines)
 
 
 class UnionFind:
@@ -275,7 +212,7 @@ class UnionFind:
             True if item1 and item2 are in the same set, False otherwise.
         """
         return self.find(item1) == self.find(item2)
-    
+
     def __str__(self) -> str:
         """
         Returns a string representation of the sets in the Union-Find structure.
@@ -295,27 +232,29 @@ class UnionFind:
         for i, (root, members) in enumerate(sets.items()):
             # Sort members for consistent output, converting to string for safety
             sorted_members = sorted(map(str, members))
-            output_lines.append(f"Group {i+1} (root: {root}): {{{', '.join(sorted_members)}}}")
+            output_lines.append(
+                f"Group {i + 1} (root: {root}): {{{', '.join(sorted_members)}}}"
+            )
 
         return "\n".join(output_lines)
-    
+
     def num_sets(self) -> int:
         """
         Returns the number of disjoint sets (groups).
         """
         if not self.parent:
             return 0
-        
+
         # Each root of a tree represents a unique set.
         # We can find the number of sets by counting the number of unique roots.
         return len({self.find(item) for item in self.parent})
-    
+
     def get_all_elements(self) -> typing.List:
         """
         Returns a list of all elements in the Union-Find structure.
         """
         return list(self.parent.keys())
-    
+
     def get_set_size(self, item) -> int:
         """
         Returns the size of the set containing the given item.
@@ -328,68 +267,16 @@ class UnionFind:
         """
         root = self.find(item)
         return self.size[root]
-    
+
     def get_representatives(self) -> typing.List:
         """
         Returns a list of the representatives (roots) of all sets.
         """
         if not self.parent:
             return []
-        
+
         return list({self.find(item) for item in self.parent})
-    
-    def remove(self, item):
-        """
-        Removes an item from the Union-Find structure.
 
-        This operation can be complex. This implementation takes a simplified
-        approach: it removes the item and re-parents any direct children to the
-        item's parent (or root), ensuring the tree structure remains connected.
-        The size of the set is updated accordingly.
-
-        Args:
-            item: The item to remove.
-        """
-        if item not in self.parent:
-            return  # Item does not exist
-
-        root = self.find(item)
-        
-        # Find the parent of the item to be removed.
-        # If the item is a root, its parent is itself.
-        item_parent = self.parent[item]
-
-        # Find all items that are direct children of the item being removed.
-        children = [i for i, p in self.parent.items() if p == item]
-
-        # Re-parent the children to the item's parent.
-        for child in children:
-            self.parent[child] = item_parent
-
-        # If the item being removed was a root and had children,
-        # a new root needs to be established for the set.
-        # We've already re-parented the children to the old root (item_parent which is item).
-        # We need to pick a new root from the children and re-parent again.
-        if item == root and children:
-            new_root = children[0]
-            # The new root's parent becomes itself.
-            self.parent[new_root] = new_root
-            # Re-parent the other children and the original parent (if it was a child) to the new root.
-            for child in children[1:]:
-                self.parent[child] = new_root
-            # Update the size map. The new root inherits the size of the set, minus the removed item.
-            self.size[new_root] = self.size[item] - 1
-            del self.size[item]
-        else:
-            # If the item was not a root, or was a root with no children,
-            # just decrement the size of the set's root.
-            if root in self.size:
-                 self.size[root] -= 1
-
-        # Finally, remove the item itself from the parent and size maps.
-        del self.parent[item]
-        if item in self.size and item != root:
-             del self.size[item]
 
 def format_expression_to_dict(expression):
     """
@@ -704,7 +591,9 @@ def _result_output_and_expected_result_set(sql_query_name: str) -> Tuple[str, st
         raise ValueError(f"Error reading or parsing statistics file: {e}")
 
 
-def _initialize_relation_block(output_file_path: str, exclude_relations: typing.List) -> str:
+def _initialize_relation_block(
+    output_file_path: str, exclude_relations: typing.List
+) -> str:
     """
     exclude_relations is used to implement FK-PK optimization.
     """
@@ -722,25 +611,29 @@ def _initialize_relation_block(output_file_path: str, exclude_relations: typing.
     except (IOError, json.JSONDecodeError) as e:
         raise ValueError(f"Error reading or parsing statistics file: {e}")
 
+
 def decide_join_tree(output_file_path):
-    def check_ear_consume(one: Relation, two: Relation, pure: bool) -> typing.Union[Tuple[Relation, Relation], Tuple[None, None]]:
+    def check_ear_consume(
+        one: Relation, two: Relation, pure: bool
+    ) -> typing.Union[Tuple[Relation, Relation], Tuple[None, None]]:
         """
         Check if one relation is an ear and is consumed by the other.
-        
+
         If pure is False:
         - Check if one relation's attributes either appear in itself only (set size 1) or appear in the other relation
         - Return [ear, parent] if check passes, [None, None] if it fails
-        
+
         If pure is True:
         - Check if one relation has all its attributes appearing in the other relation
         - Return [ear, parent] where ear is the relation with all attributes in the other, [None, None] otherwise
         """
+
         def check_one_is_ear(candidate: Relation, other: Relation) -> bool:
             if pure:
                 # For pure mode: all attributes of candidate must appear in other
                 for attr in candidate.attributes:
                     appears_in_other = any(
-                        attributes.connected(attr, other_attr) 
+                        attributes.connected(attr, other_attr)
                         for other_attr in other.attributes
                     )
                     if not appears_in_other:
@@ -757,34 +650,31 @@ def decide_join_tree(output_file_path):
                     else:
                         # Check if it appears in the other relation
                         appears_in_other = any(
-                            attributes.connected(attr, other_attr) 
+                            attributes.connected(attr, other_attr)
                             for other_attr in other.attributes
                         )
                         if not appears_in_other:
                             return False
                 return True
-        
+
         # Check if 'one' is an ear consumed by 'two'
         if check_one_is_ear(one, two):
-            # # Remove all attributes of the ear from the attributes UnionFind
-            # # TODO: we need to maintain multiset of copies of attributes
-            # for attr in one.attributes:
-            #     attributes.remove(attr)
             for attr in one.attributes:
-                print(f"remove {one.alias} from attribute_alias[{attr.attr}]: {attribute_alias[attr.attr]}")
+                print(
+                    f"remove {one.alias} from attribute_alias[{attr.attr}]: {attribute_alias[attr.attr]}"
+                )
                 attribute_alias[attr.attr].remove(one.alias)
             return one, two
-        
+
         # Check if 'two' is an ear consumed by 'one'
         if check_one_is_ear(two, one):
-            # # Remove all attributes of the ear from the attributes UnionFind
-            # for attr in two.attributes:
-            #     attributes.remove(attr)
             for attr in two.attributes:
-                print(f"remove {two.alias} from attribute_alias[{attr.attr}]: {attribute_alias[attr.attr]}")
+                print(
+                    f"remove {two.alias} from attribute_alias[{attr.attr}]: {attribute_alias[attr.attr]}"
+                )
                 attribute_alias[attr.attr].remove(two.alias)
             return two, one
-        
+
         return None, None
 
     attributes = UnionFind()
@@ -802,24 +692,16 @@ def decide_join_tree(output_file_path):
             local_attr = Attribute(attr=join_cond["local_column"], alias=alias)
             if local_attr not in relation_attributes:
                 relation_attributes.append(local_attr)
-            # if local_attr not in attribute_alias:
-            #     attribute_alias[join_cond["local_column"]] = [alias]
-            # elif alias not in attribute_alias[join_cond["local_column"]]:
-            #     attribute_alias[join_cond["local_column"]].append(alias)
             foreign_table_info = join_cond["foreign_table"]
             foreign_attr = Attribute(
                 attr=foreign_table_info["column"], alias=foreign_table_info["alias"]
             )
-            # if foreign_table_info["column"] not in attribute_alias:
-            #     attribute_alias[foreign_table_info["column"]] = [alias]
-            # elif alias not in attribute_alias[foreign_table_info["column"]]:
-            #     attribute_alias[foreign_table_info["column"]].append(alias)
             attributes.union(local_attr, foreign_attr)
         relation_obj = Relation(
             alias=alias,
             relation_name=info["relation_name"],
             attributes=tuple(relation_attributes),
-            size=info["size_after_filters"]
+            size=info["size_after_filters"],
         )
         print(f"relation: {relation_obj}")
         hypergraph.find(relation_obj)
@@ -830,10 +712,6 @@ def decide_join_tree(output_file_path):
                 attribute_alias[attr.attr].append(alias)
     print(f"attribute_alias: {attribute_alias}")
     num_relations = len(query_data.items())
-    # print(attributes)
-    # print(attributes.num_sets())
-    # print(hypergraph)
-    # print(hypergraph.num_sets())
     semijoin_program = SemiJoinProgram()
     removed_ear = []
     last_level = None
@@ -846,37 +724,44 @@ def decide_join_tree(output_file_path):
         num_representatives = len(all_parent_repr)
         for i in range(num_representatives):
             for j in range(num_representatives):
-                if i != j and all_parent_repr[i] not in removed_ear and all_parent_repr[j] not in removed_ear:
-                    print(f"call check_ear_consume({all_parent_repr[i]}, {all_parent_repr[j]}, {num_relations == num_representatives})")
-                    ear, parent = check_ear_consume(all_parent_repr[i], all_parent_repr[j], num_relations == num_representatives)
+                if (
+                    i != j
+                    and all_parent_repr[i] not in removed_ear
+                    and all_parent_repr[j] not in removed_ear
+                ):
+                    print(
+                        f"call check_ear_consume({all_parent_repr[i]}, {all_parent_repr[j]}, {num_relations == num_representatives})"
+                    )
+                    ear, parent = check_ear_consume(
+                        all_parent_repr[i],
+                        all_parent_repr[j],
+                        num_relations == num_representatives,
+                    )
                     if ear is not None and parent is not None and ear != parent:
                         print(
-                            f"{ear.alias}, {parent.alias} = check_ear_consume({all_parent_repr[i]}, {all_parent_repr[j]}, {num_relations == num_representatives})")
+                            f"{ear.alias}, {parent.alias} = check_ear_consume({all_parent_repr[i]}, {all_parent_repr[j]}, {num_relations == num_representatives})"
+                        )
                         level.append(SemiJoin(ear=ear, parent=parent, score=ear.size))
                         hypergraph.union(ear, parent)
                         removed_ear.append(ear)
         print(level)
-        # print(f"merged level: {level.merge()}")
         print(hypergraph)
-        # if num_relations == num_representatives:
-        #     level = level.merge()
         semijoin_program.append(level)
         print(semijoin_program)
         last_level = level
     print(f"semijoin_program before merge: \n{semijoin_program}")
-    # merged_semijoin_program = semijoin_program.merge()
-    # print(f"merged_semijoin_program: \n{merged_semijoin_program}")
     # todo: implement the special optimization logic (idea2 in google doc) using score
     #  the idea is to first merge semijoins in semijoin_program whenever a pair of semijoins
     #  shares the same parent. Then, we update the score by the sum of filters size (note
     #  this is not what we have in idea2 but we stick with this for now). Then, we sort the
     #  semijoins in after-merged semijoin program by score in non-decreasing order.
-    # return merged_semijoin_program
     return semijoin_program
+
 
 def generate_main_block(merged_semijoin_program, output_file_path) -> str:
     with open(output_file_path, "r") as f:
         query_data = json.load(f)
+
     def find_right_values(node):
         # Helper function to recursively find 'right' values in the filter structure
         values = []
@@ -892,9 +777,11 @@ def generate_main_block(merged_semijoin_program, output_file_path) -> str:
         elif isinstance(node, str):
             # This is a leaf node, which could be a value we are looking for
             # Simple heuristic: if it's quoted, it's likely a literal value.
-            if (node.startswith("'") and node.endswith("'")) or \
-               (node.startswith('"') and node.endswith('"')) or \
-               node.isdigit():
+            if (
+                (node.startswith("'") and node.endswith("'"))
+                or (node.startswith('"') and node.endswith('"'))
+                or node.isdigit()
+            ):
                 values.append(node)
         return values
 
@@ -910,27 +797,46 @@ def generate_main_block(merged_semijoin_program, output_file_path) -> str:
     for alias, values in all_filter_values.items():
         if any(isinstance(el, list) for el in values):
             flat_list = [item[0] for item in values]
-            content = (",").join([ '"' + value.strip("'") + '"' for value in flat_list])
+            content = (",").join(['"' + value.strip("'") + '"' for value in flat_list])
             main_block += f"""let target_keywords: HashSet<&str> = [{content}].into_iter().collect();"""
         else:
             for value in values:
                 raw_val = value.strip("'").strip("%")
-                if '%' in raw_val:
+                if "%" in raw_val:
                     extra_vals = raw_val.split("%")
                     for val in extra_vals:
                         if val.isnumeric():
-                            target = num2words(val).lower().replace(", ", "_").replace(" ", "_").replace("-", "_")
-                            main_block += f"""let {target} = memmem::Finder::new("{val}");"""
+                            target = (
+                                num2words(val)
+                                .lower()
+                                .replace(", ", "_")
+                                .replace(" ", "_")
+                                .replace("-", "_")
+                            )
+                            main_block += (
+                                f"""let {target} = memmem::Finder::new("{val}");"""
+                            )
                         else:
-                            main_block += f"""let {val.lower()} = memmem::Finder::new("{val}");"""
+                            main_block += (
+                                f"""let {val.lower()} = memmem::Finder::new("{val}");"""
+                            )
                 else:
                     if raw_val.isnumeric():
-                        target = num2words(raw_val).lower().replace(", ", "_").replace(" ", "_").replace("-", "_")
-                        main_block += f"""let {target} = memmem::Finder::new("{raw_val}");"""
+                        target = (
+                            num2words(raw_val)
+                            .lower()
+                            .replace(", ", "_")
+                            .replace(" ", "_")
+                            .replace("-", "_")
+                        )
+                        main_block += (
+                            f"""let {target} = memmem::Finder::new("{raw_val}");"""
+                        )
                     else:
                         main_block += f"""let {raw_val.lower()} = memmem::Finder::new("{raw_val}");"""
     main_block += "let start = Instant::now();"
     return main_block
+
 
 def optimization(sql_query_name, output_file_path) -> None:
     """
@@ -941,9 +847,7 @@ def optimization(sql_query_name, output_file_path) -> None:
     result_output, expected_result_set = _result_output_and_expected_result_set(
         sql_query_name
     )
-    initialize_relation_block = _initialize_relation_block(
-        output_file_path, []
-    )
+    initialize_relation_block = _initialize_relation_block(output_file_path, [])
     template_data = {
         "result_output": result_output,
         "expected_result_set": expected_result_set,
@@ -964,6 +868,7 @@ def optimization(sql_query_name, output_file_path) -> None:
         )
     except IOError as e:
         raise ValueError(f"Error writing to output file: {e}")
+
 
 if __name__ == "__main__":
     main()
