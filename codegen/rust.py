@@ -17,6 +17,7 @@ from typing import Tuple
 
 import sqlglot
 from jinja2 import Environment, FileSystemLoader
+from num2words import num2words
 from sqlglot import exp
 
 ALIAS_TO_TABLE = {
@@ -801,12 +802,71 @@ def decide_join_tree(output_file_path):
     #  shares the same parent. Then, we update the score by the sum of filters size (note
     #  this is not what we have in idea2 but we stick with this for now). Then, we sort the
     #  semijoins in after-merged semijoin program by score in non-decreasing order.
+    return merged_semijoin_program
+
+def generate_main_block(merged_semijoin_program: MergedSemiJoinProgram, output_file_path) -> str:
+    with open(output_file_path, "r") as f:
+        query_data = json.load(f)
+    def find_right_values(node):
+        # Helper function to recursively find 'right' values in the filter structure
+        values = []
+        if isinstance(node, dict):
+            if "right" in node:
+                # If the right part is a list (like in 'IN' clauses), extend values
+                if isinstance(node["right"], list):
+                    values.extend(find_right_values(item) for item in node["right"])
+                else:
+                    values.extend(find_right_values(node["right"]))
+            if "left" in node:
+                values.extend(find_right_values(node["left"]))
+        elif isinstance(node, str):
+            # This is a leaf node, which could be a value we are looking for
+            # Simple heuristic: if it's quoted, it's likely a literal value.
+            if (node.startswith("'") and node.endswith("'")) or \
+               (node.startswith('"') and node.endswith('"')) or \
+               node.isdigit():
+                values.append(node)
+        return values
+
+    all_filter_values = {}
+    for alias, info in query_data.items():
+        filters = info.get("filters")
+        if filters:
+            all_filter_values[alias] = find_right_values(filters)
+    print(all_filter_values)
+    main_block = ""
+    # At this point, all_filter_values contains the collected 'right' values,
+    # for example: {'t': ["'movie'"], 'mi': ["'rating'"]}
+    for alias, values in all_filter_values.items():
+        if any(isinstance(el, list) for el in values):
+            flat_list = [item[0] for item in values]
+            content = (",").join([ '"' + value.strip("'") + '"' for value in flat_list])
+            main_block += f"""let target_keywords: HashSet<&str> = [{content}].into_iter().collect();"""
+        else:
+            for value in values:
+                raw_val = value.strip("'").strip("%")
+                if '%' in raw_val:
+                    extra_vals = raw_val.split("%")
+                    for val in extra_vals:
+                        if val.isnumeric():
+                            target = num2words(val).lower().replace(", ", "_").replace(" ", "_").replace("-", "_")
+                            main_block += f"""let {target} = memmem::Finder::new("{val}");"""
+                        else:
+                            main_block += f"""let {val.lower()} = memmem::Finder::new("{val}");"""
+                else:
+                    if raw_val.isnumeric():
+                        target = num2words(raw_val).lower().replace(", ", "_").replace(" ", "_").replace("-", "_")
+                        main_block += f"""let {target} = memmem::Finder::new("{raw_val}");"""
+                    else:
+                        main_block += f"""let {raw_val.lower()} = memmem::Finder::new("{raw_val}");"""
+    return main_block
 
 def optimization(sql_query_name, output_file_path) -> None:
     """
     Generate query implementation based on base.jinja
     """
-    decide_join_tree(output_file_path)
+    merged_semijoin_program = decide_join_tree(output_file_path)
+    main_block = generate_main_block(merged_semijoin_program, output_file_path)
     result_output, expected_result_set = _result_output_and_expected_result_set(
         sql_query_name
     )
@@ -818,6 +878,7 @@ def optimization(sql_query_name, output_file_path) -> None:
         "expected_result_set": expected_result_set,
         "query_name": "q" + sql_query_name,
         "initialize_relation_block": initialize_relation_block,
+        "main_block": main_block,
     }
     env = Environment(loader=FileSystemLoader("."))
     template = env.get_template("base.jinja")
