@@ -80,7 +80,8 @@ class SemiJoinProgram:
         self.program = []
 
     def append(self, semi_join: SemiJoin):
-        if semi_join not in self.program:
+        if semi_join not in self.program and semi_join.ear not in [sj.ear for sj in self.program]:
+        # if semi_join not in self.program:
             self.program.append(semi_join)
 
 
@@ -96,7 +97,7 @@ class SemiJoinProgram:
         # If the relation is not an ear in any semi-join, it's the root.
         return relation
 
-    def merge(self) -> MergedSemiJoin:
+    def merge(self):
         parent_groups = {}
         for sj in self.program:
             if sj.parent not in parent_groups:
@@ -688,7 +689,8 @@ def decide_join_tree(output_file_path):
             else:
                 # For non-pure mode: attributes either appear in itself only (size 1) or in the other relation
                 for attr in candidate.attributes:
-                    set_size = attributes.get_set_size(attr)
+                    # set_size = attributes.get_set_size(attr)
+                    set_size = len(attribute_alias[attr.attr])
                     if set_size == 1:
                         # Attribute appears in itself only
                         continue
@@ -704,22 +706,30 @@ def decide_join_tree(output_file_path):
         
         # Check if 'one' is an ear consumed by 'two'
         if check_one_is_ear(one, two):
-            # Remove all attributes of the ear from the attributes UnionFind
+            # # Remove all attributes of the ear from the attributes UnionFind
+            # # TODO: we need to maintain multiset of copies of attributes
+            # for attr in one.attributes:
+            #     attributes.remove(attr)
             for attr in one.attributes:
-                attributes.remove(attr)
+                print(f"remove {one.alias} from attribute_alias[{attr.attr}]: {attribute_alias[attr.attr]}")
+                attribute_alias[attr.attr].remove(one.alias)
             return one, two
         
         # Check if 'two' is an ear consumed by 'one'
         if check_one_is_ear(two, one):
-            # Remove all attributes of the ear from the attributes UnionFind
+            # # Remove all attributes of the ear from the attributes UnionFind
+            # for attr in two.attributes:
+            #     attributes.remove(attr)
             for attr in two.attributes:
-                attributes.remove(attr)
+                print(f"remove {two.alias} from attribute_alias[{attr.attr}]: {attribute_alias[attr.attr]}")
+                attribute_alias[attr.attr].remove(two.alias)
             return two, one
         
         return None, None
 
     attributes = UnionFind()
     hypergraph = UnionFind()
+    attribute_alias = dict()
     try:
         with open(output_file_path, "r") as f:
             query_data = json.load(f)
@@ -732,10 +742,18 @@ def decide_join_tree(output_file_path):
             local_attr = Attribute(attr=join_cond["local_column"], alias=alias)
             if local_attr not in relation_attributes:
                 relation_attributes.append(local_attr)
+            # if local_attr not in attribute_alias:
+            #     attribute_alias[join_cond["local_column"]] = [alias]
+            # elif alias not in attribute_alias[join_cond["local_column"]]:
+            #     attribute_alias[join_cond["local_column"]].append(alias)
             foreign_table_info = join_cond["foreign_table"]
             foreign_attr = Attribute(
                 attr=foreign_table_info["column"], alias=foreign_table_info["alias"]
             )
+            # if foreign_table_info["column"] not in attribute_alias:
+            #     attribute_alias[foreign_table_info["column"]] = [alias]
+            # elif alias not in attribute_alias[foreign_table_info["column"]]:
+            #     attribute_alias[foreign_table_info["column"]].append(alias)
             attributes.union(local_attr, foreign_attr)
         relation_obj = Relation(
             alias=alias,
@@ -743,35 +761,46 @@ def decide_join_tree(output_file_path):
             attributes=tuple(relation_attributes),
             size=info["size_after_filters"]
         )
+        print(f"relation: {relation_obj}")
         hypergraph.find(relation_obj)
+        for attr in relation_obj.attributes:
+            if attr.attr not in attribute_alias:
+                attribute_alias[attr.attr] = [alias]
+            else:
+                attribute_alias[attr.attr].append(alias)
+    print(f"attribute_alias: {attribute_alias}")
     num_relations = len(query_data.items())
     # print(attributes)
     # print(attributes.num_sets())
     # print(hypergraph)
     # print(hypergraph.num_sets())
     semijoin_program = SemiJoinProgram()
+    removed_ear = []
     while hypergraph.num_sets() > 1:
         all_representatives = hypergraph.get_representatives()
         all_parent_repr = [semijoin_program.get_parent(repr) for repr in all_representatives]
         num_representatives = len(all_parent_repr)
         for i in range(num_representatives):
             for j in range(num_representatives):
-                if i != j:
+                if i != j and all_parent_repr[i] not in removed_ear and all_parent_repr[j] not in removed_ear:
+                    print(f"call check_ear_consume({all_parent_repr[i]}, {all_parent_repr[j]}, {num_relations == num_representatives})")
                     ear, parent = check_ear_consume(all_parent_repr[i], all_parent_repr[j], num_relations == num_representatives)
                     if ear is not None and parent is not None and ear != parent:
                         print(
                             f"{ear.alias}, {parent.alias} = check_ear_consume({all_parent_repr[i]}, {all_parent_repr[j]}, {num_relations == num_representatives})")
                         semijoin_program.append(SemiJoin(ear=ear, parent=parent, score=ear.size))
                         hypergraph.union(ear, parent)
+                        removed_ear.append(ear)
         print(semijoin_program)
         print(hypergraph)
+    print(f"semijoin_program before merge: \n{semijoin_program}")
     merged_semijoin_program = semijoin_program.merge()
-    print(merged_semijoin_program)
-                        # todo: implement the special optimization logic (idea2 in google doc) using score
-                        #  the idea is to first merge semijoins in semijoin_program whenever a pair of semijoins
-                        #  shares the same parent. Then, we update the score by the sum of filters size (note
-                        #  this is not what we have in idea2 but we stick with this for now). Then, we sort the
-                        #  semijoins in after-merged semijoin program by score in non-decreasing order.
+    print(f"merged_semijoin_program: \n{merged_semijoin_program}")
+    # todo: implement the special optimization logic (idea2 in google doc) using score
+    #  the idea is to first merge semijoins in semijoin_program whenever a pair of semijoins
+    #  shares the same parent. Then, we update the score by the sum of filters size (note
+    #  this is not what we have in idea2 but we stick with this for now). Then, we sort the
+    #  semijoins in after-merged semijoin program by score in non-decreasing order.
 
 def optimization(sql_query_name, output_file_path) -> None:
     """
