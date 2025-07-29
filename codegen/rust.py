@@ -232,6 +232,59 @@ class UnionFind:
             return []
         
         return list({self.find(item) for item in self.parent})
+    
+    def remove(self, item):
+        """
+        Removes an item from the Union-Find structure.
+
+        This operation can be complex. This implementation takes a simplified
+        approach: it removes the item and re-parents any direct children to the
+        item's parent (or root), ensuring the tree structure remains connected.
+        The size of the set is updated accordingly.
+
+        Args:
+            item: The item to remove.
+        """
+        if item not in self.parent:
+            return  # Item does not exist
+
+        root = self.find(item)
+        
+        # Find the parent of the item to be removed.
+        # If the item is a root, its parent is itself.
+        item_parent = self.parent[item]
+
+        # Find all items that are direct children of the item being removed.
+        children = [i for i, p in self.parent.items() if p == item]
+
+        # Re-parent the children to the item's parent.
+        for child in children:
+            self.parent[child] = item_parent
+
+        # If the item being removed was a root and had children,
+        # a new root needs to be established for the set.
+        # We've already re-parented the children to the old root (item_parent which is item).
+        # We need to pick a new root from the children and re-parent again.
+        if item == root and children:
+            new_root = children[0]
+            # The new root's parent becomes itself.
+            self.parent[new_root] = new_root
+            # Re-parent the other children and the original parent (if it was a child) to the new root.
+            for child in children[1:]:
+                self.parent[child] = new_root
+            # Update the size map. The new root inherits the size of the set, minus the removed item.
+            self.size[new_root] = self.size[item] - 1
+            del self.size[item]
+        else:
+            # If the item was not a root, or was a root with no children,
+            # just decrement the size of the set's root.
+            if root in self.size:
+                 self.size[root] -= 1
+
+        # Finally, remove the item itself from the parent and size maps.
+        del self.parent[item]
+        if item in self.size and item != root:
+             del self.size[item]
 
 def format_expression_to_dict(expression):
     """
@@ -607,10 +660,16 @@ def decide_join_tree(output_file_path):
         
         # Check if 'one' is an ear consumed by 'two'
         if check_one_is_ear(one, two):
+            # Remove all attributes of the ear from the attributes UnionFind
+            for attr in one.attributes:
+                attributes.remove(attr)
             return one, two
         
         # Check if 'two' is an ear consumed by 'one'
         if check_one_is_ear(two, one):
+            # Remove all attributes of the ear from the attributes UnionFind
+            for attr in two.attributes:
+                attributes.remove(attr)
             return two, one
         
         return None, None
@@ -655,8 +714,9 @@ def decide_join_tree(output_file_path):
             for j in range(num_representatives):
                 if i != j:
                     ear, parent = check_ear_consume(all_parent_repr[i], all_parent_repr[j], num_relations == num_representatives)
-                    print(f"{ear}, {parent} = check_ear_consume({all_parent_repr[i]}, {all_parent_repr[j]}, {num_relations == num_representatives})")
                     if ear is not None and parent is not None and ear != parent:
+                        print(
+                            f"{ear.alias}, {parent.alias} = check_ear_consume({all_parent_repr[i]}, {all_parent_repr[j]}, {num_relations == num_representatives})")
                         semijoin_program.append(SemiJoin(ear=ear, parent=parent, score=ear.size))
                         hypergraph.union(ear, parent)
         print(semijoin_program)
