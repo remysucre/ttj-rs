@@ -7,7 +7,7 @@ use std::time::Instant;
 pub fn {{ query_name }}(db: &Data) -> Result<{{ result_output }}, PolarsError> {
     {{ initialize_relation_block }}
 
-    {{ mainBlock }}
+    {{ main_block }}
 
     println!("{{ query_name }},{:}", start.elapsed().as_secs_f32());
     Ok(res)
