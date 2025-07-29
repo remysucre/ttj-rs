@@ -76,21 +76,23 @@ class MergedSemiJoin:
     parent: Relation
     score: int
 
-class SemiJoinProgram:
+class Level:
     def __init__(self):
-        self.program = []
+        self.level = []
+
+    def __iter__(self):
+        return iter(self.level)
 
     def append(self, semi_join: SemiJoin):
-        if semi_join not in self.program and semi_join.ear not in [sj.ear for sj in self.program]:
-        # if semi_join not in self.program:
-            self.program.append(semi_join)
-
+        if semi_join not in self.level and semi_join.ear not in [sj.ear for sj in self.level]:
+            # if semi_join not in self.program:
+            self.level.append(semi_join)
 
     def get_parent(self, relation: Relation) -> Relation:
         """
         Find the parent of the given semi_join
         """
-        for sj in self.program:
+        for sj in self.level:
             if sj.ear == relation:
                 # Found a semi-join where the given relation is the ear.
                 # Return the parent from that semi-join.
@@ -98,51 +100,108 @@ class SemiJoinProgram:
         # If the relation is not an ear in any semi-join, it's the root.
         return relation
 
-    def merge(self):
-        parent_groups = {}
-        for sj in self.program:
-            if sj.parent not in parent_groups:
-                parent_groups[sj.parent] = []
-            parent_groups[sj.parent].append(sj)
+    # def merge(self):
+    #     parent_groups = {}
+    #     for sj in self.level:
+    #         if sj.parent not in parent_groups:
+    #             parent_groups[sj.parent] = []
+    #         parent_groups[sj.parent].append(sj)
+    #
+    #     new_level = MergedLevel()
+    #     for parent, semijoins in parent_groups.items():
+    #         ears = [sj.ear for sj in semijoins]
+    #         total_score = sum(sj.score for sj in semijoins)
+    #         new_level.append(MergedSemiJoin(ears=ears, parent=parent, score=total_score))
+    #
+    #     # Sort by score in non-decreasing order
+    #     new_level.level.sort(key=lambda x: x.score)
+    #     return new_level
 
-        merged_semijoins = MergedSemiJoinProgram()
-        for parent, semijoins in parent_groups.items():
-            ears = [sj.ear for sj in semijoins]
-            total_score = sum(sj.score for sj in semijoins)
-            merged_semijoins.append(
-            MergedSemiJoin(ears=ears, parent=parent, score=total_score)
-            )
+    def __str__(self):
+        if not self.level:
+            return "SemiJoinProgram is empty."
 
-        # Sort by score in non-decreasing order
-        merged_semijoins.program.sort(key=lambda x: x.score)
-        return merged_semijoins
+        output_lines = []
+        for sj in self.level:
+            output_lines.append(f"ear: {sj.ear.alias}, parent: {sj.parent.alias}, score: {sj.score}")
+        return "\n".join(output_lines)
+
+# class MergedLevel:
+#     def __init__(self):
+#         self.level = []
+#
+#     def append(self, merged_semi_join : MergedSemiJoin):
+#         if merged_semi_join not in self.level:
+#             self.level.append(merged_semi_join)
+#
+#     def __str__(self):
+#         if not self.level:
+#             return "MergedSemiJoinProgram is empty."
+#
+#         output_lines = []
+#         for sj in self.level:
+#             output_lines.append(f"ears: {[ear.alias for ear in sj.ears]}, parent: {sj.parent.alias}, score: {sj.score}")
+#         return "\n".join(output_lines)
+
+class SemiJoinProgram:
+    def __init__(self):
+        self.program = []
+
+    def append(self, level : Level):
+        self.program.append(level)
+
+    # def merge(self):
+    #     parent_groups = {}
+    #     merged_semijoins = MergedSemiJoinProgram()
+    #
+    #     for level in self.program:
+    #         for sj in level:
+    #             if sj.parent not in parent_groups:
+    #                 parent_groups[sj.parent] = []
+    #             parent_groups[sj.parent].append(sj)
+    #
+    #         new_level = Level()
+    #         for parent, semijoins in parent_groups.items():
+    #             ears = [sj.ear for sj in semijoins]
+    #             total_score = sum(sj.score for sj in semijoins)
+    #             new_level.append_merged(MergedSemiJoin(ears=ears, parent=parent, score=total_score))
+    #
+    #         # Sort by score in non-decreasing order
+    #         new_level.level.sort(key=lambda x: x.score)
+    #         merged_semijoins.append(new_level)
+    #     return merged_semijoins
+
+    def last_level(self):
+        return self.program[-1]
 
     def __str__(self):
         if not self.program:
             return "SemiJoinProgram is empty."
         
         output_lines = []
-        for sj in self.program:
-            output_lines.append(f"ear: {sj.ear.alias}, parent: {sj.parent.alias}, score: {sj.score}")
+        for i, level in enumerate(self.program):
+            output_lines.append(f"level: {i}")
+            for sj in level:
+                output_lines.append(f"ear: {sj.ear.alias}, parent: {sj.parent.alias}, score: {sj.score}")
         return "\n".join(output_lines)
 
-class MergedSemiJoinProgram(SemiJoinProgram):
-    def __init__(self):
-        super().__init__()
-        self.program = []
-
-    def append(self, merged_semi_join: MergedSemiJoin):
-        if merged_semi_join not in self.program:
-            self.program.append(merged_semi_join)
-
-    def __str__(self):
-        if not self.program:
-            return "MergedSemiJoinProgram is empty."
-
-        output_lines = []
-        for sj in self.program:
-            output_lines.append(f"ears: {[ear.alias for ear in sj.ears]}, parent: {sj.parent.alias}, score: {sj.score}")
-        return "\n".join(output_lines)
+# class MergedSemiJoinProgram:
+#     def __init__(self):
+#         self.program = []
+#
+#     def append(self, level):
+#         self.program.append(level)
+#
+#     def __str__(self):
+#         if not self.program:
+#             return "MergedSemiJoinProgram is empty."
+#
+#         output_lines = []
+#         for i, level in enumerate(self.program):
+#             output_lines.append(f"level: {i}")
+#             for sj in level:
+#                 output_lines.append(f"ears: {[ear.alias for ear in sj.ears]}, parent: {sj.parent.alias}, score: {sj.score}")
+#         return "\n".join(output_lines)
 
 
 class UnionFind:
@@ -777,9 +836,13 @@ def decide_join_tree(output_file_path):
     # print(hypergraph.num_sets())
     semijoin_program = SemiJoinProgram()
     removed_ear = []
+    last_level = None
     while hypergraph.num_sets() > 1:
+        level = Level()
+        if last_level is None:
+            last_level = level
         all_representatives = hypergraph.get_representatives()
-        all_parent_repr = [semijoin_program.get_parent(repr) for repr in all_representatives]
+        all_parent_repr = [last_level.get_parent(repr) for repr in all_representatives]
         num_representatives = len(all_parent_repr)
         for i in range(num_representatives):
             for j in range(num_representatives):
@@ -789,22 +852,29 @@ def decide_join_tree(output_file_path):
                     if ear is not None and parent is not None and ear != parent:
                         print(
                             f"{ear.alias}, {parent.alias} = check_ear_consume({all_parent_repr[i]}, {all_parent_repr[j]}, {num_relations == num_representatives})")
-                        semijoin_program.append(SemiJoin(ear=ear, parent=parent, score=ear.size))
+                        level.append(SemiJoin(ear=ear, parent=parent, score=ear.size))
                         hypergraph.union(ear, parent)
                         removed_ear.append(ear)
-        print(semijoin_program)
+        print(level)
+        # print(f"merged level: {level.merge()}")
         print(hypergraph)
+        # if num_relations == num_representatives:
+        #     level = level.merge()
+        semijoin_program.append(level)
+        print(semijoin_program)
+        last_level = level
     print(f"semijoin_program before merge: \n{semijoin_program}")
-    merged_semijoin_program = semijoin_program.merge()
-    print(f"merged_semijoin_program: \n{merged_semijoin_program}")
+    # merged_semijoin_program = semijoin_program.merge()
+    # print(f"merged_semijoin_program: \n{merged_semijoin_program}")
     # todo: implement the special optimization logic (idea2 in google doc) using score
     #  the idea is to first merge semijoins in semijoin_program whenever a pair of semijoins
     #  shares the same parent. Then, we update the score by the sum of filters size (note
     #  this is not what we have in idea2 but we stick with this for now). Then, we sort the
     #  semijoins in after-merged semijoin program by score in non-decreasing order.
-    return merged_semijoin_program
+    # return merged_semijoin_program
+    return semijoin_program
 
-def generate_main_block(merged_semijoin_program: MergedSemiJoinProgram, output_file_path) -> str:
+def generate_main_block(merged_semijoin_program, output_file_path) -> str:
     with open(output_file_path, "r") as f:
         query_data = json.load(f)
     def find_right_values(node):
