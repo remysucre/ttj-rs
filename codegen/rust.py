@@ -859,6 +859,7 @@ def generate_main_block(merged_semijoin_program: MergedSemiJoinProgram, output_f
                         main_block += f"""let {target} = memmem::Finder::new("{raw_val}");"""
                     else:
                         main_block += f"""let {raw_val.lower()} = memmem::Finder::new("{raw_val}");"""
+    main_block += "let start = Instant::now();"
     return main_block
 
 def optimization(sql_query_name, output_file_path) -> None:
@@ -880,7 +881,7 @@ def optimization(sql_query_name, output_file_path) -> None:
         "initialize_relation_block": initialize_relation_block,
         "main_block": main_block,
     }
-    env = Environment(loader=FileSystemLoader("."))
+    env = Environment(loader=FileSystemLoader("templates"))
     template = env.get_template("base.jinja")
     query_implementation = template.render(template_data)
     output_dir = "junk"
