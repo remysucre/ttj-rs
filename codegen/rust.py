@@ -69,6 +69,23 @@ class SemiJoin:
     parent: Relation
     score: int
 
+class SemiJoinProgram:
+    def __init__(self):
+        self.program = []
+
+    def append(self, semi_join: SemiJoin):
+        if semi_join not in self.program:
+            self.program.append(semi_join)
+
+    def __str__(self):
+        if not self.program:
+            return "SemiJoinProgram is empty."
+        
+        output_lines = []
+        for sj in self.program:
+            output_lines.append(f"ear: {sj.ear.alias}, parent: {sj.parent.alias}, score: {sj.score}")
+        return "\n".join(output_lines)
+
 class UnionFind:
     """
     A Union-Find (or Disjoint Set Union) data structure.
@@ -180,6 +197,19 @@ class UnionFind:
         Returns a list of all elements in the Union-Find structure.
         """
         return list(self.parent.keys())
+    
+    def get_set_size(self, item) -> int:
+        """
+        Returns the size of the set containing the given item.
+
+        Args:
+            item: The item whose set size is to be found.
+
+        Returns:
+            The size of the set containing the item.
+        """
+        root = self.find(item)
+        return self.size[root]
 
 def format_expression_to_dict(expression):
     """
@@ -515,14 +545,53 @@ def _initialize_relation_block(output_file_path: str, exclude_relations: typing.
 def decide_join_tree(output_file_path):
     def check_ear_consume(one: Relation, two: Relation, pure: bool) -> typing.Union[Tuple[Relation, Relation], Tuple[None, None]]:
         """
-        check if one of relation is an ear and is consumed by the other.
-        If pure is true, we further check if the ear relation
-        has all of its attributes contained by the other; only if this condition holds, the method returns [ear, parent].
-        Otherwise, returns None.
-        If pure is false, we return [ear, parent] whenever we find an ear and its parent without enforcing the above
-        fully-attribute-contained condition.
+        Check if one relation is an ear and is consumed by the other.
+        
+        If pure is False:
+        - Check if one relation's attributes either appear in itself only (set size 1) or appear in the other relation
+        - Return [ear, parent] if check passes, [None, None] if it fails
+        
+        If pure is True:
+        - Check if one relation has all its attributes appearing in the other relation
+        - Return [ear, parent] where ear is the relation with all attributes in the other, [None, None] otherwise
         """
-        pass
+        def check_one_is_ear(candidate: Relation, other: Relation) -> bool:
+            if pure:
+                # For pure mode: all attributes of candidate must appear in other
+                for attr in candidate.attributes:
+                    appears_in_other = any(
+                        attributes.connected(attr, other_attr) 
+                        for other_attr in other.attributes
+                    )
+                    if not appears_in_other:
+                        return False
+                return True
+            else:
+                # For non-pure mode: attributes either appear in itself only (size 1) or in the other relation
+                for attr in candidate.attributes:
+                    set_size = attributes.get_set_size(attr)
+                    if set_size == 1:
+                        # Attribute appears in itself only
+                        continue
+                    else:
+                        # Check if it appears in the other relation
+                        appears_in_other = any(
+                            attributes.connected(attr, other_attr) 
+                            for other_attr in other.attributes
+                        )
+                        if not appears_in_other:
+                            return False
+                return True
+        
+        # Check if 'one' is an ear consumed by 'two'
+        if check_one_is_ear(one, two):
+            return one, two
+        
+        # Check if 'two' is an ear consumed by 'one'
+        if check_one_is_ear(two, one):
+            return two, one
+        
+        return None, None
 
     attributes = UnionFind()
     hypergraph = UnionFind()
@@ -550,21 +619,23 @@ def decide_join_tree(output_file_path):
         )
         hypergraph.find(relation_obj)
     num_relations = len(query_data.items())
-    print(attributes)
-    print(attributes.num_sets())
-    print(hypergraph)
-    print(hypergraph.num_sets())
-    semijoin_program = []
+    # print(attributes)
+    # print(attributes.num_sets())
+    # print(hypergraph)
+    # print(hypergraph.num_sets())
+    semijoin_program = SemiJoinProgram()
     while hypergraph.num_sets() > 1:
         all_elements = hypergraph.get_all_elements()
         num_elements = len(all_elements)
         for i in range(num_elements):
             for j in range(num_elements):
                 if i != j:
-                    ear, parent = check_ear_consume(all_elements[i], all_elements[j], num_relations == all_elements)
-                    if ear is not None:
+                    ear, parent = check_ear_consume(all_elements[i], all_elements[j], num_relations == num_elements)
+                    if ear is not None and parent is not None:
                         semijoin_program.append(SemiJoin(ear=ear, parent=parent, score=ear.size))
                         hypergraph.union(ear, parent)
+        print(semijoin_program)
+        print(hypergraph)
                         # todo: implement the special optimization logic (idea2 in google doc) using score
                         #  the idea is to first merge semijoins in semijoin_program whenever a pair of semijoins
                         #  shares the same parent. Then, we update the score by the sum of filters size (note
