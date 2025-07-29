@@ -12,6 +12,7 @@ import json
 import os
 import re
 import typing
+from collections import deque
 from dataclasses import dataclass
 from typing import Tuple
 
@@ -108,6 +109,25 @@ class Level:
         # If the relation is not an ear in any semi-join, it's the root.
         return relation
 
+    def merge(self):
+        parent_groups = {}
+        for sj in self.level:
+            if sj.parent not in parent_groups:
+                parent_groups[sj.parent] = []
+            parent_groups[sj.parent].append(sj)
+
+        merged_semijoins = MergedLevel()
+        for parent, semijoins in parent_groups.items():
+            ears = [sj.ear for sj in semijoins]
+            total_score = sum(sj.score for sj in semijoins)
+            merged_semijoins.append(
+                MergedSemiJoin(ears=ears, parent=parent, score=total_score)
+            )
+
+        # Sort by score in non-decreasing order
+        merged_semijoins.level.sort(key=lambda x: x.score)
+        return merged_semijoins
+
     def __str__(self):
         if not self.level:
             return "SemiJoinProgram is empty."
@@ -120,12 +140,53 @@ class Level:
         return "\n".join(output_lines)
 
 
+class MergedLevel:
+    def __init__(self):
+        self.level = []
+
+    def append(self, merged_semi_join: MergedSemiJoin):
+        if merged_semi_join not in self.level:
+            self.level.append(merged_semi_join)
+
+    def __str__(self):
+        if not self.level:
+            return "MergedLevel is empty."
+
+        output_lines = []
+        for sj in self.level:
+            output_lines.append(
+                f"ears: {[ear.alias for ear in sj.ears]}, parent: {sj.parent.alias}, score: {sj.score}"
+            )
+        return "\n".join(output_lines)
+
+    def get_parents(self):
+        return [sj.parent for sj in self.level]
+
+
 class SemiJoinProgram:
     def __init__(self):
         self.program = []
 
-    def append(self, level: Level):
+    def append(self, level: MergedLevel):
         self.program.append(level)
+
+    def has_last_level(self):
+        if len(self.program) > 0:
+            return self.program[-1]
+        else:
+            return None
+
+    def merge_into(self, level):
+        for semi_join in level:
+            # Find the MergedSemiJoin with the same parent alias
+            for merged_level in self.program:
+                for merged_semi_join in merged_level.level:
+                    if merged_semi_join.parent.alias == semi_join.parent.alias:
+                        # Extend the ears with the new semijoin's ear
+                        merged_semi_join.ears.append(semi_join.ear)
+                        # Update the score by adding the new semijoin's score
+                        merged_semi_join.score += semi_join.score
+                        break
 
     def __str__(self):
         if not self.program:
@@ -134,10 +195,7 @@ class SemiJoinProgram:
         output_lines = []
         for i, level in enumerate(self.program):
             output_lines.append(f"level: {i}")
-            for sj in level:
-                output_lines.append(
-                    f"ear: {sj.ear.alias}, parent: {sj.parent.alias}, score: {sj.score}"
-                )
+            output_lines.append(str(level))
         return "\n".join(output_lines)
 
 
@@ -714,42 +772,74 @@ def decide_join_tree(output_file_path):
     num_relations = len(query_data.items())
     semijoin_program = SemiJoinProgram()
     removed_ear = []
-    last_level = None
     while hypergraph.num_sets() > 1:
         level = Level()
+        last_level = semijoin_program.has_last_level()
         if last_level is None:
             last_level = level
-        all_representatives = hypergraph.get_representatives()
-        all_parent_repr = [last_level.get_parent(repr) for repr in all_representatives]
+            all_representatives = hypergraph.get_representatives()
+            all_parent_repr = [
+                last_level.get_parent(repr) for repr in all_representatives
+            ]
+        else:
+            all_parent_repr = last_level.get_parents()
         num_representatives = len(all_parent_repr)
-        for i in range(num_representatives):
-            for j in range(num_representatives):
-                if (
-                    i != j
-                    and all_parent_repr[i] not in removed_ear
-                    and all_parent_repr[j] not in removed_ear
-                ):
-                    print(
-                        f"call check_ear_consume({all_parent_repr[i]}, {all_parent_repr[j]}, {num_relations == num_representatives})"
-                    )
-                    ear, parent = check_ear_consume(
-                        all_parent_repr[i],
-                        all_parent_repr[j],
-                        num_relations == num_representatives,
-                    )
-                    if ear is not None and parent is not None and ear != parent:
+        if num_relations == num_representatives:
+            for i in range(num_representatives):
+                for j in range(num_representatives):
+                    if (
+                        i != j
+                        and all_parent_repr[i] not in removed_ear
+                        and all_parent_repr[j] not in removed_ear
+                    ):
                         print(
-                            f"{ear.alias}, {parent.alias} = check_ear_consume({all_parent_repr[i]}, {all_parent_repr[j]}, {num_relations == num_representatives})"
+                            f"call check_ear_consume({all_parent_repr[i]}, {all_parent_repr[j]}, {num_relations == num_representatives})"
                         )
-                        level.append(SemiJoin(ear=ear, parent=parent, score=ear.size))
-                        hypergraph.union(ear, parent)
-                        removed_ear.append(ear)
+                        ear, parent = check_ear_consume(
+                            all_parent_repr[i],
+                            all_parent_repr[j],
+                            num_relations == num_representatives,
+                        )
+                        if ear is not None and parent is not None and ear != parent:
+                            print(
+                                f"{ear.alias}, {parent.alias} = check_ear_consume({all_parent_repr[i]}, {all_parent_repr[j]}, {num_relations == num_representatives})"
+                            )
+                            level.append(
+                                SemiJoin(ear=ear, parent=parent, score=ear.size)
+                            )
+                            hypergraph.union(ear, parent)
+                            removed_ear.append(ear)
+        else:
+            queue = deque()
+            queue.extend(all_parent_repr)
+            while len(queue) > 0:
+                relation1 = queue.popleft()
+                relation2 = queue.popleft()
+                print(
+                    f"call check_ear_consume({relation1}, {relation2}, {num_relations == num_representatives})"
+                )
+                ear, parent = check_ear_consume(
+                    relation1,
+                    relation2,
+                    num_relations == num_representatives,
+                )
+                if ear is not None and parent is not None and ear != parent:
+                    print(
+                        f"{ear.alias}, {parent.alias} = check_ear_consume({relation1}, {relation2}, {num_relations == num_representatives})"
+                    )
+                    level.append(SemiJoin(ear=ear, parent=parent, score=ear.size))
+                    hypergraph.union(ear, parent)
+                    removed_ear.append(ear)
+                    if len(queue) > 0:
+                        queue.appendleft(parent)
+
         print(level)
         print(hypergraph)
-        semijoin_program.append(level)
-        print(semijoin_program)
-        last_level = level
-    print(f"semijoin_program before merge: \n{semijoin_program}")
+        if semijoin_program.has_last_level() is None:
+            semijoin_program.append(level.merge())
+        else:
+            semijoin_program.merge_into(level)
+    print(f"semijoin_program: \n{semijoin_program}")
     # todo: implement the special optimization logic (idea2 in google doc) using score
     #  the idea is to first merge semijoins in semijoin_program whenever a pair of semijoins
     #  shares the same parent. Then, we update the score by the sum of filters size (note
@@ -758,7 +848,7 @@ def decide_join_tree(output_file_path):
     return semijoin_program
 
 
-def generate_main_block(merged_semijoin_program, output_file_path) -> str:
+def generate_main_block(semijoin_program: SemiJoinProgram, output_file_path) -> str:
     with open(output_file_path, "r") as f:
         query_data = json.load(f)
 
@@ -842,8 +932,8 @@ def optimization(sql_query_name, output_file_path) -> None:
     """
     Generate query implementation based on base.jinja
     """
-    merged_semijoin_program = decide_join_tree(output_file_path)
-    main_block = generate_main_block(merged_semijoin_program, output_file_path)
+    semijoin_program = decide_join_tree(output_file_path)
+    main_block = generate_main_block(semijoin_program, output_file_path)
     result_output, expected_result_set = _result_output_and_expected_result_set(
         sql_query_name
     )
