@@ -77,6 +77,19 @@ class SemiJoinProgram:
         if semi_join not in self.program:
             self.program.append(semi_join)
 
+
+    def get_parent(self, relation: Relation) -> Relation:
+        """
+        Find the parent of the given semi_join
+        """
+        for sj in self.program:
+            if sj.ear == relation:
+                # Found a semi-join where the given relation is the ear.
+                # Return the parent from that semi-join.
+                return sj.parent
+        # If the relation is not an ear in any semi-join, it's the root.
+        return relation
+
     def __str__(self):
         if not self.program:
             return "SemiJoinProgram is empty."
@@ -210,6 +223,15 @@ class UnionFind:
         """
         root = self.find(item)
         return self.size[root]
+    
+    def get_representatives(self) -> typing.List:
+        """
+        Returns a list of the representatives (roots) of all sets.
+        """
+        if not self.parent:
+            return []
+        
+        return list({self.find(item) for item in self.parent})
 
 def format_expression_to_dict(expression):
     """
@@ -605,7 +627,8 @@ def decide_join_tree(output_file_path):
         relation_attributes = []
         for join_cond in info.get("join_cond", []):
             local_attr = Attribute(attr=join_cond["local_column"], alias=alias)
-            relation_attributes.append(local_attr)
+            if local_attr not in relation_attributes:
+                relation_attributes.append(local_attr)
             foreign_table_info = join_cond["foreign_table"]
             foreign_attr = Attribute(
                 attr=foreign_table_info["column"], alias=foreign_table_info["alias"]
@@ -625,13 +648,15 @@ def decide_join_tree(output_file_path):
     # print(hypergraph.num_sets())
     semijoin_program = SemiJoinProgram()
     while hypergraph.num_sets() > 1:
-        all_elements = hypergraph.get_all_elements()
-        num_elements = len(all_elements)
-        for i in range(num_elements):
-            for j in range(num_elements):
+        all_representatives = hypergraph.get_representatives()
+        all_parent_repr = [semijoin_program.get_parent(repr) for repr in all_representatives]
+        num_representatives = len(all_parent_repr)
+        for i in range(num_representatives):
+            for j in range(num_representatives):
                 if i != j:
-                    ear, parent = check_ear_consume(all_elements[i], all_elements[j], num_relations == num_elements)
-                    if ear is not None and parent is not None:
+                    ear, parent = check_ear_consume(all_parent_repr[i], all_parent_repr[j], num_relations == num_representatives)
+                    print(f"{ear}, {parent} = check_ear_consume({all_parent_repr[i]}, {all_parent_repr[j]}, {num_relations == num_representatives})")
+                    if ear is not None and parent is not None and ear != parent:
                         semijoin_program.append(SemiJoin(ear=ear, parent=parent, score=ear.size))
                         hypergraph.union(ear, parent)
         print(semijoin_program)
