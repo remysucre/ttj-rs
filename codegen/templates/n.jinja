@@ -1,0 +1,6 @@
+let n_s: HashSet<i32> = n
+    .column("id")?
+    .i32()?
+    .into_iter()
+    .flatten()
+    .collect();
