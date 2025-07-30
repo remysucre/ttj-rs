@@ -143,6 +143,9 @@ class MergedLevel:
     def __init__(self):
         self.level = []
 
+    def __iter__(self):
+        return iter(self.level)
+
     def append(self, merged_semi_join: MergedSemiJoin):
         if merged_semi_join not in self.level:
             self.level.append(merged_semi_join)
@@ -196,6 +199,19 @@ class SemiJoinProgram:
             output_lines.append(f"level: {i}")
             output_lines.append(str(level))
         return "\n".join(output_lines)
+
+    def get_generation_order(self):
+        assert len(self.program) == 1
+        level = self.program[0]
+        orders = []
+        alias_sj = dict()
+        for sj in level:
+            alias_sj[sj.parent.alias] = sj
+            for ear in sj.ears:
+                if ear.alias not in orders:
+                    orders.append(ear.alias)
+            orders.append(sj.parent.alias)
+        return orders, alias_sj
 
 
 class UnionFind:
@@ -855,7 +871,12 @@ def generate_main_block(semijoin_program: SemiJoinProgram, output_file_path) -> 
     finders = []
     meat_statements = []
     main_block = ""
-    for alias, item in query_data.items():
+
+    orders, alias_sj = semijoin_program.get_generation_order()
+    print(f"orders: {orders}")
+    print(f"alias_sj: {alias_sj}")
+    for alias in orders:
+        item = query_data[alias]
         if item["filters"] is not None:
             print(item["filters"])
             if "cct" in alias:
@@ -955,6 +976,13 @@ def generate_main_block(semijoin_program: SemiJoinProgram, output_file_path) -> 
                     # Generate template for chn
                     chn_template = env.get_template("chn.jinja")
                     meat_statements.append(chn_template.render(filter_data))
+            elif "kt" in alias:
+                kt_template = env.get_template("kt.jinja")
+                assert isinstance(item["filters"]["left"], str)
+                assert "kind" in item["filters"]["left"]
+                assert item["filters"]["operator"] == "EQ"
+                data = {"string_filter": item["filters"]["right"].strip("'")}
+                meat_statements.append(kt_template.render(data))
                     
     main_block += '\n'.join(finders)
     main_block += '\n'.join(meat_statements)
