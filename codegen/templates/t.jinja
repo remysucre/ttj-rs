@@ -1,0 +1,21 @@
+{% if t_m %}
+let t_m: HashMap<i32, &str> =
+    t.id.iter()
+        {% if title_appears %}
+        .zip(t.title.iter())
+        {% endif %}
+        {% if production_year_appears %}
+        .zip(t.production_year.iter())
+        {% endif %}
+        {% if kind_id_appears %}
+        .zip(t.kind_id.iter())
+        {% endif %}
+        .filter_map(|{{ filter_map_closure|replace("'","")}}| {
+            {% if production_year_appears %}
+            production_year
+                .filter(|&year| year > {{ production_year }} && {{ join_conditions }})
+                .map(|_| (*id, title.as_str()))
+            {% endif %}
+        })
+        .collect();
+{% endif %}

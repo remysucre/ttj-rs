@@ -14,6 +14,7 @@ import re
 import typing
 from collections import deque
 from dataclasses import dataclass
+from functools import reduce
 from typing import Tuple
 
 import sqlglot
@@ -911,6 +912,8 @@ def generate_main_block(semijoin_program: SemiJoinProgram, output_file_path) -> 
     orders, alias_sj = semijoin_program.get_generation_order()
     print(f"orders: {orders}")
     print(f"alias_sj: {alias_sj}")
+    alias_variable = dict()
+    join_conds = []
     for alias in orders:
         item = query_data[alias]
         if item["filters"] is not None:
@@ -937,20 +940,15 @@ def generate_main_block(semijoin_program: SemiJoinProgram, output_file_path) -> 
                     stack = []
                     # Push the root filter onto the stack
                     stack.append(filter_dict)
-                    
                     conditions = []
                     finder_names = []
-                    
                     while stack:
                         current = stack.pop()
-                        
                         if isinstance(current, dict):
                             operator = current.get('operator')
-                            
                             if operator == 'LIKE':
                                 left = current.get('left')
                                 right = current.get('right')
-                                
                                 if left and right and isinstance(right, str):
                                     # Extract the value from quotes and %
                                     value = right.strip("'").strip('%')
@@ -962,7 +960,6 @@ def generate_main_block(semijoin_program: SemiJoinProgram, output_file_path) -> 
                                             'finder': finder_name,
                                             'value': value
                                         })
-                            
                             elif operator == 'NOT':
                                 # Handle NOT operator
                                 left = current.get('left')
@@ -980,23 +977,19 @@ def generate_main_block(semijoin_program: SemiJoinProgram, output_file_path) -> 
                                                     'finder': finder_name,
                                                     'value': value
                                                 })
-                            
                             elif operator in ['AND', 'OR']:
                                 # Push left and right operands onto stack for further processing
                                 left = current.get('left')
                                 right = current.get('right')
-                                
                                 # Store the operator type for later use in template
                                 conditions.append({
                                     'type': 'operator',
                                     'operator': operator.lower()
                                 })
-                                
                                 if right:
                                     stack.append(right)
                                 if left:
                                     stack.append(left)
-                    
                     return {
                         'conditions': conditions,
                         'finder_names': finder_names,
@@ -1008,7 +1001,6 @@ def generate_main_block(semijoin_program: SemiJoinProgram, output_file_path) -> 
                     # Add finders for this alias
                     for finder_name in filter_data['finder_names']:
                         finders.append(f"""let {finder_name} = memmem::Finder::new("{filter_data['finder_names'][0].replace('_', ' ').title()}");""")
-                    
                     # Generate template for chn
                     chn_template = env.get_template("chn.jinja")
                     meat_statements.append(chn_template.render(filter_data))
@@ -1019,6 +1011,27 @@ def generate_main_block(semijoin_program: SemiJoinProgram, output_file_path) -> 
                 assert item["filters"]["operator"] == "EQ"
                 data = {"string_filter": item["filters"]["right"].strip("'")}
                 meat_statements.append(kt_template.render(data))
+                alias_variable[alias] = "kt_id"
+            elif "t" in alias:
+                filter_map_closure = []
+                filter_map_closure.append("id")
+                t_template = env.get_template("t.jinja")
+                assert isinstance(item["filters"]["left"], str)
+                data = dict()
+                data["t_m"] = True
+                if "production_year" in item["filters"]["left"]:
+                    filter_map_closure.append("production_year")
+                    data["production_year_appears"] = True
+                    data["production_year"] = int(item["filters"]["right"])
+                data["filter_map_closure"] = reduce(lambda accumulator, item: (accumulator, item), filter_map_closure)
+                print(f"filter_map_closure: {data['filter_map_closure']}")
+                merged_sj : MergedSemiJoin = alias_sj[alias]
+                for ear in merged_sj.ears:
+                    for join_cond in item["join_cond"]:
+                        if join_cond["foreign_table"]["alias"] == ear.alias:
+                            join_conds.append(f"{join_cond['local_column']} = {alias_variable[join_cond['foreign_table']['alias']]}")
+                data["join_conditions"] = "&&".join(join_conds)
+                meat_statements.append(t_template.render(data))
                     
     main_block += '\n'.join(finders)
     main_block += '\n'.join(meat_statements)

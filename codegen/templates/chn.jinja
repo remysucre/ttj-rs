@@ -1,0 +1,12 @@
+let chn_s : HashSet<i32> = chn
+    .name
+    .iter()
+    .zip(chn.id.iter())
+    .filter_map(|(name, id)| {
+        (sherlock.find(name.as_bytes()).is_none()
+            && ((iron.find(name.as_bytes()).is_some() && man.find(name.as_bytes()).is_some())
+                || (tony.find(name.as_bytes()).is_some()
+                    && stark.find(name.as_bytes()).is_some())))
+        .then_some(id)
+    })
+    .collect();
