@@ -1,0 +1,7 @@
+let kt_id = kt
+    .kind
+    .iter()
+    .zip(kt.id.iter())
+    .find(|(kind, _)| *kind == "{{ string_filter }}")
+    .map(|(_, id)| id)
+    .unwrap();
