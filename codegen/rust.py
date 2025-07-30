@@ -943,7 +943,7 @@ def generate_main_block(semijoin_program: SemiJoinProgram, output_file_path) -> 
                 if foreign_table_alias == ear.alias:
                     if alias_variable[foreign_table_alias].type == Type.numeric:
                         join_conds.append(
-                            f"{join_cond['local_column']} = {alias_variable[foreign_table_alias].name}"
+                            f"{join_cond['local_column']} == {alias_variable[foreign_table_alias].name}"
                         )
                     elif alias_variable[foreign_table_alias].type == Type.set:
                         join_conds.append(
