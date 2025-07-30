@@ -1039,6 +1039,9 @@ def generate_main_block(semijoin_program: SemiJoinProgram, output_file_path) -> 
         elif operator == "AND":
             return [f"({left_expr[0]} && {right_expr[0]})"]
 
+        elif operator == "IN":
+            return [ele.strip("'") for ele in right_expr[0]]
+
     with open(output_file_path, "r") as f:
         query_data = json.load(f)
 
@@ -1134,6 +1137,12 @@ def generate_main_block(semijoin_program: SemiJoinProgram, output_file_path) -> 
                 data["join_conditions"] = form_join_conds(alias_sj[alias])
                 meat_statements.append(ci_template.render(data))
                 alias_variable[alias] = Variable(name=alias, type=Type.set)
+        elif "k" in alias:
+            k_template = env.get_template("k.jinja")
+            data = dict()
+            data["target_keywords"] = process_filters(item["filters"])
+            meat_statements.append(k_template.render(data))
+            alias_variable[alias] = Variable(name=alias, type=Type.set)
 
     main_block += "\n".join(finders)
     main_block += "\n".join(meat_statements)
