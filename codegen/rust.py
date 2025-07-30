@@ -77,18 +77,22 @@ class SemiJoin:
     parent: Relation
     score: int
 
+
 class Type(Enum):
     numeric = 1
     set = 2
     map = 3
+
 
 @dataclass
 class Variable:
     """
     Variable used in query implementation
     """
+
     name: str
     type: Type
+
 
 @dataclass
 class MergedSemiJoin:
@@ -397,7 +401,7 @@ def format_expression_to_dict(expression):
         }
     elif isinstance(expression, exp.Column):
         # For column expressions, return just the column name without the table alias
-        if hasattr(expression.this, 'this'):
+        if hasattr(expression.this, "this"):
             return expression.this.this
         else:
             return expression.this
@@ -931,7 +935,7 @@ def decide_join_tree(output_file_path):
 
 
 def generate_main_block(semijoin_program: SemiJoinProgram, output_file_path) -> str:
-    def form_join_conds(merged_sj : MergedSemiJoin):
+    def form_join_conds(merged_sj: MergedSemiJoin):
         join_conds = []
         for ear in merged_sj.ears:
             for join_cond in item["join_cond"]:
@@ -974,30 +978,11 @@ def generate_main_block(semijoin_program: SemiJoinProgram, output_file_path) -> 
         if operator == "LIKE":
             search_terms = []
             for term in right_expr:
-                if isinstance(term, str) and term.startswith("'") and term.endswith("'"):
-                    clean_term = term.strip("'").strip("%")
-                    if clean_term and '%' not in clean_term:
-                        search_terms.append(clean_term)
-                    elif "%" in clean_term:
-                        search_terms.extend(clean_term.split("%"))
-
-            conditions = []
-            for term in search_terms:
-                finders.append(
-                    f"""let {term.lower().replace(' ', '_').replace('-', '_')} = memmem::Finder::new("{term}");""")
-                conditions.append(
-                    f"{term.lower().replace(' ', '_').replace('-', '_')}.find({left_expr[0]}.as_bytes()).is_some()")
-
-            if conditions:
-                if len(conditions) == 1:
-                    return [conditions[0]]
-                return ['(' + "&&".join(conditions) + ')']
-            return ['true']
-
-        elif operator == "NOT LIKE":
-            search_terms = []
-            for term in right_expr:
-                if isinstance(term, str) and term.startswith("'") and term.endswith("'"):
+                if (
+                    isinstance(term, str)
+                    and term.startswith("'")
+                    and term.endswith("'")
+                ):
                     clean_term = term.strip("'").strip("%")
                     if clean_term and "%" not in clean_term:
                         search_terms.append(clean_term)
@@ -1007,15 +992,46 @@ def generate_main_block(semijoin_program: SemiJoinProgram, output_file_path) -> 
             conditions = []
             for term in search_terms:
                 finders.append(
-                    f"""let {term.lower().replace(' ', '_').replace('-', '_')} = memmem::Finder::new("{term}");""")
+                    f"""let {term.lower().replace(" ", "_").replace("-", "_")} = memmem::Finder::new("{term}");"""
+                )
                 conditions.append(
-                    f"{term.lower().replace(' ', '_').replace('-', '_')}.find({left_expr[0]}.as_bytes()).is_none()")
+                    f"{term.lower().replace(' ', '_').replace('-', '_')}.find({left_expr[0]}.as_bytes()).is_some()"
+                )
 
             if conditions:
                 if len(conditions) == 1:
                     return [conditions[0]]
-                return ['(' + "||".join(conditions) + ')']
-            return ['true']
+                return ["(" + "&&".join(conditions) + ")"]
+            return ["true"]
+
+        elif operator == "NOT LIKE":
+            search_terms = []
+            for term in right_expr:
+                if (
+                    isinstance(term, str)
+                    and term.startswith("'")
+                    and term.endswith("'")
+                ):
+                    clean_term = term.strip("'").strip("%")
+                    if clean_term and "%" not in clean_term:
+                        search_terms.append(clean_term)
+                    elif "%" in clean_term:
+                        search_terms.extend(clean_term.split("%"))
+
+            conditions = []
+            for term in search_terms:
+                finders.append(
+                    f"""let {term.lower().replace(" ", "_").replace("-", "_")} = memmem::Finder::new("{term}");"""
+                )
+                conditions.append(
+                    f"{term.lower().replace(' ', '_').replace('-', '_')}.find({left_expr[0]}.as_bytes()).is_none()"
+                )
+
+            if conditions:
+                if len(conditions) == 1:
+                    return [conditions[0]]
+                return ["(" + "||".join(conditions) + ")"]
+            return ["true"]
 
         elif operator == "OR":
             return [f"({left_expr[0]} || {right_expr[0]})"]
