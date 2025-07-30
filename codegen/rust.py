@@ -14,6 +14,7 @@ import re
 import typing
 from collections import deque
 from dataclasses import dataclass
+from enum import Enum
 from functools import reduce
 from typing import Tuple
 
@@ -76,6 +77,18 @@ class SemiJoin:
     parent: Relation
     score: int
 
+class Type(Enum):
+    numeric = 1
+    set = 2
+    map = 3
+
+@dataclass
+class Variable:
+    """
+    Variable used in query implementation
+    """
+    name: str
+    type: Type
 
 @dataclass
 class MergedSemiJoin:
@@ -901,6 +914,26 @@ def decide_join_tree(output_file_path):
 
 
 def generate_main_block(semijoin_program: SemiJoinProgram, output_file_path) -> str:
+    def form_join_conds(merged_sj):
+        join_conds = []
+        for ear in merged_sj.ears:
+            for join_cond in item["join_cond"]:
+                foreign_table_alias = join_cond["foreign_table"]["alias"]
+                if foreign_table_alias == ear.alias:
+                    if alias_variable[foreign_table_alias].type == Type.numeric:
+                        join_conds.append(
+                            f"{join_cond['local_column']} = {alias_variable[foreign_table_alias].name}"
+                        )
+                    elif alias_variable[foreign_table_alias].type == Type.set:
+                        join_conds.append(
+                            f"{alias_variable[foreign_table_alias].name}.contains({join_cond['local_column']})"
+                        )
+                    elif alias_variable[foreign_table_alias].type == Type.map:
+                        join_conds.append(
+                            f"{alias_variable[foreign_table_alias].name}.contains_key({join_cond['local_column']})"
+                        )
+        return "&&".join(join_conds)
+
     with open(output_file_path, "r") as f:
         query_data = json.load(f)
 
@@ -913,158 +946,158 @@ def generate_main_block(semijoin_program: SemiJoinProgram, output_file_path) -> 
     print(f"orders: {orders}")
     print(f"alias_sj: {alias_sj}")
     alias_variable = dict()
-    join_conds = []
     for alias in orders:
         item = query_data[alias]
-        if item["filters"] is not None:
-            print(item["filters"])
-            if "cct" in alias:
-                cct_template = env.get_template("cct.jinja")
-                assert isinstance(item["filters"]["left"], str)
-                assert "kind" in item["filters"]["left"]
-                if item["filters"]["operator"] == "EQ":
-                    data = {
-                        "cct_eq": True,
-                        "alias": alias,
-                        "string_filter": item["filters"]["right"].strip("'"),
-                    }
-                    meat_statements.append(cct_template.render(data))
-                elif item["filters"]["operator"] == "LIKE":
-                    assert isinstance(item["filters"]["right"], str)
-                    finder_name = item["filters"]["right"].strip("'").strip("%")
-                    assert "%" not in finder_name
-                    finders.append(
-                        f"""let {finder_name.lower()} = memmem::Finder::new("{finder_name}");"""
-                    )
-                    data = {
-                        "cct_like": True,
-                        "alias": alias,
-                        "finder": finder_name.lower(),
-                    }
-                    meat_statements.append(cct_template.render(data))
-            elif "chn" in alias:
-
-                def process_filter_with_stack(filter_dict, alias):
-                    """Process filter structure using stack and generate template data"""
-                    if not filter_dict:
-                        return None
-                    stack = []
-                    # Push the root filter onto the stack
-                    stack.append(filter_dict)
-                    conditions = []
-                    finder_names = []
-                    while stack:
-                        current = stack.pop()
-                        if isinstance(current, dict):
-                            operator = current.get("operator")
-                            if operator == "LIKE":
-                                left = current.get("left")
-                                right = current.get("right")
-                                if left and right and isinstance(right, str):
-                                    # Extract the value from quotes and %
-                                    value = right.strip("'").strip("%")
-                                    if (
-                                        "%" not in value
-                                    ):  # Simple case without internal %
-                                        finder_name = (
-                                            value.lower()
-                                            .replace(" ", "_")
-                                            .replace("-", "_")
-                                        )
-                                        finder_names.append(finder_name)
-                                        conditions.append(
-                                            {
-                                                "type": "like",
-                                                "finder": finder_name,
-                                                "value": value,
-                                            }
-                                        )
-                            elif operator == "NOT":
-                                # Handle NOT operator
-                                left = current.get("left")
-                                if left:
-                                    # Process the inner condition and mark it as negated
-                                    if (
-                                        isinstance(left, dict)
-                                        and left.get("operator") == "LIKE"
-                                    ):
-                                        right = left.get("right")
-                                        if right and isinstance(right, str):
-                                            value = right.strip("'").strip("%")
-                                            if "%" not in value:
-                                                finder_name = (
-                                                    value.lower()
-                                                    .replace(" ", "_")
-                                                    .replace("-", "_")
-                                                )
-                                                finder_names.append(finder_name)
-                                                conditions.append(
-                                                    {
-                                                        "type": "not_like",
-                                                        "finder": finder_name,
-                                                        "value": value,
-                                                    }
-                                                )
-                            elif operator in ["AND", "OR"]:
-                                # Push left and right operands onto stack for further processing
-                                left = current.get("left")
-                                right = current.get("right")
-                                # Store the operator type for later use in template
-                                conditions.append(
-                                    {"type": "operator", "operator": operator.lower()}
-                                )
-                                if right:
-                                    stack.append(right)
-                                if left:
-                                    stack.append(left)
-                    return {
-                        "conditions": conditions,
-                        "finder_names": finder_names,
-                        "alias": alias,
-                    }
-
-                filter_data = process_filter_with_stack(item["filters"], alias)
-                if filter_data:
-                    # Add finders for this alias
-                    for finder_name in filter_data["finder_names"]:
-                        finders.append(
-                            f"""let {finder_name} = memmem::Finder::new("{filter_data["finder_names"][0].replace("_", " ").title()}");"""
-                        )
-                    # Generate template for chn
-                    chn_template = env.get_template("chn.jinja")
-                    meat_statements.append(chn_template.render(filter_data))
-            elif "kt" in alias:
-                kt_template = env.get_template("kt.jinja")
-                assert isinstance(item["filters"]["left"], str)
-                assert "kind" in item["filters"]["left"]
-                assert item["filters"]["operator"] == "EQ"
-                data = {"string_filter": item["filters"]["right"].strip("'")}
-                meat_statements.append(kt_template.render(data))
-                alias_variable[alias] = "kt_id"
-            elif "t" in alias:
-                filter_map_closure = []
-                filter_map_closure.append("id")
-                t_template = env.get_template("t.jinja")
-                assert isinstance(item["filters"]["left"], str)
-                data = dict()
-                data["t_m"] = True
-                if "production_year" in item["filters"]["left"]:
-                    filter_map_closure.append("production_year")
-                    data["production_year_appears"] = True
-                    data["production_year"] = int(item["filters"]["right"])
-                data["filter_map_closure"] = reduce(
-                    lambda accumulator, item: (accumulator, item), filter_map_closure
+        print(item["filters"])
+        if "cct" in alias:
+            cct_template = env.get_template("cct.jinja")
+            assert isinstance(item["filters"]["left"], str)
+            assert "kind" in item["filters"]["left"]
+            if item["filters"]["operator"] == "EQ":
+                data = {
+                    "cct_eq": True,
+                    "alias": alias,
+                    "string_filter": item["filters"]["right"].strip("'"),
+                }
+                alias_variable[alias] = Variable(name=alias, type=Type.numeric)
+                meat_statements.append(cct_template.render(data))
+            elif item["filters"]["operator"] == "LIKE":
+                assert isinstance(item["filters"]["right"], str)
+                finder_name = item["filters"]["right"].strip("'").strip("%")
+                assert "%" not in finder_name
+                finders.append(
+                    f"""let {finder_name.lower()} = memmem::Finder::new("{finder_name}");"""
                 )
-                print(f"filter_map_closure: {data['filter_map_closure']}")
-                merged_sj: MergedSemiJoin = alias_sj[alias]
-                for ear in merged_sj.ears:
-                    for join_cond in item["join_cond"]:
-                        if join_cond["foreign_table"]["alias"] == ear.alias:
-                            join_conds.append(
-                                f"{join_cond['local_column']} = {alias_variable[join_cond['foreign_table']['alias']]}"
+                data = {
+                    "cct_like": True,
+                    "alias": alias,
+                    "finder": finder_name.lower(),
+                }
+                alias_variable[alias] = Variable(name=alias, type=Type.set)
+                meat_statements.append(cct_template.render(data))
+        elif "chn" in alias:
+
+            def process_filter_with_stack(filter_dict, alias):
+                """Process filter structure using stack and generate template data"""
+                if not filter_dict:
+                    return None
+                stack = []
+                # Push the root filter onto the stack
+                stack.append(filter_dict)
+                conditions = []
+                finder_names = []
+                while stack:
+                    current = stack.pop()
+                    if isinstance(current, dict):
+                        operator = current.get("operator")
+                        if operator == "LIKE":
+                            left = current.get("left")
+                            right = current.get("right")
+                            if left and right and isinstance(right, str):
+                                # Extract the value from quotes and %
+                                value = right.strip("'").strip("%")
+                                if (
+                                    "%" not in value
+                                ):  # Simple case without internal %
+                                    finder_name = (
+                                        value.lower()
+                                        .replace(" ", "_")
+                                        .replace("-", "_")
+                                    )
+                                    finder_names.append(finder_name)
+                                    conditions.append(
+                                        {
+                                            "type": "like",
+                                            "finder": finder_name,
+                                            "value": value,
+                                        }
+                                    )
+                        elif operator == "NOT":
+                            # Handle NOT operator
+                            left = current.get("left")
+                            if left:
+                                # Process the inner condition and mark it as negated
+                                if (
+                                    isinstance(left, dict)
+                                    and left.get("operator") == "LIKE"
+                                ):
+                                    right = left.get("right")
+                                    if right and isinstance(right, str):
+                                        value = right.strip("'").strip("%")
+                                        if "%" not in value:
+                                            finder_name = (
+                                                value.lower()
+                                                .replace(" ", "_")
+                                                .replace("-", "_")
+                                            )
+                                            finder_names.append(finder_name)
+                                            conditions.append(
+                                                {
+                                                    "type": "not_like",
+                                                    "finder": finder_name,
+                                                    "value": value,
+                                                }
+                                            )
+                        elif operator in ["AND", "OR"]:
+                            # Push left and right operands onto stack for further processing
+                            left = current.get("left")
+                            right = current.get("right")
+                            # Store the operator type for later use in template
+                            conditions.append(
+                                {"type": "operator", "operator": operator.lower()}
                             )
-                data["join_conditions"] = "&&".join(join_conds)
-                meat_statements.append(t_template.render(data))
+                            if right:
+                                stack.append(right)
+                            if left:
+                                stack.append(left)
+                return {
+                    "conditions": conditions,
+                    "finder_names": finder_names,
+                    "alias": alias,
+                }
+
+            filter_data = process_filter_with_stack(item["filters"], alias)
+            if filter_data:
+                # Add finders for this alias
+                for finder_name in filter_data["finder_names"]:
+                    finders.append(
+                        f"""let {finder_name} = memmem::Finder::new("{filter_data["finder_names"][0].replace("_", " ").title()}");"""
+                    )
+                # Generate template for chn
+                chn_template = env.get_template("chn.jinja")
+                meat_statements.append(chn_template.render(filter_data))
+        elif "kt" in alias:
+            kt_template = env.get_template("kt.jinja")
+            assert isinstance(item["filters"]["left"], str)
+            assert "kind" in item["filters"]["left"]
+            assert item["filters"]["operator"] == "EQ"
+            data = {"string_filter": item["filters"]["right"].strip("'")}
+            meat_statements.append(kt_template.render(data))
+            alias_variable[alias] = Variable(name="kt_id", type=Type.numeric)
+        elif "t" in alias:
+            filter_map_closure = []
+            filter_map_closure.append("id")
+            t_template = env.get_template("t.jinja")
+            assert isinstance(item["filters"]["left"], str)
+            data = dict()
+            data["t_m"] = True
+            if "production_year" in item["filters"]["left"]:
+                filter_map_closure.append("production_year")
+                data["production_year_appears"] = True
+                data["production_year"] = int(item["filters"]["right"])
+            data["filter_map_closure"] = reduce(
+                lambda accumulator, item: (accumulator, item), filter_map_closure
+            )
+            print(f"filter_map_closure: {data['filter_map_closure']}")
+            data["join_conditions"] = form_join_conds(alias_sj[alias])
+            alias_variable[alias] = Variable(name="t_m", type=Type.map)
+            meat_statements.append(t_template.render(data))
+        elif "cc" in alias:
+            cc_template = env.get_template("cc.jinja")
+            assert item["filters"] is None
+            data = dict()
+            data["join_conditions"] = form_join_conds(alias_sj[alias])
+            meat_statements.append(cc_template.render(data))
 
     main_block += "\n".join(finders)
     main_block += "\n".join(meat_statements)
