@@ -18,7 +18,6 @@ from typing import Tuple
 
 import sqlglot
 from jinja2 import Environment, FileSystemLoader
-from num2words import num2words
 from sqlglot import exp
 
 ALIAS_TO_TABLE = {
@@ -852,79 +851,212 @@ def generate_main_block(semijoin_program: SemiJoinProgram, output_file_path) -> 
     with open(output_file_path, "r") as f:
         query_data = json.load(f)
 
-    def find_right_values(node):
-        # Helper function to recursively find 'right' values in the filter structure
-        values = []
-        if isinstance(node, dict):
-            if "right" in node:
-                # If the right part is a list (like in 'IN' clauses), extend values
-                if isinstance(node["right"], list):
-                    values.extend(find_right_values(item) for item in node["right"])
-                else:
-                    values.extend(find_right_values(node["right"]))
-            if "left" in node:
-                values.extend(find_right_values(node["left"]))
-        elif isinstance(node, str):
-            # This is a leaf node, which could be a value we are looking for
-            # Simple heuristic: if it's quoted, it's likely a literal value.
-            if (
-                (node.startswith("'") and node.endswith("'"))
-                or (node.startswith('"') and node.endswith('"'))
-                or node.isdigit()
-            ):
-                values.append(node)
-        return values
-
-    all_filter_values = {}
-    for alias, info in query_data.items():
-        filters = info.get("filters")
-        if filters:
-            all_filter_values[alias] = find_right_values(filters)
-    print(all_filter_values)
+    env = Environment(loader=FileSystemLoader("templates"))
+    finders = []
+    meat_statements = []
     main_block = ""
-    # At this point, all_filter_values contains the collected 'right' values,
-    # for example: {'t': ["'movie'"], 'mi': ["'rating'"]}
-    for alias, values in all_filter_values.items():
-        if any(isinstance(el, list) for el in values):
-            flat_list = [item[0] for item in values]
-            content = (",").join(['"' + value.strip("'") + '"' for value in flat_list])
-            main_block += f"""let target_keywords: HashSet<&str> = [{content}].into_iter().collect();"""
-        else:
-            for value in values:
-                raw_val = value.strip("'").strip("%")
-                if "%" in raw_val:
-                    extra_vals = raw_val.split("%")
-                    for val in extra_vals:
-                        if val.isnumeric():
-                            target = (
-                                num2words(val)
-                                .lower()
-                                .replace(", ", "_")
-                                .replace(" ", "_")
-                                .replace("-", "_")
-                            )
-                            main_block += (
-                                f"""let {target} = memmem::Finder::new("{val}");"""
-                            )
-                        else:
-                            main_block += (
-                                f"""let {val.lower()} = memmem::Finder::new("{val}");"""
-                            )
-                else:
-                    if raw_val.isnumeric():
-                        target = (
-                            num2words(raw_val)
-                            .lower()
-                            .replace(", ", "_")
-                            .replace(" ", "_")
-                            .replace("-", "_")
-                        )
-                        main_block += (
-                            f"""let {target} = memmem::Finder::new("{raw_val}");"""
-                        )
-                    else:
-                        main_block += f"""let {raw_val.lower()} = memmem::Finder::new("{raw_val}");"""
-    main_block += "let start = Instant::now();"
+    for alias, item in query_data.items():
+        if item["filters"] is not None:
+            print(item["filters"])
+            if "cct" in alias:
+                cct_template = env.get_template("cct.jinja")
+                assert isinstance(item["filters"]["left"], str)
+                assert "kind" in item["filters"]["left"]
+                if item["filters"]["operator"] == "EQ":
+                    data = {"cct_eq": True, "alias" : alias, "string_filter": item["filters"]["right"].strip("'")}
+                    meat_statements.append(cct_template.render(data))
+                elif item["filters"]["operator"] == "LIKE":
+                    assert isinstance(item["filters"]["right"], str)
+                    finder_name = item["filters"]["right"].strip("'").strip('%')
+                    assert '%' not in finder_name
+                    finders.append(f"""let {finder_name.lower()} = memmem::Finder::new("{finder_name}");""")
+                    data = {"cct_like": True, "alias" : alias, "finder": finder_name.lower()}
+                    meat_statements.append(cct_template.render(data))
+            elif "chn" in alias:
+                def process_filter_with_stack(filter_dict, alias):
+                    """Process filter structure using stack and generate template data"""
+                    if not filter_dict:
+                        return None
+                    stack = []
+                    # Push the root filter onto the stack
+                    stack.append(filter_dict)
+                    
+                    conditions = []
+                    finder_names = []
+                    
+                    while stack:
+                        current = stack.pop()
+                        
+                        if isinstance(current, dict):
+                            operator = current.get('operator')
+                            
+                            if operator == 'LIKE':
+                                left = current.get('left')
+                                right = current.get('right')
+                                
+                                if left and right and isinstance(right, str):
+                                    # Extract the value from quotes and %
+                                    value = right.strip("'").strip('%')
+                                    if '%' not in value:  # Simple case without internal %
+                                        finder_name = value.lower().replace(' ', '_').replace('-', '_')
+                                        finder_names.append(finder_name)
+                                        conditions.append({
+                                            'type': 'like',
+                                            'finder': finder_name,
+                                            'value': value
+                                        })
+                            
+                            elif operator == 'NOT':
+                                # Handle NOT operator
+                                left = current.get('left')
+                                if left:
+                                    # Process the inner condition and mark it as negated
+                                    if isinstance(left, dict) and left.get('operator') == 'LIKE':
+                                        right = left.get('right')
+                                        if right and isinstance(right, str):
+                                            value = right.strip("'").strip('%')
+                                            if '%' not in value:
+                                                finder_name = value.lower().replace(' ', '_').replace('-', '_')
+                                                finder_names.append(finder_name)
+                                                conditions.append({
+                                                    'type': 'not_like',
+                                                    'finder': finder_name,
+                                                    'value': value
+                                                })
+                            
+                            elif operator in ['AND', 'OR']:
+                                # Push left and right operands onto stack for further processing
+                                left = current.get('left')
+                                right = current.get('right')
+                                
+                                # Store the operator type for later use in template
+                                conditions.append({
+                                    'type': 'operator',
+                                    'operator': operator.lower()
+                                })
+                                
+                                if right:
+                                    stack.append(right)
+                                if left:
+                                    stack.append(left)
+                    
+                    return {
+                        'conditions': conditions,
+                        'finder_names': finder_names,
+                        'alias': alias
+                    }
+
+                filter_data = process_filter_with_stack(item["filters"], alias)
+                if filter_data:
+                    # Add finders for this alias
+                    for finder_name in filter_data['finder_names']:
+                        finders.append(f"""let {finder_name} = memmem::Finder::new("{filter_data['finder_names'][0].replace('_', ' ').title()}");""")
+                    
+                    # Generate template for chn
+                    chn_template = env.get_template("chn.jinja")
+                    meat_statements.append(chn_template.render(filter_data))
+                    
+    main_block += '\n'.join(finders)
+    main_block += '\n'.join(meat_statements)
+    # def find_right_values(node):
+    #     # Helper function to recursively find 'right' values in the filter structure
+    #     values = []
+    #     if isinstance(node, dict):
+    #         if "right" in node:
+    #             # If the right part is a list (like in 'IN' clauses), extend values
+    #             if isinstance(node["right"], list):
+    #                 values.extend(find_right_values(item) for item in node["right"])
+    #             else:
+    #                 values.extend(find_right_values(node["right"]))
+    #         if "left" in node:
+    #             values.extend(find_right_values(node["left"]))
+    #     elif isinstance(node, str):
+    #         # This is a leaf node, which could be a value we are looking for
+    #         # Simple heuristic: if it's quoted, it's likely a literal value.
+    #         if (
+    #             (node.startswith("'") and node.endswith("'"))
+    #             or (node.startswith('"') and node.endswith('"'))
+    #             or node.isdigit()
+    #         ):
+    #             values.append(node)
+    #     return values
+    #
+    # all_filter_values = {}
+    # for alias, info in query_data.items():
+    #     filters = info.get("filters")
+    #     if filters:
+    #         all_filter_values[alias] = find_right_values(filters)
+    # print(all_filter_values)
+    # alias_filter = dict()
+    # # At this point, all_filter_values contains the collected 'right' values,
+    # # for example: {'t': ["'movie'"], 'mi': ["'rating'"]}
+    # for alias, values in all_filter_values.items():
+    #     if any(isinstance(el, list) for el in values):
+    #         flat_list = [item[0] for item in values]
+    #         content = (",").join(['"' + value.strip("'") + '"' for value in flat_list])
+    #         if alias not in alias_filter:
+    #             alias_filter[alias] = ["target_keyword"]
+    #         else:
+    #             alias_filter[alias].append("target_keyword")
+    #         main_block += f"""let target_keywords: HashSet<&str> = [{content}].into_iter().collect();"""
+    #     else:
+    #         for value in values:
+    #             raw_val = value.strip("'").strip("%")
+    #             if "%" in raw_val:
+    #                 extra_vals = raw_val.split("%")
+    #                 for val in extra_vals:
+    #                     if val.isnumeric():
+    #                         target = (
+    #                             num2words(val)
+    #                             .lower()
+    #                             .replace(", ", "_")
+    #                             .replace(" ", "_")
+    #                             .replace("-", "_")
+    #                         )
+    #                         if alias not in alias_filter:
+    #                             alias_filter[alias] = [target]
+    #                         else:
+    #                             alias_filter[alias].append(target)
+    #                         main_block += (
+    #                             f"""let {target} = memmem::Finder::new("{val}");"""
+    #                         )
+    #                     else:
+    #                         if alias not in alias_filter:
+    #                             alias_filter[alias] = [val.lower()]
+    #                         else:
+    #                             alias_filter[alias].append(val.lower())
+    #                         main_block += (
+    #                             f"""let {val.lower()} = memmem::Finder::new("{val}");"""
+    #                         )
+    #             else:
+    #                 if raw_val.isnumeric():
+    #                     target = (
+    #                         num2words(raw_val)
+    #                         .lower()
+    #                         .replace(", ", "_")
+    #                         .replace(" ", "_")
+    #                         .replace("-", "_")
+    #                     )
+    #                     if alias not in alias_filter:
+    #                         alias_filter[alias] = [target]
+    #                     else:
+    #                         alias_filter[alias].append(target)
+    #                     main_block += (
+    #                         f"""let {target} = memmem::Finder::new("{raw_val}");"""
+    #                     )
+    #                 else:
+    #                     if alias not in alias_filter:
+    #                         alias_filter[alias] = [raw_val.lower()]
+    #                     else:
+    #                         alias_filter[alias].append(raw_val.lower())
+    #                     main_block += f"""let {raw_val.lower()} = memmem::Finder::new("{raw_val}");"""
+    #
+    #
+    # main_block += "let start = Instant::now();"
+    #
+    #
+    #
+    # print(f"alias_filter: {alias_filter}")
     return main_block
 
 
