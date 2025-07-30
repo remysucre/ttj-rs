@@ -1,0 +1,9 @@
+let cc_s: HashSet<i32> = cc
+    .subject_id
+    .iter()
+    .zip(cc.status_id.iter())
+    .zip(cc.movie_id.iter())
+    .filter_map(|((&subject_id, &status_id), &movie_id)| {
+        ({{ join_conditions }}).then_some(*movie_id)
+    })
+    .collect();
