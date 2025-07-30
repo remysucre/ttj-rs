@@ -22,7 +22,7 @@ mod test_{{ query_name }} {
     fn test_{{ query_name }}() -> Result<(), PolarsError> {
         let db = ImdbData::new();
         let data = Data::new(&db);
-        let res = {{ queryName }}(&data)?;
+        let res = {{ query_name }}(&data)?;
         assert_eq!(
             res,
             Some(
