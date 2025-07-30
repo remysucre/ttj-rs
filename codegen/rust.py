@@ -402,6 +402,41 @@ def process_query_and_stats(sql_query, stats_filepath, output_filepath, pks, fks
     tables_in_query = parsed_query.find_all(exp.Table)
     table_details = {table.alias_or_name: table.this.this for table in tables_in_query}
 
+    # Extract aggregation functions from SELECT clause
+    select_clause = parsed_query.find(exp.Select)
+    aggregation_map = {}  # Maps alias to column name for aggregations
+    if select_clause:
+        for expression in select_clause.expressions:
+            # Check if this is an aggregation function (MIN, MAX, COUNT, SUM, AVG)
+            # or an aliased aggregation function
+            actual_expr = expression
+            
+            # If it's an alias, get the underlying expression
+            if isinstance(expression, exp.Alias):
+                actual_expr = expression.this
+            
+            if isinstance(actual_expr, exp.Min):
+                # Extract the column reference
+                column = actual_expr.this
+                if isinstance(column, exp.Column) and column.table:
+                    aggregation_map[column.table] = column.this.this
+            elif isinstance(actual_expr, exp.Max):
+                column = actual_expr.this
+                if isinstance(column, exp.Column) and column.table:
+                    aggregation_map[column.table] = column.this.this
+            elif isinstance(actual_expr, exp.Count):
+                column = actual_expr.this
+                if isinstance(column, exp.Column) and column.table:
+                    aggregation_map[column.table] = column.this.this
+            elif isinstance(actual_expr, exp.Sum):
+                column = actual_expr.this
+                if isinstance(column, exp.Column) and column.table:
+                    aggregation_map[column.table] = column.this.this
+            elif isinstance(actual_expr, exp.Avg):
+                column = actual_expr.this
+                if isinstance(column, exp.Column) and column.table:
+                    aggregation_map[column.table] = column.this.this
+
     # Extract all conditions from the WHERE clause
     where_clause = parsed_query.find(exp.Where)
     all_conditions = []
@@ -419,6 +454,7 @@ def process_query_and_stats(sql_query, stats_filepath, output_filepath, pks, fks
             "size_after_filters": -1,
             "filters": [],
             "join_cond": [],
+            "min_select": aggregation_map.get(alias, None),
         }
 
         # Find the corresponding size from the statistics file using a "longest match" strategy.
