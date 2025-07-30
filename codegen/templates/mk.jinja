@@ -1,0 +1,13 @@
+{% if min_loop %}
+    {% if single_output %}
+    let res = mk
+        .keyword_id
+        .iter()
+        .zip(mk.movie_id.iter())
+        .filter_map(|(keyword_id, movie_id)| {
+                ({{ join_conditions }}).map(|_| {{ output_probe }})
+        })
+        .min()
+        .copied();
+    {% endif %}
+{%  endif %}

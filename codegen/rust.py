@@ -1042,6 +1042,24 @@ def generate_main_block(semijoin_program: SemiJoinProgram, output_file_path) -> 
         elif operator == "IN":
             return [ele.strip("'") for ele in right_expr[0]]
 
+    def get_min_select(query_data, alias_variable, current_alias):
+        conditions = []
+        alias_column = dict()
+        for alias, item in query_data.items():
+            if item["min_select"] is not None:
+                alias_column[alias] = item["min_select"]
+        for alias, column in alias_column.items():
+            variable = alias_variable[alias]
+            assert variable.type == Type.map
+            select_id = ""
+            for cond in query_data[current_alias]["join_cond"]:
+                if cond["foreign_table"]["alias"] == alias:
+                    select_id = cond["local_column"]
+                    break
+            assert select_id != ""
+            conditions.append(f"{variable.name}.get({select_id})")
+        return len(conditions), "&&".join(conditions)
+
     with open(output_file_path, "r") as f:
         query_data = json.load(f)
 
@@ -1054,7 +1072,7 @@ def generate_main_block(semijoin_program: SemiJoinProgram, output_file_path) -> 
     print(f"orders: {orders}")
     print(f"alias_sj: {alias_sj}")
     alias_variable = dict()
-    for alias in orders:
+    for idx, alias in enumerate(orders):
         item = query_data[alias]
         print(item["filters"])
         if "cct" in alias:
@@ -1137,114 +1155,27 @@ def generate_main_block(semijoin_program: SemiJoinProgram, output_file_path) -> 
                 data["join_conditions"] = form_join_conds(alias_sj[alias])
                 meat_statements.append(ci_template.render(data))
                 alias_variable[alias] = Variable(name=alias, type=Type.set)
-        elif "k" in alias:
+        elif "k" in alias and "mk" not in alias and "kt" not in alias:
             k_template = env.get_template("k.jinja")
             data = dict()
             data["target_keywords"] = process_filters(item["filters"])
             meat_statements.append(k_template.render(data))
             alias_variable[alias] = Variable(name=alias, type=Type.set)
+        elif "mk" in alias:
+            mk_template = env.get_template("mk.jinja")
+            data = dict()
+            if idx == len(orders) - 1:
+                data["min_loop"] = True
+                num_output_probe, output_probe = get_min_select(query_data, alias_variable, alias)
+                if num_output_probe == 1:
+                    data["single_output"] = True
+                    data["output_probe"] = output_probe
+            meat_statements.append(mk_template.render(data))
+            alias_variable[alias] = Variable(name=alias, type=Type.set)
 
     main_block += "\n".join(finders)
+    main_block += "let start = Instant::now();"
     main_block += "\n".join(meat_statements)
-    # def find_right_values(node):
-    #     # Helper function to recursively find 'right' values in the filter structure
-    #     values = []
-    #     if isinstance(node, dict):
-    #         if "right" in node:
-    #             # If the right part is a list (like in 'IN' clauses), extend values
-    #             if isinstance(node["right"], list):
-    #                 values.extend(find_right_values(item) for item in node["right"])
-    #             else:
-    #                 values.extend(find_right_values(node["right"]))
-    #         if "left" in node:
-    #             values.extend(find_right_values(node["left"]))
-    #     elif isinstance(node, str):
-    #         # This is a leaf node, which could be a value we are looking for
-    #         # Simple heuristic: if it's quoted, it's likely a literal value.
-    #         if (
-    #             (node.startswith("'") and node.endswith("'"))
-    #             or (node.startswith('"') and node.endswith('"'))
-    #             or node.isdigit()
-    #         ):
-    #             values.append(node)
-    #     return values
-    #
-    # all_filter_values = {}
-    # for alias, info in query_data.items():
-    #     filters = info.get("filters")
-    #     if filters:
-    #         all_filter_values[alias] = find_right_values(filters)
-    # print(all_filter_values)
-    # alias_filter = dict()
-    # # At this point, all_filter_values contains the collected 'right' values,
-    # # for example: {'t': ["'movie'"], 'mi': ["'rating'"]}
-    # for alias, values in all_filter_values.items():
-    #     if any(isinstance(el, list) for el in values):
-    #         flat_list = [item[0] for item in values]
-    #         content = (",").join(['"' + value.strip("'") + '"' for value in flat_list])
-    #         if alias not in alias_filter:
-    #             alias_filter[alias] = ["target_keyword"]
-    #         else:
-    #             alias_filter[alias].append("target_keyword")
-    #         main_block += f"""let target_keywords: HashSet<&str> = [{content}].into_iter().collect();"""
-    #     else:
-    #         for value in values:
-    #             raw_val = value.strip("'").strip("%")
-    #             if "%" in raw_val:
-    #                 extra_vals = raw_val.split("%")
-    #                 for val in extra_vals:
-    #                     if val.isnumeric():
-    #                         target = (
-    #                             num2words(val)
-    #                             .lower()
-    #                             .replace(", ", "_")
-    #                             .replace(" ", "_")
-    #                             .replace("-", "_")
-    #                         )
-    #                         if alias not in alias_filter:
-    #                             alias_filter[alias] = [target]
-    #                         else:
-    #                             alias_filter[alias].append(target)
-    #                         main_block += (
-    #                             f"""let {target} = memmem::Finder::new("{val}");"""
-    #                         )
-    #                     else:
-    #                         if alias not in alias_filter:
-    #                             alias_filter[alias] = [val.lower()]
-    #                         else:
-    #                             alias_filter[alias].append(val.lower())
-    #                         main_block += (
-    #                             f"""let {val.lower()} = memmem::Finder::new("{val}");"""
-    #                         )
-    #             else:
-    #                 if raw_val.isnumeric():
-    #                     target = (
-    #                         num2words(raw_val)
-    #                         .lower()
-    #                         .replace(", ", "_")
-    #                         .replace(" ", "_")
-    #                         .replace("-", "_")
-    #                     )
-    #                     if alias not in alias_filter:
-    #                         alias_filter[alias] = [target]
-    #                     else:
-    #                         alias_filter[alias].append(target)
-    #                     main_block += (
-    #                         f"""let {target} = memmem::Finder::new("{raw_val}");"""
-    #                     )
-    #                 else:
-    #                     if alias not in alias_filter:
-    #                         alias_filter[alias] = [raw_val.lower()]
-    #                     else:
-    #                         alias_filter[alias].append(raw_val.lower())
-    #                     main_block += f"""let {raw_val.lower()} = memmem::Finder::new("{raw_val}");"""
-    #
-    #
-    # main_block += "let start = Instant::now();"
-    #
-    #
-    #
-    # print(f"alias_filter: {alias_filter}")
     return main_block
 
 
