@@ -1,0 +1,19 @@
+{% if cct_eq %}
+let mut {{ alias }}_id: i32 = 0;
+
+for (id, kind) in cct.id.iter().zip(cct.kind.iter()) {
+    if kind == "{{ string_filter }}" {
+        cct1_id = *id;
+        break;
+    }
+}
+{% endif %}
+{% if cct_like %}
+let mut {{ alias }}_s = HashSet::default();
+
+for (id, kind) in cct.id.iter().zip(cct.kind.iter()) {
+    if {{ finder }}.find(kind.as_bytes()).is_some() {
+        {{ alias }}_s.insert(*id);
+    }
+}
+{% endif %}
