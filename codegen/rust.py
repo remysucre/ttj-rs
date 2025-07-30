@@ -951,6 +951,78 @@ def generate_main_block(semijoin_program: SemiJoinProgram, output_file_path) -> 
                         )
         return "&&".join(join_conds)
 
+    def process_filters(filter_dict):
+        if not isinstance(filter_dict, dict):
+            # Base case: it's a string value
+            return [filter_dict]
+
+        operator = filter_dict["operator"]
+        left = filter_dict["left"]
+        right = filter_dict["right"]
+
+        # Process left and right operands
+        if isinstance(left, dict):
+            left_expr = process_filters(left)
+        else:
+            left_expr = [left]
+
+        if isinstance(right, dict):
+            right_expr = process_filters(right)
+        else:
+            right_expr = [right]
+
+        if operator == "LIKE":
+            search_terms = []
+            for term in right_expr:
+                if isinstance(term, str) and term.startswith("'") and term.endswith("'"):
+                    clean_term = term.strip("'").strip("%")
+                    if clean_term and '%' not in clean_term:
+                        search_terms.append(clean_term)
+                    elif "%" in clean_term:
+                        search_terms.extend(clean_term.split("%"))
+
+            conditions = []
+            for term in search_terms:
+                finders.append(
+                    f"""let {term.lower().replace(' ', '_').replace('-', '_')} = memmem::Finder::new("{term}");""")
+                conditions.append(
+                    f"{term.lower().replace(' ', '_').replace('-', '_')}.find({left_expr[0]}.as_bytes()).is_some()")
+
+            if conditions:
+                if len(conditions) == 1:
+                    return [conditions[0]]
+                return ['(' + "&&".join(conditions) + ')']
+            return ['true']
+
+        elif operator == "NOT LIKE":
+            search_terms = []
+            for term in right_expr:
+                if isinstance(term, str) and term.startswith("'") and term.endswith("'"):
+                    clean_term = term.strip("'").strip("%")
+                    if clean_term and "%" not in clean_term:
+                        search_terms.append(clean_term)
+                    elif "%" in clean_term:
+                        search_terms.extend(clean_term.split("%"))
+
+            conditions = []
+            for term in search_terms:
+                finders.append(
+                    f"""let {term.lower().replace(' ', '_').replace('-', '_')} = memmem::Finder::new("{term}");""")
+                conditions.append(
+                    f"{term.lower().replace(' ', '_').replace('-', '_')}.find({left_expr[0]}.as_bytes()).is_none()")
+
+            if conditions:
+                if len(conditions) == 1:
+                    return [conditions[0]]
+                return ['(' + "||".join(conditions) + ')']
+            return ['true']
+
+        elif operator == "OR":
+            return [f"({left_expr[0]} || {right_expr[0]})"]
+
+        elif operator == "AND":
+            return [f"({left_expr[0]} && {right_expr[0]})"]
+
     with open(output_file_path, "r") as f:
         query_data = json.load(f)
 
@@ -993,78 +1065,6 @@ def generate_main_block(semijoin_program: SemiJoinProgram, output_file_path) -> 
                 alias_variable[alias] = Variable(name=alias, type=Type.set)
                 meat_statements.append(cct_template.render(data))
         elif "chn" in alias:
-            def process_filters(filter_dict):
-                if not isinstance(filter_dict, dict):
-                    # Base case: it's a string value
-                    return [filter_dict]
-
-                operator = filter_dict["operator"]
-                left = filter_dict["left"]
-                right = filter_dict["right"]
-
-                # Process left and right operands
-                if isinstance(left, dict):
-                    left_expr = process_filters(left)
-                else:
-                    left_expr = [left]
-
-                if isinstance(right, dict):
-                    right_expr = process_filters(right)
-                else:
-                    right_expr = [right]
-
-                if operator == "LIKE":
-                    search_terms = []
-                    for term in right_expr:
-                        if isinstance(term, str) and term.startswith("'") and term.endswith("'"):
-                            clean_term = term.strip("'").strip("%")
-                            if clean_term and '%' not in clean_term:
-                                search_terms.append(clean_term)
-                            elif "%" in clean_term:
-                                search_terms.extend(clean_term.split("%"))
-
-                    conditions = []
-                    for term in search_terms:
-                        finders.append(
-                            f"""let {term.lower().replace(' ', '_').replace('-', '_')} = memmem::Finder::new("{term}");""")
-                        conditions.append(
-                            f"{term.lower().replace(' ', '_').replace('-', '_')}.find({left_expr[0]}.as_bytes()).is_some()")
-
-                    if conditions:
-                        if len(conditions) == 1:
-                            return [conditions[0]]
-                        return ['(' + "&&".join(conditions) + ')']
-                    return ['true']
-
-                elif operator == "NOT LIKE":
-                    search_terms = []
-                    for term in right_expr:
-                        if isinstance(term, str) and term.startswith("'") and term.endswith("'"):
-                            clean_term = term.strip("'").strip("%")
-                            if clean_term and "%" not in clean_term:
-                                search_terms.append(clean_term)
-                            elif "%" in clean_term:
-                                search_terms.extend(clean_term.split("%"))
-
-                    conditions = []
-                    for term in search_terms:
-                        finders.append(
-                            f"""let {term.lower().replace(' ', '_').replace('-', '_')} = memmem::Finder::new("{term}");""")
-                        conditions.append(
-                            f"{term.lower().replace(' ', '_').replace('-', '_')}.find({left_expr[0]}.as_bytes()).is_none()")
-
-                    if conditions:
-                        if len(conditions) == 1:
-                            return [conditions[0]]
-                        return ['(' + "||".join(conditions) + ')']
-                    return ['true']
-
-                elif operator == "OR":
-                    return [f"({left_expr[0]} || {right_expr[0]})"]
-
-                elif operator == "AND":
-                    return [f"({left_expr[0]} && {right_expr[0]})"]
-
             filter_data = process_filters(item["filters"])
             print(f"filter_data: {filter_data}")
             data = dict()
