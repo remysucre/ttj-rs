@@ -1,0 +1,11 @@
+let target_keywords: HashSet<&str> = [
+    {{ target_keywords|replace("'", "\"")}}
+]
+.into_iter()
+.collect();
+
+let k_s: HashSet<i32> =
+    k.id.iter()
+        .zip(k.keyword.iter())
+        .filter_map(|(id, keyword)| target_keywords.contains(keyword.as_str()).then_some(*id))
+        .collect();
