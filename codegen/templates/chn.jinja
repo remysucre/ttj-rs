@@ -3,7 +3,7 @@ let chn_s : HashSet<i32> = chn
     .iter()
     .zip(chn.id.iter())
     .filter_map(|(name, id)| {
-        ({{ join_conditions }})
+        ({{ filter_conditions }})
         .then_some(id)
     })
     .collect();
