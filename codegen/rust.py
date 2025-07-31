@@ -224,10 +224,12 @@ class SemiJoinProgram:
         """
         merged_level = MergedLevel()
         assert len(self.program) == 1
+        found_sj = []
         for merged_sj in self.program[0]:
             found = False
             for sj in level:
                 if sj.parent == merged_sj.parent:
+                    found_sj.append(sj)
                     ears = [rel for rel in merged_sj.ears]
                     ears.append(sj.ear)
                     merged_level.append(MergedSemiJoin(ears = ears, parent = sj.parent, score=merged_sj.score+sj.score))
@@ -235,6 +237,9 @@ class SemiJoinProgram:
                     break
             if not found:
                 merged_level.append(merged_sj)
+        for sj in level:
+            if sj not in found_sj:
+                merged_level.append(MergedSemiJoin(ears=[sj.ear], parent = sj.parent, score = sj.score))
         self.program[0] = merged_level
 
 
@@ -1381,8 +1386,8 @@ def optimization(sql_query_name, output_file_path) -> None:
     env = Environment(loader=FileSystemLoader("templates"))
     template = env.get_template("base.jinja")
     query_implementation = template.render(template_data)
-    output_dir = "junk"
     output_dir = pathlib.Path(__file__).parent.parent / "src"
+    output_dir = "junk"
     output_file_path = os.path.join(output_dir, f"o{sql_query_name}.rs")
     try:
         with open(output_file_path, "w") as f:
