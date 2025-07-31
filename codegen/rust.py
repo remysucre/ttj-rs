@@ -1072,6 +1072,8 @@ def generate_main_block(semijoin_program: SemiJoinProgram, output_file_path) -> 
         for column in filter_columns:
             if column not in zip_columns:
                 zip_columns.append(column)
+        if query_item['min_select'] is not None and query_item['min_select'] not in zip_columns:
+            zip_columns.append(query_item['min_select'])
         return zip_columns
 
     def format_zip_column(zip_columns, base_table):
