@@ -4,6 +4,6 @@ let chn_s : HashSet<i32> = chn
     .zip(chn.id.iter())
     .filter_map(|(name, id)| {
         {{ filter_conditions }}
-        .then_some(id)
+        .then_some(*id)
     })
     .collect();

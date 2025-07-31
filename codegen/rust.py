@@ -10,6 +10,7 @@ Steps:
 import glob
 import json
 import os
+import pathlib
 import re
 import typing
 from collections import deque
@@ -987,7 +988,7 @@ def generate_main_block(semijoin_program: SemiJoinProgram, output_file_path) -> 
                 if foreign_table_alias == ear.alias:
                     if alias_variable[foreign_table_alias].type == Type.numeric:
                         join_conds.append(
-                            f"{join_cond['local_column']} == {alias_variable[foreign_table_alias].name}"
+                            f"*{join_cond['local_column']} == {alias_variable[foreign_table_alias].name}"
                         )
                     elif alias_variable[foreign_table_alias].type == Type.set:
                         join_conds.append(
@@ -1126,7 +1127,7 @@ def generate_main_block(semijoin_program: SemiJoinProgram, output_file_path) -> 
         for column in zip_columns[1:]:
             output += f".zip({base_table}.{column}.iter())"
         return output
-    
+
 
     def build_filter_columns(filter_dict):
         columns = set()
@@ -1157,6 +1158,11 @@ def generate_main_block(semijoin_program: SemiJoinProgram, output_file_path) -> 
 
         return list(columns)
 
+    def build_filter_map(zip_columns, query_item):
+        return reduce(
+            lambda accumulator, item: (accumulator, item), zip_columns
+        )
+
     with open(output_file_path, "r") as f:
         query_data = json.load(f)
 
@@ -1182,7 +1188,7 @@ def generate_main_block(semijoin_program: SemiJoinProgram, output_file_path) -> 
                     "alias": alias,
                     "string_filter": item["filters"]["right"].strip("'"),
                 }
-                alias_variable[alias] = Variable(name=alias, type=Type.numeric)
+                alias_variable[alias] = Variable(name=f"{alias}_id", type=Type.numeric)
                 meat_statements.append(cct_template.render(data))
             elif item["filters"]["operator"] == "LIKE":
                 assert isinstance(item["filters"]["right"], str)
@@ -1196,7 +1202,7 @@ def generate_main_block(semijoin_program: SemiJoinProgram, output_file_path) -> 
                     "alias": alias,
                     "finder": finder_name.lower(),
                 }
-                alias_variable[alias] = Variable(name=alias, type=Type.set)
+                alias_variable[alias] = Variable(name=f"{alias}_s", type=Type.set)
                 meat_statements.append(cct_template.render(data))
         elif "chn" in alias:
             filter_data = process_filters(item["filters"])
@@ -1205,7 +1211,7 @@ def generate_main_block(semijoin_program: SemiJoinProgram, output_file_path) -> 
             data["filter_conditions"] = filter_data[0]
             chn_template = env.get_template("chn.jinja")
             meat_statements.append(chn_template.render(data))
-            alias_variable[alias] = Variable(name=alias, type=Type.set)
+            alias_variable[alias] = Variable(name=f"{alias}_s", type=Type.set)
         elif "kt" in alias:
             kt_template = env.get_template("kt.jinja")
             assert isinstance(item["filters"]["left"], str)
@@ -1221,9 +1227,7 @@ def generate_main_block(semijoin_program: SemiJoinProgram, output_file_path) -> 
             data["t_m"] = item["min_select"] is not None
             data["join_conditions"] = form_join_conds(alias_sj[alias])
             data["zip_columns"] = format_zip_column(zip_columns, "t")
-            data["filter_map_closure"] = reduce(
-                lambda accumulator, item: (accumulator, item), zip_columns
-            )
+            data["filter_map_closure"] = build_filter_map(zip_columns, item)
             filter_data = process_filters(item["filters"])
             if "production_year" in zip_columns:
                 data["year_condition"] = filter_data[0].strip(')').strip('(')
@@ -1231,30 +1235,34 @@ def generate_main_block(semijoin_program: SemiJoinProgram, output_file_path) -> 
             meat_statements.append(t_template.render(data))
         elif "cc" in alias and "cct" not in alias:
             cc_template = env.get_template("cc.jinja")
-            assert item["filters"] is None
             data = dict()
+            zip_columns = build_zip(item)
+            data["zip_columns"] = format_zip_column(zip_columns, "cc")
             data["join_conditions"] = form_join_conds(alias_sj[alias])
+            data["filter_map_closure"] = build_filter_map(zip_columns, item)
             meat_statements.append(cc_template.render(data))
-            alias_variable[alias] = Variable(name=alias, type=Type.set)
+            alias_variable[alias] = Variable(name=f"{alias}_s", type=Type.set)
         elif "n" in alias and "chn" not in alias:
             n_template = env.get_template("n.jinja")
             data = dict()
             if item["filters"] is None:
                 meat_statements.append(n_template.render(data))
-                alias_variable[alias] = Variable(name=alias, type=Type.set)
+                alias_variable[alias] = Variable(name=f"{alias}_s", type=Type.set)
         elif "ci" in alias:
             ci_template = env.get_template("ci.jinja")
             data = dict()
-            if item["filters"] is None:
-                data["join_conditions"] = form_join_conds(alias_sj[alias])
-                meat_statements.append(ci_template.render(data))
-                alias_variable[alias] = Variable(name=alias, type=Type.set)
+            zip_columns = build_zip(item)
+            data["zip_columns"] = format_zip_column(zip_columns, "ci")
+            data["filter_map_closure"] = build_filter_map(zip_columns, item)
+            data["join_conditions"] = form_join_conds(alias_sj[alias])
+            meat_statements.append(ci_template.render(data))
+            alias_variable[alias] = Variable(name=f"{alias}_s", type=Type.set)
         elif "k" in alias and "mk" not in alias and "kt" not in alias:
             k_template = env.get_template("k.jinja")
             data = dict()
             data["target_keywords"] = process_filters(item["filters"])
             meat_statements.append(k_template.render(data))
-            alias_variable[alias] = Variable(name=alias, type=Type.set)
+            alias_variable[alias] = Variable(name=f"{alias}_s", type=Type.set)
         elif "mk" in alias:
             mk_template = env.get_template("mk.jinja")
             data = dict()
@@ -1264,6 +1272,7 @@ def generate_main_block(semijoin_program: SemiJoinProgram, output_file_path) -> 
                 if num_output_probe == 1:
                     data["single_output"] = True
                     data["output_probe"] = output_probe
+            data["join_conditions"] = form_join_conds(alias_sj[alias])
             meat_statements.append(mk_template.render(data))
             alias_variable[alias] = Variable(name=alias, type=Type.set)
 
@@ -1293,7 +1302,8 @@ def optimization(sql_query_name, output_file_path) -> None:
     env = Environment(loader=FileSystemLoader("templates"))
     template = env.get_template("base.jinja")
     query_implementation = template.render(template_data)
-    output_dir = "junk"
+    # output_dir = "junk"
+    output_dir = pathlib.Path(__file__).parent.parent / "src"
     output_file_path = os.path.join(output_dir, f"o{sql_query_name}.rs")
     try:
         with open(output_file_path, "w") as f:

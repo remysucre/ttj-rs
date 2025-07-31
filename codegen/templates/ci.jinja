@@ -1,10 +1,8 @@
-let ci_s: HashSet<i32> = ci
-    .movie_id
-    .iter()
-    .zip(ci.person_role_id.iter())
-    .filter_map(|(movie_id, person_role_id)| {
+let ci_s: HashSet<i32> =
+    {{ zip_columns }}
+    .filter_map(|{{ filter_map_closure|replace("'","")}}| {
         person_role_id
-            .filter(|id| {{ join_conditions }})
+            .filter(|person_role_id| {{ join_conditions }})
             .map(|_| *movie_id)
     })
     .collect();
