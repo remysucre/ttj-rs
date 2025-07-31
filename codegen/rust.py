@@ -13,7 +13,7 @@ import os
 import pathlib
 import re
 import typing
-from collections import deque
+from collections import deque, OrderedDict
 from dataclasses import dataclass
 from enum import Enum
 from functools import reduce
@@ -128,7 +128,7 @@ class Level:
         return relation
 
     def merge(self):
-        parent_groups = {}
+        parent_groups = OrderedDict()
         for sj in self.level:
             if sj.parent not in parent_groups:
                 parent_groups[sj.parent] = []
@@ -142,8 +142,7 @@ class Level:
                 MergedSemiJoin(ears=ears, parent=parent, score=total_score)
             )
 
-        # Sort by score in non-decreasing order
-        merged_semijoins.level.sort(key=lambda x: x.score)
+        # Cannot sort by score here due to semijoin order matters!
         return merged_semijoins
 
     def __str__(self):
@@ -182,6 +181,12 @@ class MergedLevel:
 
     def get_parents(self):
         return [sj.parent for sj in self.level]
+
+    def is_in_level(self, relation: Relation) -> bool:
+        for sj in self.level:
+            if sj.parent == relation or relation in sj.ears:
+                return True
+        return False
 
 
 class SemiJoinProgram:
@@ -827,6 +832,10 @@ def decide_join_tree(output_file_path):
                     )
                     if not appears_in_other:
                         return False
+                    if attributes.get_set_size(attr) > 2:
+                        # Handle the case of 1a where title is considered as a filter relation,
+                        # which could lead to less ideal join ordering.
+                        return False
                 return True
             else:
                 # For non-pure mode: attributes either appear in itself only (size 1) or in the other relation
@@ -914,6 +923,10 @@ def decide_join_tree(output_file_path):
             ]
         else:
             all_parent_repr = last_level.get_parents()
+            for repr in hypergraph.get_representatives():
+                if repr not in all_parent_repr and not last_level.is_in_level(repr):
+                    all_parent_repr.append(repr)
+            print(f"all_parent_repr (not pure): {all_parent_repr}")
         num_representatives = len(all_parent_repr)
         if num_relations == num_representatives:
             for i in range(num_representatives):
@@ -946,6 +959,9 @@ def decide_join_tree(output_file_path):
             while len(queue) > 0:
                 relation1 = queue.popleft()
                 relation2 = queue.popleft()
+                # todo: Here, we can implement some tiebreaking rule such as set relation1 with
+                #  with the relation that has the smallest size filter relations. We need tiebreaking
+                #  because relation1 could be ear and relation2 could be parent and vice versa.
                 print(
                     f"call check_ear_consume({relation1}, {relation2}, {num_relations == num_representatives})"
                 )
@@ -966,10 +982,11 @@ def decide_join_tree(output_file_path):
 
         print(level)
         print(hypergraph)
-        if semijoin_program.has_last_level() is None:
-            semijoin_program.append(level.merge())
-        else:
-            semijoin_program.merge_into(level)
+        # if semijoin_program.has_last_level() is None:
+        #     semijoin_program.append(level.merge())
+        # else:
+        #     semijoin_program.merge_into(level)
+        semijoin_program.append(level.merge())
     print(f"semijoin_program: \n{semijoin_program}")
     # todo: implement the special optimization logic (idea2 in google doc) using score
     #  the idea is to first merge semijoins in semijoin_program whenever a pair of semijoins
