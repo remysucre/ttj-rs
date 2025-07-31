@@ -1060,6 +1060,20 @@ def generate_main_block(semijoin_program: SemiJoinProgram, output_file_path) -> 
             conditions.append(f"{variable.name}.get({select_id})")
         return len(conditions), "&&".join(conditions)
 
+    def build_zip(query_item):
+        zip_columns = []
+        for item in query_item['join_cond']:
+            if item["local_column"] not in zip_columns:
+                zip_columns.append(item["local_column"])
+        return zip_columns
+
+    def format_zip_column(zip_columns, base_table):
+        output = ""
+        output += f"{base_table}.{zip_columns[0]}.iter()"
+        for column in zip_columns[1:]:
+            output += f".zip({base_table}.{column}.iter())"
+        return output
+
     with open(output_file_path, "r") as f:
         query_data = json.load(f)
 
@@ -1117,32 +1131,45 @@ def generate_main_block(semijoin_program: SemiJoinProgram, output_file_path) -> 
             data = {"string_filter": item["filters"]["right"].strip("'")}
             meat_statements.append(kt_template.render(data))
             alias_variable[alias] = Variable(name="kt_id", type=Type.numeric)
-        elif "t" in alias:
-            filter_map_closure = []
-            filter_map_closure.append("id")
+        elif "t" in alias and "kt" not in alias:
             t_template = env.get_template("t.jinja")
-            assert isinstance(item["filters"]["left"], str)
             data = dict()
+            zip_columns = build_zip(item)
             data["t_m"] = True
-            if "production_year" in item["filters"]["left"]:
-                filter_map_closure.append("production_year")
-                data["production_year_appears"] = True
-                data["production_year"] = int(item["filters"]["right"])
-            data["filter_map_closure"] = reduce(
-                lambda accumulator, item: (accumulator, item), filter_map_closure
-            )
-            print(f"filter_map_closure: {data['filter_map_closure']}")
             data["join_conditions"] = form_join_conds(alias_sj[alias])
+            data["zip_columns"] = format_zip_column(zip_columns, "t")
+            data["filter_map_closure"] = reduce(
+                lambda accumulator, item: (accumulator, item), zip_columns
+            )
             alias_variable[alias] = Variable(name="t_m", type=Type.map)
             meat_statements.append(t_template.render(data))
-        elif "cc" in alias:
+
+
+            # filter_map_closure = []
+            # filter_map_closure.append("id")
+            # t_template = env.get_template("t.jinja")
+            # assert isinstance(item["filters"]["left"], str)
+            # data = dict()
+            # data["t_m"] = True
+            # if "production_year" in item["filters"]["left"]:
+            #     filter_map_closure.append("production_year")
+            #     data["production_year_appears"] = True
+            #     data["production_year"] = int(item["filters"]["right"])
+            # data["filter_map_closure"] = reduce(
+            #     lambda accumulator, item: (accumulator, item), filter_map_closure
+            # )
+            # print(f"filter_map_closure: {data['filter_map_closure']}")
+            # data["join_conditions"] = form_join_conds(alias_sj[alias])
+            # alias_variable[alias] = Variable(name="t_m", type=Type.map)
+            # meat_statements.append(t_template.render(data))
+        elif "cc" in alias and "cct" not in alias:
             cc_template = env.get_template("cc.jinja")
             assert item["filters"] is None
             data = dict()
             data["join_conditions"] = form_join_conds(alias_sj[alias])
             meat_statements.append(cc_template.render(data))
             alias_variable[alias] = Variable(name=alias, type=Type.set)
-        elif "n" in alias:
+        elif "n" in alias and "chn" not in alias:
             n_template = env.get_template("n.jinja")
             data = dict()
             if item["filters"] is None:
