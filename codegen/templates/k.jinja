@@ -1,6 +1,5 @@
-let target_keywords: HashSet<&str> = [
+let target_keywords: HashSet<&str> =
     {{ target_keywords|replace("'", "\"")}}
-]
 .into_iter()
 .collect();
 
