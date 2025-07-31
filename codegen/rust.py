@@ -10,7 +10,6 @@ Steps:
 import glob
 import json
 import os
-import pathlib
 import re
 import typing
 from collections import deque, OrderedDict
@@ -202,7 +201,7 @@ class SemiJoinProgram:
         else:
             return None
 
-    def merge_up(self, level):
+    def merge_up(self, level: Level):
         """
         Convert
         semijoin_program:
@@ -225,12 +224,16 @@ class SemiJoinProgram:
         merged_level = MergedLevel()
         assert len(self.program) == 1
         for merged_sj in self.program[0]:
+            found = False
             for sj in level:
                 if sj.parent == merged_sj.parent:
                     ears = [rel for rel in merged_sj.ears]
                     ears.append(sj.ear)
                     merged_level.append(MergedSemiJoin(ears = ears, parent = sj.parent, score=merged_sj.score+sj.score))
+                    found = True
                     break
+            if not found:
+                merged_level.append(merged_sj)
         self.program[0] = merged_level
 
 
@@ -257,6 +260,22 @@ class SemiJoinProgram:
             orders.append(sj.parent.alias)
         return orders, alias_sj
 
+    def size(self):
+        if not self.program:
+            return 0
+        
+        # Since program contains at most one MergedLevel
+        level = self.program[0]
+        relations = set()
+        
+        for merged_sj in level:
+            # Add the parent relation
+            relations.add(merged_sj.parent)
+            # Add all ear relations
+            for ear in merged_sj.ears:
+                relations.add(ear)
+        
+        return len(relations)
 
 class UnionFind:
     """
@@ -392,7 +411,7 @@ class UnionFind:
         if not self.parent:
             return []
 
-        return list({self.find(item) for item in self.parent})
+        return [self.find(item) for item in self.parent]
 
 
 def format_expression_to_dict(expression):
@@ -904,7 +923,9 @@ def decide_join_tree(output_file_path):
     except (IOError, json.JSONDecodeError) as e:
         raise ValueError(f"Error reading or parsing query data file: {e}")
 
-    for alias, info in query_data.items():
+    # Sort by alias to ensure deterministic ordering
+    for alias in sorted(query_data.keys()):
+        info = query_data[alias]
         relation_attributes = []
         for join_cond in info.get("join_cond", []):
             local_attr = Attribute(attr=join_cond["local_column"], alias=alias)
@@ -937,17 +958,19 @@ def decide_join_tree(output_file_path):
         last_level = semijoin_program.has_last_level()
         if last_level is None:
             last_level = level
-            all_representatives = hypergraph.get_representatives()
+            all_representatives = sorted(hypergraph.get_representatives(), key=lambda x: x.alias)
             all_parent_repr = [
                 last_level.get_parent(repr) for repr in all_representatives
             ]
         else:
-            all_parent_repr = last_level.get_parents()
-            for repr in hypergraph.get_representatives():
+            all_parent_repr = sorted(last_level.get_parents(), key=lambda x: x.alias)
+            for repr in sorted(hypergraph.get_representatives(), key=lambda x: x.alias):
                 if repr not in all_parent_repr and not last_level.is_in_level(repr):
                     all_parent_repr.append(repr)
             print(f"all_parent_repr (not pure): {all_parent_repr}")
         num_representatives = len(all_parent_repr)
+        # Sort representatives for deterministic ordering
+        all_parent_repr = sorted(all_parent_repr, key=lambda x: x.alias)
         if num_relations == num_representatives:
             for i in range(num_representatives):
                 for j in range(num_representatives):
@@ -975,7 +998,9 @@ def decide_join_tree(output_file_path):
                             removed_ear.append(ear)
         else:
             queue = deque()
-            queue.extend(all_parent_repr)
+            # Sort to ensure deterministic order
+            sorted_parent_repr = sorted(all_parent_repr, key=lambda x: x.alias)
+            queue.extend(sorted_parent_repr)
             while len(queue) > 0:
                 relation1 = queue.popleft()
                 relation2 = queue.popleft()
@@ -1006,7 +1031,9 @@ def decide_join_tree(output_file_path):
             semijoin_program.append(level.merge())
         else:
             semijoin_program.merge_up(level)
+        print(f"semijoin_prorgam (iteration): \n{semijoin_program}")
     print(f"semijoin_program: \n{semijoin_program}")
+    assert num_relations == semijoin_program.size()
     # todo: implement the special optimization logic (idea2 in google doc) using score
     #  the idea is to first merge semijoins in semijoin_program whenever a pair of semijoins
     #  shares the same parent. Then, we update the score by the sum of filters size (note
@@ -1261,7 +1288,8 @@ def generate_main_block(semijoin_program: SemiJoinProgram, output_file_path) -> 
             data = dict()
             zip_columns = build_zip(item)
             data["t_m"] = item["min_select"] is not None
-            data["join_conditions"] = form_join_conds(alias_sj[alias])
+            if alias in alias_sj:
+                data["join_conditions"] = form_join_conds(alias_sj[alias])
             data["zip_columns"] = format_zip_column(zip_columns, "t")
             data["filter_map_closure"] = build_filter_map(zip_columns, item)
             filter_data = process_filters(item["filters"])
@@ -1274,7 +1302,8 @@ def generate_main_block(semijoin_program: SemiJoinProgram, output_file_path) -> 
             data = dict()
             zip_columns = build_zip(item)
             data["zip_columns"] = format_zip_column(zip_columns, "cc")
-            data["join_conditions"] = form_join_conds(alias_sj[alias])
+            if alias in alias_sj:
+                data["join_conditions"] = form_join_conds(alias_sj[alias])
             data["filter_map_closure"] = build_filter_map(zip_columns, item)
             meat_statements.append(cc_template.render(data))
             alias_variable[alias] = Variable(name=f"{alias}_s", type=Type.set)
@@ -1290,7 +1319,8 @@ def generate_main_block(semijoin_program: SemiJoinProgram, output_file_path) -> 
             zip_columns = build_zip(item)
             data["zip_columns"] = format_zip_column(zip_columns, "ci")
             data["filter_map_closure"] = build_filter_map(zip_columns, item)
-            data["join_conditions"] = form_join_conds(alias_sj[alias])
+            if alias in alias_variable:
+                data["join_conditions"] = form_join_conds(alias_sj[alias])
             meat_statements.append(ci_template.render(data))
             alias_variable[alias] = Variable(name=f"{alias}_s", type=Type.set)
         elif "k" in alias and "mk" not in alias and "kt" not in alias:
@@ -1308,7 +1338,8 @@ def generate_main_block(semijoin_program: SemiJoinProgram, output_file_path) -> 
                 if num_output_probe == 1:
                     data["single_output"] = True
                     data["output_probe"] = output_probe
-            data["join_conditions"] = form_join_conds(alias_sj[alias])
+            if alias in alias_sj:
+                data["join_conditions"] = form_join_conds(alias_sj[alias])
             meat_statements.append(mk_template.render(data))
             alias_variable[alias] = Variable(name=alias, type=Type.set)
 
@@ -1338,8 +1369,8 @@ def optimization(sql_query_name, output_file_path) -> None:
     env = Environment(loader=FileSystemLoader("templates"))
     template = env.get_template("base.jinja")
     query_implementation = template.render(template_data)
-    # output_dir = "junk"
-    output_dir = pathlib.Path(__file__).parent.parent / "src"
+    output_dir = "junk"
+    # output_dir = pathlib.Path(__file__).parent.parent / "src"
     output_file_path = os.path.join(output_dir, f"o{sql_query_name}.rs")
     try:
         with open(output_file_path, "w") as f:
