@@ -410,7 +410,7 @@ def format_expression_to_dict(expression):
         return expression.sql()
 
 
-def process_query_and_stats(sql_query, stats_filepath, output_filepath, pks, fks):
+def process_query_and_stats(sql_query, stats_filepath, output_filepath, pks, fks, table_columns):
     """
     Parses an SQL query, extracts metadata for each table, combines it
     with statistics from a file, and saves the result to a JSON file.
@@ -419,6 +419,9 @@ def process_query_and_stats(sql_query, stats_filepath, output_filepath, pks, fks
         sql_query (str): The SQL query string to process.
         stats_filepath (str): Path to the JSON statistics file.
         output_filepath (str): Path to save the output JSON file.
+        pks (dict): Primary key information for tables.
+        fks (dict): Foreign key information for tables.
+        table_columns (dict): Column information for tables.
     """
     # Load the statistics from the provided JSON file
     try:
@@ -490,6 +493,7 @@ def process_query_and_stats(sql_query, stats_filepath, output_filepath, pks, fks
             "filters": [],
             "join_cond": [],
             "min_select": aggregation_map.get(alias, None),
+            "columns": table_columns.get(name, {}),
         }
 
         # Find the corresponding size from the statistics file using a "longest match" strategy.
@@ -606,7 +610,7 @@ def main():
     if not os.path.exists(output_dir):
         os.makedirs(output_dir)
 
-    pks, fks = parse_sql_schema("imdb-original-mysql.sql")
+    pks, fks, table_columns = parse_sql_schema("imdb-original-mysql.sql")
 
     # Find all .sql files in the specified directory
     sql_files = glob.glob(os.path.join(sql_dir, "*.sql"))
@@ -672,7 +676,7 @@ def main():
             output_file_path = os.path.join(output_dir, f"{sql_query_name}.json")
 
             process_query_and_stats(
-                sql_query, stats_file_path, output_file_path, pks, fks
+                sql_query, stats_file_path, output_file_path, pks, fks, table_columns
             )
 
             optimization(sql_query_name, output_file_path)
@@ -692,6 +696,7 @@ def parse_sql_schema(sql_file_path):
 
     pks = {}
     fks = {}
+    columns = {}
 
     create_table_blocks = content.split("CREATE TABLE")
     for block in create_table_blocks[1:]:
@@ -699,6 +704,9 @@ def parse_sql_schema(sql_file_path):
         if not table_name_match:
             continue
         table_name = table_name_match.group(1)
+
+        # Initialize columns dictionary for this table
+        columns[table_name] = {}
 
         # Find PKs
         pk_matches = re.findall(r"(\w+)\s+integer\s+primary\s+key", block)
@@ -714,7 +722,43 @@ def parse_sql_schema(sql_file_path):
         for fk_col, ref_table, ref_col in fk_matches:
             fks[table_name][fk_col] = (ref_table, ref_col)
 
-    return pks, fks
+        # Extract column definitions
+        # Split by lines and look for column definitions
+        lines = block.split('\n')
+        for line in lines:
+            line = line.strip()
+            if not line or line.startswith('--') or line.startswith(')'):
+                continue
+            
+            # Match column definitions: column_name data_type [NOT NULL|NULL]
+            column_match = re.match(r'(\w+)\s+(integer|text|character\s+varying\(\d+\))\s*(.*)', line, re.IGNORECASE)
+            if column_match:
+                col_name = column_match.group(1)
+                col_type_raw = column_match.group(2).lower()
+                col_modifiers = column_match.group(3).lower()
+                
+                # Determine simplified type
+                if 'integer' in col_type_raw:
+                    col_type = 'numeric'
+                elif 'text' in col_type_raw or 'character varying' in col_type_raw:
+                    col_type = 'string'
+                else:
+                    col_type = 'string'  # default fallback
+                
+                # Determine nullability
+                # If 'not null' is explicitly specified, it's not nullable
+                # If 'primary key' is specified, it's not nullable
+                # Otherwise, it's nullable by default
+                nullable = True
+                if 'not null' in col_modifiers or 'primary key' in col_modifiers:
+                    nullable = False
+                
+                columns[table_name][col_name] = {
+                    'type': col_type,
+                    'nullable': nullable
+                }
+
+    return pks, fks, columns
 
 
 def _result_output_and_expected_result_set(sql_query_name: str) -> Tuple[str, str]:
