@@ -202,17 +202,37 @@ class SemiJoinProgram:
         else:
             return None
 
-    def merge_into(self, level):
-        for semi_join in level:
-            # Find the MergedSemiJoin with the same parent alias
-            for merged_level in self.program:
-                for merged_semi_join in merged_level.level:
-                    if merged_semi_join.parent.alias == semi_join.parent.alias:
-                        # Extend the ears with the new semijoin's ear
-                        merged_semi_join.ears.append(semi_join.ear)
-                        # Update the score by adding the new semijoin's score
-                        merged_semi_join.score += semi_join.score
-                        break
+    def merge_up(self, level):
+        """
+        Convert
+        semijoin_program:
+        level: 0
+        ears: ['n', 'chn'], parent: ci, score: 60
+        ears: ['cct2', 'cct1'], parent: cc, score: 4
+        ears: ['k'], parent: mk, score: 4523930
+        ears: ['kt'], parent: t, score: 1
+        level: 1
+        ears: ['ci'], parent: cc, score: 36244344
+        ears: ['cc'], parent: mk, score: 135086
+        ears: ['mk'], parent: t, score: 4523930
+        into
+        semijoin_program: 
+        level: 0
+        ears: ['cct1', 'cct2', 't'], parent: cc, score: 2287275
+        ears: ['n', 'chn', 'cc'], parent: ci, score: 135146
+        ears: ['k', 'ci'], parent: mk, score: 40768274
+        """
+        merged_level = MergedLevel()
+        assert len(self.program) == 1
+        for merged_sj in self.program[0]:
+            for sj in level:
+                if sj.parent == merged_sj.parent:
+                    ears = [rel for rel in merged_sj.ears]
+                    ears.append(sj.ear)
+                    merged_level.append(MergedSemiJoin(ears = ears, parent = sj.parent, score=merged_sj.score+sj.score))
+                    break
+        self.program[0] = merged_level
+
 
     def __str__(self):
         if not self.program:
@@ -982,11 +1002,10 @@ def decide_join_tree(output_file_path):
 
         print(level)
         print(hypergraph)
-        # if semijoin_program.has_last_level() is None:
-        #     semijoin_program.append(level.merge())
-        # else:
-        #     semijoin_program.merge_into(level)
-        semijoin_program.append(level.merge())
+        if semijoin_program.has_last_level() is None:
+            semijoin_program.append(level.merge())
+        else:
+            semijoin_program.merge_up(level)
     print(f"semijoin_program: \n{semijoin_program}")
     # todo: implement the special optimization logic (idea2 in google doc) using score
     #  the idea is to first merge semijoins in semijoin_program whenever a pair of semijoins
