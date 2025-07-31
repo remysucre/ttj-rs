@@ -3,5 +3,5 @@ let kt_id = kt
     .iter()
     .zip(kt.id.iter())
     .find(|(kind, _)| *kind == "{{ string_filter }}")
-    .map(|(_, id)| id)
+    .map(|(_, id)| *id)
     .unwrap();
