@@ -1358,6 +1358,26 @@ def generate_main_block(semijoin_program: SemiJoinProgram, output_file_path) -> 
             if alias in alias_sj:
                 data["join_conditions"] = form_join_conds(alias_sj[alias])
             meat_statements.append(mk_template.render(data))
+        elif "mi_idx" in alias:
+            mi_idx_template = env.get_template("mi_idx.jinja")
+            data = dict()
+            zip_columns = build_zip(item)
+            data["zip_columns"] = format_zip_column(zip_columns, "mi_idx")
+            data["filter_map_closure"] = build_filter_map(zip_columns, item)
+            if alias in alias_sj:
+                data["join_conditions"] = form_join_conds(alias_sj[alias])
+            meat_statements.append(mi_idx_template.render(data))
+            alias_variable[alias] = Variable(name=f"{alias}_s", type=Type.set)
+        elif "mc" in alias:
+            filter_data = process_filters(item["filters"])
+            print(f"filter_data: {filter_data}")
+            data = dict()
+            data["filter_conditions"] = filter_data[0]
+            if alias in alias_sj:
+                data["join_conditions"] = form_join_conds(alias_sj[alias])
+            mc_template = env.get_template("mc.jinja")
+            meat_statements.append(mc_template.render(data))
+            alias_variable[alias] = Variable(name=f"{alias}_s", type=Type.set)
 
 
     main_block += "\n".join(finders)
