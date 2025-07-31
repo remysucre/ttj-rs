@@ -2,9 +2,9 @@
 let t_m: HashMap<i32, &str> =
     {{  zip_columns }}
     .filter_map(|{{ filter_map_closure|replace("'","")}}| {
-        {% if production_year_appears %}
+        {% if year_condition %}
         production_year
-            .filter(|&year| year > {{ production_year }} && {{ join_conditions }})
+            .filter(|&production_year| {{ year_condition }} && {{ join_conditions }})
             .map(|_| (*id, title.as_str()))
         {% endif %}
     })

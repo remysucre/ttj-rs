@@ -1042,6 +1042,9 @@ def generate_main_block(semijoin_program: SemiJoinProgram, output_file_path) -> 
         elif operator == "IN":
             return [ele.strip("'") for ele in right_expr[0]]
 
+        elif operator == "GT":
+            return [f"({left_expr[0]} > {right_expr[0]})"]
+
     def get_min_select(query_data, alias_variable, current_alias):
         conditions = []
         alias_column = dict()
@@ -1065,6 +1068,10 @@ def generate_main_block(semijoin_program: SemiJoinProgram, output_file_path) -> 
         for item in query_item['join_cond']:
             if item["local_column"] not in zip_columns:
                 zip_columns.append(item["local_column"])
+        filter_columns = build_filter_columns(query_item["filters"])
+        for column in filter_columns:
+            if column not in zip_columns:
+                zip_columns.append(column)
         return zip_columns
 
     def format_zip_column(zip_columns, base_table):
@@ -1073,6 +1080,36 @@ def generate_main_block(semijoin_program: SemiJoinProgram, output_file_path) -> 
         for column in zip_columns[1:]:
             output += f".zip({base_table}.{column}.iter())"
         return output
+    
+
+    def build_filter_columns(filter_dict):
+        columns = set()
+
+        def collect_columns(filter_dict):
+            if not isinstance(filter_dict, dict):
+                return
+
+            left = filter_dict.get("left")
+            right = filter_dict.get("right")
+
+            # Collect column from left operand
+            if isinstance(left, str):
+                columns.add(left)
+            elif isinstance(left, dict):
+                collect_columns(left)
+
+            # Collect columns from right operand
+            if isinstance(right, dict):
+                collect_columns(right)
+            elif isinstance(right, list):
+                for item in right:
+                    if isinstance(item, dict):
+                        collect_columns(item)
+
+        if filter_dict:
+            collect_columns(filter_dict)
+
+        return list(columns)
 
     with open(output_file_path, "r") as f:
         query_data = json.load(f)
@@ -1141,27 +1178,11 @@ def generate_main_block(semijoin_program: SemiJoinProgram, output_file_path) -> 
             data["filter_map_closure"] = reduce(
                 lambda accumulator, item: (accumulator, item), zip_columns
             )
+            filter_data = process_filters(item["filters"])
+            if "production_year" in zip_columns:
+                data["year_condition"] = filter_data[0].strip(')').strip('(')
             alias_variable[alias] = Variable(name="t_m", type=Type.map)
             meat_statements.append(t_template.render(data))
-
-
-            # filter_map_closure = []
-            # filter_map_closure.append("id")
-            # t_template = env.get_template("t.jinja")
-            # assert isinstance(item["filters"]["left"], str)
-            # data = dict()
-            # data["t_m"] = True
-            # if "production_year" in item["filters"]["left"]:
-            #     filter_map_closure.append("production_year")
-            #     data["production_year_appears"] = True
-            #     data["production_year"] = int(item["filters"]["right"])
-            # data["filter_map_closure"] = reduce(
-            #     lambda accumulator, item: (accumulator, item), filter_map_closure
-            # )
-            # print(f"filter_map_closure: {data['filter_map_closure']}")
-            # data["join_conditions"] = form_join_conds(alias_sj[alias])
-            # alias_variable[alias] = Variable(name="t_m", type=Type.map)
-            # meat_statements.append(t_template.render(data))
         elif "cc" in alias and "cct" not in alias:
             cc_template = env.get_template("cc.jinja")
             assert item["filters"] is None
