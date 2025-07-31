@@ -1,0 +1,5 @@
+let it_id =
+    {{ zip_columns }}
+    .find(|(info, _)| *info == "{{ string_filter }}")
+    .map(|(_, id)| *id)
+    .unwrap();
