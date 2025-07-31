@@ -1172,7 +1172,7 @@ def generate_main_block(semijoin_program: SemiJoinProgram, output_file_path) -> 
             t_template = env.get_template("t.jinja")
             data = dict()
             zip_columns = build_zip(item)
-            data["t_m"] = True
+            data["t_m"] = item["min_select"] is not None
             data["join_conditions"] = form_join_conds(alias_sj[alias])
             data["zip_columns"] = format_zip_column(zip_columns, "t")
             data["filter_map_closure"] = reduce(
