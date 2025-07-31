@@ -11,4 +11,12 @@
         .min()
         .copied();
     {% endif %}
-{%  endif %}
+{% elif mk_m %}
+{% else %}
+    let mk_s : HashSet<i32>=
+        {{ zip_columns }}
+        .filter_map(|{{ filter_map_closure|replace("'","")}}| {
+            ({{ join_conditions }}).then_some(*movie_id)
+        })
+        .collect::<>();
+{% endif %}
