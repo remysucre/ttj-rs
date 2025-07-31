@@ -10,6 +10,7 @@ Steps:
 import glob
 import json
 import os
+import pathlib
 import re
 import typing
 from collections import deque, OrderedDict
@@ -1287,9 +1288,13 @@ def generate_main_block(semijoin_program: SemiJoinProgram, output_file_path) -> 
             t_template = env.get_template("t.jinja")
             data = dict()
             zip_columns = build_zip(item)
-            data["t_m"] = item["min_select"] is not None
             if alias in alias_sj:
                 data["join_conditions"] = form_join_conds(alias_sj[alias])
+            if idx == len(orders) - 1:
+                data["min_loop"] = True
+                data["single_output"] = True
+            else:
+                data["t_m"] = item["min_select"] is not None
             data["zip_columns"] = format_zip_column(zip_columns, "t")
             data["filter_map_closure"] = build_filter_map(zip_columns, item)
             filter_data = process_filters(item["filters"])
@@ -1319,7 +1324,7 @@ def generate_main_block(semijoin_program: SemiJoinProgram, output_file_path) -> 
             zip_columns = build_zip(item)
             data["zip_columns"] = format_zip_column(zip_columns, "ci")
             data["filter_map_closure"] = build_filter_map(zip_columns, item)
-            if alias in alias_variable:
+            if alias in alias_sj:
                 data["join_conditions"] = form_join_conds(alias_sj[alias])
             meat_statements.append(ci_template.render(data))
             alias_variable[alias] = Variable(name=f"{alias}_s", type=Type.set)
@@ -1332,16 +1337,23 @@ def generate_main_block(semijoin_program: SemiJoinProgram, output_file_path) -> 
         elif "mk" in alias:
             mk_template = env.get_template("mk.jinja")
             data = dict()
+            zip_columns = build_zip(item)
             if idx == len(orders) - 1:
                 data["min_loop"] = True
                 num_output_probe, output_probe = get_min_select(query_data, alias_variable, alias)
                 if num_output_probe == 1:
                     data["single_output"] = True
                     data["output_probe"] = output_probe
+            elif item["min_select"] is not None:
+                alias_variable[alias] = Variable(name=f"{alias}_m", type=Type.set)
+            else:
+                alias_variable[alias] = Variable(name=f"{alias}_s", type=Type.set)
+            data["zip_columns"] = format_zip_column(zip_columns, "mk")
+            data["filter_map_closure"] = build_filter_map(zip_columns, item)
             if alias in alias_sj:
                 data["join_conditions"] = form_join_conds(alias_sj[alias])
             meat_statements.append(mk_template.render(data))
-            alias_variable[alias] = Variable(name=alias, type=Type.set)
+
 
     main_block += "\n".join(finders)
     main_block += "let start = Instant::now();"
@@ -1370,7 +1382,7 @@ def optimization(sql_query_name, output_file_path) -> None:
     template = env.get_template("base.jinja")
     query_implementation = template.render(template_data)
     output_dir = "junk"
-    # output_dir = pathlib.Path(__file__).parent.parent / "src"
+    output_dir = pathlib.Path(__file__).parent.parent / "src"
     output_file_path = os.path.join(output_dir, f"o{sql_query_name}.rs")
     try:
         with open(output_file_path, "w") as f:
