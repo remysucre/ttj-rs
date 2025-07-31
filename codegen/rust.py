@@ -283,6 +283,17 @@ class SemiJoinProgram:
         
         return len(relations)
 
+    def find_parent(self, alias: str) -> typing.Union[Relation, None]:
+        for merged_sj in self.program:
+            for ear in merged_sj.ears:
+                if ear.alias == alias:
+                    return merged_sj.parent
+        return None
+
+    def get_root(self) -> Relation:
+        assert len(self.program) == 1
+        return self.program[0].level[-1].parent
+
 class UnionFind:
     """
     A Union-Find (or Disjoint Set Union) data structure.
@@ -1232,6 +1243,55 @@ def generate_main_block(semijoin_program: SemiJoinProgram, output_file_path) -> 
             lambda accumulator, item: (accumulator, item), zip_columns
         )
 
+    def build_filter_map_out(alias, query_data, semijoin_program: SemiJoinProgram):
+        is_min_loop = semijoin_program.get_root().alias == alias
+        if is_min_loop:
+            select_fields = []
+            for _, item in query_data.items():
+                if item["min_select"] is not None:
+                    select_fields.append(item["min_select"])
+            ret = []
+            for column in select_fields:
+                if column == "title":
+                    ret.append("title.as_str()")
+            if len(ret) == 1:
+                return f"{ret[0]}"
+            else:
+                return "(" + ",".join(ret) + ")"
+        else:
+            query_item = query_data[alias]
+            if query_item["min_select"] is not None:
+                parent = semijoin_program.find_parent(alias)
+                assert parent is not None
+                for join_cond in query_item["join_cond"]:
+                    if join_cond["foreign_table"]["alias"] == parent.alias:
+                        pass
+            else:
+                pass
+
+    def build_filter_map_main(alias, alias_sj, query_data, semijoin_program: SemiJoinProgram):
+        nullable_columns = []
+        query_item = query_data[alias]
+        filter_columns = build_filter_columns(query_item["filters"])
+        for column in filter_columns:
+            if query_item['columns'][column]['nullable']:
+                nullable_columns.append(column)
+        assert len(nullable_columns) == 1
+        nullable_local_variable = nullable_columns[0].strip("'")
+        filter_conditions = process_filters(query_item['filters'])
+        assert len(filter_conditions) == 1
+        filter_conditions = filter_conditions[0].strip("'").strip('(').strip(')')
+        map_out = build_filter_map_out(alias, query_data, semijoin_program)
+        if alias in alias_sj:
+            join_conditions = form_join_conds(alias_sj[alias])
+            return f"""{nullable_local_variable}
+                .filter(|&{nullable_local_variable}| { filter_conditions } && { join_conditions })
+                .map(|_| {map_out})"""
+        else:
+            return f"""{nullable_local_variable}
+                .filter(|&{nullable_local_variable}| { filter_conditions })
+                .map(|_| {map_out})"""
+
     with open(output_file_path, "r") as f:
         query_data = json.load(f)
 
@@ -1293,8 +1353,6 @@ def generate_main_block(semijoin_program: SemiJoinProgram, output_file_path) -> 
             t_template = env.get_template("t.jinja")
             data = dict()
             zip_columns = build_zip(item)
-            if alias in alias_sj:
-                data["join_conditions"] = form_join_conds(alias_sj[alias])
             if idx == len(orders) - 1:
                 data["min_loop"] = True
                 data["single_output"] = True
@@ -1302,9 +1360,7 @@ def generate_main_block(semijoin_program: SemiJoinProgram, output_file_path) -> 
                 data["t_m"] = item["min_select"] is not None
             data["zip_columns"] = format_zip_column(zip_columns, "t")
             data["filter_map_closure"] = build_filter_map(zip_columns, item)
-            filter_data = process_filters(item["filters"])
-            if "production_year" in zip_columns:
-                data["year_condition"] = filter_data[0].strip(')').strip('(')
+            data["filter_map_main"] = build_filter_map_main(alias, alias_sj, query_data, semijoin_program)
             alias_variable[alias] = Variable(name="t_m", type=Type.map)
             meat_statements.append(t_template.render(data))
         elif "cc" in alias and "cct" not in alias:
@@ -1407,7 +1463,7 @@ def optimization(sql_query_name, output_file_path) -> None:
     template = env.get_template("base.jinja")
     query_implementation = template.render(template_data)
     output_dir = pathlib.Path(__file__).parent.parent / "src"
-    output_dir = "junk"
+    # output_dir = "junk"
     output_file_path = os.path.join(output_dir, f"o{sql_query_name}.rs")
     try:
         with open(output_file_path, "w") as f:
