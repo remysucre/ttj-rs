@@ -1,17 +1,5 @@
-let ct_s: HashSet<i32> = ct
-    .column("kind")?
-    .str()?
-    .into_iter()
-    .zip(ct.column("id")?.i32()?)
-    .filter_map(|(kind, id)| {
-        if let (Some(kind), Some(id)) = (kind, id) {
-            if kind == "production companies" {
-                Some(id)
-            } else {
-                None
-            }
-        } else {
-            None
-        }
-    })
-    .collect();
+let ct_id: i32 =
+    {{ zip_columns }}
+    .find(|(kind, _)| {{ filter_conditions|replace("'",'"') }})
+    .map(|(_, id)| *id)
+    .unwrap();

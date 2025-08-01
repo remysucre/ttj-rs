@@ -1,5 +1,5 @@
 let it_id =
     {{ zip_columns }}
-    .find(|(info, _)| *info == "{{ string_filter }}")
+    .find(|(info, _)| {{ filter_conditions|replace("'",'"') }})
     .map(|(_, id)| *id)
     .unwrap();

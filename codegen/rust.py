@@ -1170,6 +1170,9 @@ def generate_main_block(semijoin_program: SemiJoinProgram, output_file_path) -> 
         elif operator == "GT":
             return [f"({left_expr[0]} > {right_expr[0]})"]
 
+        elif operator == "EQ":  
+            return [f"({left_expr[0]} == {right_expr[0]})"]
+
     def get_min_select(query_data, alias_variable, current_alias):
         conditions = []
         alias_column = dict()
@@ -1243,13 +1246,16 @@ def generate_main_block(semijoin_program: SemiJoinProgram, output_file_path) -> 
             lambda accumulator, item: (accumulator, item), zip_columns
         )
 
-    def build_filter_map_out(alias, query_data, semijoin_program: SemiJoinProgram):
+    def get_select_fields(query_data):
+        select_fields = []
+        for _, item in query_data.items():
+            if item["min_select"] is not None:
+                select_fields.append(item["min_select"])
+        return select_fields
+
+    def build_filter_map_out(alias, select_fields, query_item, semijoin_program: SemiJoinProgram):
         is_min_loop = semijoin_program.get_root().alias == alias
         if is_min_loop:
-            select_fields = []
-            for _, item in query_data.items():
-                if item["min_select"] is not None:
-                    select_fields.append(item["min_select"])
             ret = []
             for column in select_fields:
                 if column == "title":
@@ -1259,29 +1265,32 @@ def generate_main_block(semijoin_program: SemiJoinProgram, output_file_path) -> 
             else:
                 return "(" + ",".join(ret) + ")"
         else:
-            query_item = query_data[alias]
             if query_item["min_select"] is not None:
                 parent = semijoin_program.find_parent(alias)
                 assert parent is not None
                 for join_cond in query_item["join_cond"]:
                     if join_cond["foreign_table"]["alias"] == parent.alias:
-                        pass
+                        raise ValueError("Unimplemented!")
             else:
-                pass
+                raise ValueError("Unimplemented!")
 
-    def build_filter_map_main(alias, alias_sj, query_data, semijoin_program: SemiJoinProgram):
+    def get_nullable_columns(query_item) -> typing.List[str]:
         nullable_columns = []
-        query_item = query_data[alias]
+        for column_name, column_item in query_item['columns'].items():
+            if column_item['nullable']:
+                nullable_columns.append(column_name)
+        return nullable_columns
+
+    def build_filter_map_main(alias, alias_sj, query_item, semijoin_program: SemiJoinProgram):
+        nullable_columns = get_nullable_columns(query_item)
         filter_columns = build_filter_columns(query_item["filters"])
-        for column in filter_columns:
-            if query_item['columns'][column]['nullable']:
-                nullable_columns.append(column)
-        assert len(nullable_columns) == 1
-        nullable_local_variable = nullable_columns[0].strip("'")
+        filter_nullable_columns = [x for x in nullable_columns if x in filter_columns]
+        assert len(filter_nullable_columns) == 1
+        nullable_local_variable = filter_nullable_columns[0].strip("'")
         filter_conditions = process_filters(query_item['filters'])
         assert len(filter_conditions) == 1
         filter_conditions = filter_conditions[0].strip("'").strip('(').strip(')')
-        map_out = build_filter_map_out(alias, query_data, semijoin_program)
+        map_out = build_filter_map_out(alias, select_fields, item, semijoin_program)
         if alias in alias_sj:
             join_conditions = form_join_conds(alias_sj[alias])
             return f"""{nullable_local_variable}
@@ -1291,6 +1300,11 @@ def generate_main_block(semijoin_program: SemiJoinProgram, output_file_path) -> 
             return f"""{nullable_local_variable}
                 .filter(|&{nullable_local_variable}| { filter_conditions })
                 .map(|_| {map_out})"""
+
+    def build_some_conditions(zip_columns, query_item) -> str:
+        nullable_columns = get_nullable_columns(query_item)
+        zip_nullable_columns = [x for x in nullable_columns if x in zip_columns]
+        return "&&".join([f"let Some({column}) = {column}" for column in zip_nullable_columns])
 
     with open(output_file_path, "r") as f:
         query_data = json.load(f)
@@ -1304,10 +1318,15 @@ def generate_main_block(semijoin_program: SemiJoinProgram, output_file_path) -> 
     print(f"orders: {orders}")
     print(f"alias_sj: {alias_sj}")
     alias_variable = dict()
+    select_fields = get_select_fields(query_data)
+    single_output = len(select_fields) == 1
     for idx, alias in enumerate(orders):
         item = query_data[alias]
         print(item["filters"])
         if "cct" in alias:
+            # todo: restructure this codeblock with latest API (e.g., we no longer
+            #  need string_filter but using filter_conditions instead). Also, need
+            #  to adjust template accordinly as well.
             cct_template = env.get_template("cct.jinja")
             assert isinstance(item["filters"]["left"], str)
             assert "kind" in item["filters"]["left"]
@@ -1349,18 +1368,23 @@ def generate_main_block(semijoin_program: SemiJoinProgram, output_file_path) -> 
             data = {"string_filter": item["filters"]["right"].strip("'")}
             meat_statements.append(kt_template.render(data))
             alias_variable[alias] = Variable(name="kt_id", type=Type.numeric)
-        elif "t" in alias and "kt" not in alias:
+        elif "t" in alias and "kt" not in alias and "ct" not in alias and "it" not in alias:
             t_template = env.get_template("t.jinja")
             data = dict()
             zip_columns = build_zip(item)
-            if idx == len(orders) - 1:
-                data["min_loop"] = True
-                data["single_output"] = True
-            else:
-                data["t_m"] = item["min_select"] is not None
+            data["min_loop"] = alias == semijoin_program.get_root().alias
+            data["single_output"] = single_output
+            data["t_m"] = item["min_select"] is not None and not data["min_loop"]
             data["zip_columns"] = format_zip_column(zip_columns, "t")
             data["filter_map_closure"] = build_filter_map(zip_columns, item)
-            data["filter_map_main"] = build_filter_map_main(alias, alias_sj, query_data, semijoin_program)
+            if alias in alias_sj:
+                data["join_conditions"] = form_join_conds(alias_sj[alias])
+            filter_condtions = process_filters(item["filters"])
+            data["filter_conditions"] = filter_condtions[0] if filter_condtions else None
+            if data["min_loop"] and not single_output:
+                data["some_conditions"] = build_some_conditions(zip_columns, item)
+            else:
+                data["filter_map_main"] = build_filter_map_main(alias, alias_sj, item, semijoin_program)
             alias_variable[alias] = Variable(name="t_m", type=Type.map)
             meat_statements.append(t_template.render(data))
         elif "cc" in alias and "cct" not in alias:
@@ -1403,7 +1427,7 @@ def generate_main_block(semijoin_program: SemiJoinProgram, output_file_path) -> 
                 data["min_loop"] = True
                 num_output_probe, output_probe = get_min_select(query_data, alias_variable, alias)
                 if num_output_probe == 1:
-                    data["single_output"] = True
+                    data["single_output"] = single_output
                     data["output_probe"] = output_probe
             elif item["min_select"] is not None:
                 alias_variable[alias] = Variable(name=f"{alias}_m", type=Type.set)
@@ -1426,7 +1450,6 @@ def generate_main_block(semijoin_program: SemiJoinProgram, output_file_path) -> 
             alias_variable[alias] = Variable(name=f"{alias}_s", type=Type.set)
         elif "mc" in alias:
             filter_data = process_filters(item["filters"])
-            print(f"filter_data: {filter_data}")
             data = dict()
             data["filter_conditions"] = filter_data[0]
             if alias in alias_sj:
@@ -1434,6 +1457,24 @@ def generate_main_block(semijoin_program: SemiJoinProgram, output_file_path) -> 
             mc_template = env.get_template("mc.jinja")
             meat_statements.append(mc_template.render(data))
             alias_variable[alias] = Variable(name=f"{alias}_s", type=Type.set)
+        elif "ct" in alias:
+            filter_data = process_filters(item["filters"])
+            data = dict()
+            zip_columns = build_zip(item)
+            data["filter_conditions"] = filter_data[0].strip('(').strip(')')
+            data["zip_columns"] = format_zip_column(zip_columns, "ct")
+            ct_template = env.get_template("ct.jinja")
+            meat_statements.append(ct_template.render(data))
+            alias_variable[alias] = Variable(name=f"{alias}_id", type=Type.numeric)
+        elif "it" in alias:
+            filter_data = process_filters(item["filters"])
+            data = dict()
+            zip_columns = build_zip(item)
+            data["filter_conditions"] = filter_data[0]
+            data["zip_columns"] = format_zip_column(zip_columns, "it")
+            it_template = env.get_template("it.jinja")
+            meat_statements.append(it_template.render(data))
+            alias_variable[alias] = Variable(name=f"{alias}_id", type=Type.numeric)
 
 
     main_block += "\n".join(finders)
@@ -1463,7 +1504,7 @@ def optimization(sql_query_name, output_file_path) -> None:
     template = env.get_template("base.jinja")
     query_implementation = template.render(template_data)
     output_dir = pathlib.Path(__file__).parent.parent / "src"
-    # output_dir = "junk"
+    output_dir = "junk"
     output_file_path = os.path.join(output_dir, f"o{sql_query_name}.rs")
     try:
         with open(output_file_path, "w") as f:
