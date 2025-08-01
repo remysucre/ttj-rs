@@ -20,7 +20,7 @@ from functools import reduce
 from typing import Tuple
 
 import sqlglot
-from jinja2 import Environment, FileSystemLoader
+from jinja2 import Environment, FileSystemLoader, Template
 from sqlglot import exp
 
 ALIAS_TO_TABLE = {
@@ -83,6 +83,9 @@ class Type(Enum):
     numeric = 1
     set = 2
     map = 3
+    text = 4
+    map_vec = 5
+    not_need = 6 # happens for the min_loop relation
 
 
 @dataclass
@@ -192,6 +195,7 @@ class MergedLevel:
 class SemiJoinProgram:
     def __init__(self):
         self.program = []
+        self.parent_child_columns : typing.List[ParentChildColumns] = []
 
     def append(self, level: MergedLevel):
         self.program.append(level)
@@ -284,7 +288,8 @@ class SemiJoinProgram:
         return len(relations)
 
     def find_parent(self, alias: str) -> typing.Union[Relation, None]:
-        for merged_sj in self.program:
+        assert len(self.program) == 1
+        for merged_sj in self.program[0]:
             for ear in merged_sj.ears:
                 if ear.alias == alias:
                     return merged_sj.parent
@@ -429,7 +434,91 @@ class UnionFind:
             return []
 
         return [self.find(item) for item in self.parent]
+    
+    def get_group_members(self, item) -> typing.List[Attribute]:
+        """
+        Returns a list of all elements in the same group as the given item.
+        
+        Args:
+            item: The item whose group members are to be found.
+            
+        Returns:
+            A list of all elements in the same group as the item.
+        """
+        if item not in self.parent:
+            return [item]
+        
+        root = self.find(item)
+        group_members = []
+        
+        for element in self.parent:
+            if self.find(element) == root:
+                group_members.append(element)
+        
+        return group_members
 
+@dataclass
+class CodeBlock:
+    alias: str
+    type: Type
+    join_column: str
+    zip_columns: typing.List[str]
+    nullable_columns: typing.List[str]
+
+@dataclass
+class Field:
+    alias: str
+    nullable: bool
+    type: Type
+    column: str
+
+@dataclass(frozen=True)
+class ParentChildColumns:
+    parent_alias: str
+    child_alias: str
+    parent_column: str
+    child_column: str
+
+class ProgramContext:
+    def __init__(self, query_data, semijoin_program: SemiJoinProgram):
+        self.query_data = query_data
+        self.semijoin_program = semijoin_program
+        self.selected_fields = self.__construct_selected_fields(query_data)
+        self.attributes = self.__build_attributes_union_find(query_data)
+        self.parent_child_columns : typing.List[ParentChildColumns] = []
+
+    def __build_attributes_union_find(self, query_data) -> UnionFind:
+        attributes = UnionFind()
+        for alias in sorted(query_data.keys()):
+            info = query_data[alias]
+            relation_attributes = []
+            for join_cond in info.get("join_cond", []):
+                local_attr = Attribute(attr=join_cond["local_column"], alias=alias)
+                if local_attr not in relation_attributes:
+                    relation_attributes.append(local_attr)
+                foreign_table_info = join_cond["foreign_table"]
+                foreign_attr = Attribute(
+                    attr=foreign_table_info["column"], alias=foreign_table_info["alias"]
+                )
+                attributes.union(local_attr, foreign_attr)
+        return attributes
+
+    def __construct_selected_fields(self, query_data) -> typing.List[Field]:
+        select_fields = []
+        for alias, item in query_data.items():
+            column = item["min_select"]
+            if column is not None:
+                select_fields.append(Field(alias,
+                                                   item["columns"][column]["nullable"],
+                                                   item["columns"][column]["type"],
+                                                   column))
+        return select_fields
+
+@dataclass
+class CodeGenContext:
+    alias_variable: dict
+    alias_sj: dict
+    finders :  []
 
 def format_expression_to_dict(expression):
     """
@@ -892,14 +981,27 @@ def decide_join_tree(output_file_path):
                         # Handle the case of 1a where title is considered as a filter relation,
                         # which could lead to less ideal join ordering.
                         return False
+                for attr in candidate.attributes:
+                    for other_attr in other.attributes:
+                        if attributes.connected(attr, other_attr):
+                            semijoin_program.parent_child_columns.append(
+                                ParentChildColumns(
+                                    parent_alias=other.alias,
+                                    child_alias=candidate.alias,
+                                    parent_column=other_attr.attr,
+                                    child_column=attr.attr,
+                                )
+                            )
                 return True
             else:
                 # For non-pure mode: attributes either appear in itself only (size 1) or in the other relation
+                unique_attrs = []
                 for attr in candidate.attributes:
                     # set_size = attributes.get_set_size(attr)
                     set_size = len(attribute_alias[attr.attr])
                     if set_size == 1:
                         # Attribute appears in itself only
+                        unique_attrs.append(attr)
                         continue
                     else:
                         # Check if it appears in the other relation
@@ -909,6 +1011,18 @@ def decide_join_tree(output_file_path):
                         )
                         if not appears_in_other:
                             return False
+                for attr in candidate.attributes:
+                    if attr not in unique_attrs:
+                        for other_attr in other.attributes:
+                            if attributes.connected(attr, other_attr):
+                                semijoin_program.parent_child_columns.append(
+                                    ParentChildColumns(
+                                        parent_alias=other.alias,
+                                        child_alias=candidate.alias,
+                                        parent_column=other_attr.attr,
+                                        child_column=attr.attr,
+                                    )
+                                )
                 return True
 
         # Check if 'one' is an ear consumed by 'two'
@@ -1059,138 +1173,156 @@ def decide_join_tree(output_file_path):
     return semijoin_program
 
 
-def generate_main_block(semijoin_program: SemiJoinProgram, output_file_path) -> str:
-    def form_join_conds(merged_sj: MergedSemiJoin):
-        join_conds = []
-        for ear in merged_sj.ears:
-            for join_cond in item["join_cond"]:
-                foreign_table_alias = join_cond["foreign_table"]["alias"]
-                if foreign_table_alias == ear.alias:
-                    if alias_variable[foreign_table_alias].type == Type.numeric:
-                        join_conds.append(
-                            f"*{join_cond['local_column']} == {alias_variable[foreign_table_alias].name}"
-                        )
-                    elif alias_variable[foreign_table_alias].type == Type.set:
-                        join_conds.append(
-                            f"{alias_variable[foreign_table_alias].name}.contains({join_cond['local_column']})"
-                        )
-                    elif alias_variable[foreign_table_alias].type == Type.map:
-                        join_conds.append(
-                            f"{alias_variable[foreign_table_alias].name}.contains_key({join_cond['local_column']})"
-                        )
-        return "&&".join(join_conds)
+def process_filters(filter_dict, code_gen_context: CodeGenContext) -> typing.List[str]:
+    if not isinstance(filter_dict, dict):
+        # Base case: it's a string value
+        return [filter_dict]
 
-    def process_filters(filter_dict):
-        if not isinstance(filter_dict, dict):
-            # Base case: it's a string value
-            return [filter_dict]
+    operator = filter_dict["operator"]
+    left = filter_dict["left"]
+    right = filter_dict["right"]
 
-        operator = filter_dict["operator"]
-        left = filter_dict["left"]
-        right = filter_dict["right"]
+    # Process left and right operands
+    if isinstance(left, dict):
+        left_expr = process_filters(left, code_gen_context)
+    else:
+        left_expr = [left]
 
-        # Process left and right operands
-        if isinstance(left, dict):
-            left_expr = process_filters(left)
-        else:
-            left_expr = [left]
+    if isinstance(right, dict):
+        right_expr = process_filters(right, code_gen_context)
+    else:
+        right_expr = [right]
 
-        if isinstance(right, dict):
-            right_expr = process_filters(right)
-        else:
-            right_expr = [right]
-
-        if operator == "LIKE":
-            search_terms = []
-            for term in right_expr:
-                if (
+    if operator == "LIKE":
+        search_terms = []
+        for term in right_expr:
+            if (
                     isinstance(term, str)
                     and term.startswith("'")
                     and term.endswith("'")
-                ):
-                    clean_term = term.strip("'").strip("%")
-                    if clean_term and "%" not in clean_term:
-                        search_terms.append(clean_term)
-                    elif "%" in clean_term:
-                        search_terms.extend(clean_term.split("%"))
+            ):
+                clean_term = term.strip("'").strip("%")
+                if clean_term and "%" not in clean_term:
+                    search_terms.append(clean_term)
+                elif "%" in clean_term:
+                    search_terms.extend(clean_term.split("%"))
 
-            conditions = []
-            for term in search_terms:
-                finders.append(
-                    f"""let {term.lower().replace(" ", "_").replace("-", "_")} = memmem::Finder::new("{term}");"""
-                )
-                conditions.append(
-                    f"{term.lower().replace(' ', '_').replace('-', '_')}.find({left_expr[0]}.as_bytes()).is_some()"
-                )
-
-            if conditions:
-                if len(conditions) == 1:
-                    return [conditions[0]]
-                return ["(" + "&&".join(conditions) + ")"]
-            return ["true"]
-
-        elif operator == "NOT LIKE":
-            search_terms = []
-            for term in right_expr:
-                if (
-                    isinstance(term, str)
-                    and term.startswith("'")
-                    and term.endswith("'")
-                ):
-                    clean_term = term.strip("'").strip("%")
-                    if clean_term and "%" not in clean_term:
-                        search_terms.append(clean_term)
-                    elif "%" in clean_term:
-                        search_terms.extend(clean_term.split("%"))
-
-            conditions = []
-            for term in search_terms:
-                finders.append(
-                    f"""let {term.lower().replace(" ", "_").replace("-", "_")} = memmem::Finder::new("{term}");"""
-                )
-                conditions.append(
-                    f"{term.lower().replace(' ', '_').replace('-', '_')}.find({left_expr[0]}.as_bytes()).is_none()"
-                )
-
-            if conditions:
-                if len(conditions) == 1:
-                    return [conditions[0]]
-                return ["(" + "||".join(conditions) + ")"]
-            return ["true"]
-
-        elif operator == "OR":
-            return [f"({left_expr[0]} || {right_expr[0]})"]
-
-        elif operator == "AND":
-            return [f"({left_expr[0]} && {right_expr[0]})"]
-
-        elif operator == "IN":
-            return [ele.strip("'") for ele in right_expr[0]]
-
-        elif operator == "GT":
-            return [f"({left_expr[0]} > {right_expr[0]})"]
-
-        elif operator == "EQ":  
-            return [f"({left_expr[0]} == {right_expr[0]})"]
-
-    def get_min_select(query_data, alias_variable, current_alias):
         conditions = []
-        alias_column = dict()
-        for alias, item in query_data.items():
-            if item["min_select"] is not None:
-                alias_column[alias] = item["min_select"]
-        for alias, column in alias_column.items():
-            variable = alias_variable[alias]
-            assert variable.type == Type.map
-            select_id = ""
-            for cond in query_data[current_alias]["join_cond"]:
-                if cond["foreign_table"]["alias"] == alias:
-                    select_id = cond["local_column"]
-                    break
-            assert select_id != ""
-            conditions.append(f"{variable.name}.get({select_id})")
-        return len(conditions), "&&".join(conditions)
+        for term in search_terms:
+            code_gen_context.finders.append(
+                f"""let {term.lower().replace(" ", "_").replace("-", "_")} = memmem::Finder::new("{term}");"""
+            )
+            conditions.append(
+                f"{term.lower().replace(' ', '_').replace('-', '_')}.find({left_expr[0]}.as_bytes()).is_some()"
+            )
 
+        if conditions:
+            if len(conditions) == 1:
+                return [conditions[0]]
+            return ["(" + "&&".join(conditions) + ")"]
+        return ["true"]
+
+    elif operator == "NOT LIKE":
+        search_terms = []
+        for term in right_expr:
+            if (
+                    isinstance(term, str)
+                    and term.startswith("'")
+                    and term.endswith("'")
+            ):
+                clean_term = term.strip("'").strip("%")
+                if clean_term and "%" not in clean_term:
+                    search_terms.append(clean_term)
+                elif "%" in clean_term:
+                    search_terms.extend(clean_term.split("%"))
+
+        conditions = []
+        for term in search_terms:
+            code_gen_context.finders.append(
+                f"""let {term.lower().replace(" ", "_").replace("-", "_")} = memmem::Finder::new("{term}");"""
+            )
+            conditions.append(
+                f"{term.lower().replace(' ', '_').replace('-', '_')}.find({left_expr[0]}.as_bytes()).is_none()"
+            )
+
+        if conditions:
+            if len(conditions) == 1:
+                return [conditions[0]]
+            return ["(" + "||".join(conditions) + ")"]
+        return ["true"]
+
+    elif operator == "OR":
+        return [f"({left_expr[0]} || {right_expr[0]})"]
+
+    elif operator == "AND":
+        return [f"({left_expr[0]} && {right_expr[0]})"]
+
+    elif operator == "IN":
+        return [ele.strip("'") for ele in right_expr[0]]
+
+    elif operator == "GT":
+        return [f"({left_expr[0]} > {right_expr[0]})"]
+
+    elif operator == "EQ":
+        return [f"({left_expr[0]} == {right_expr[0]})"]
+
+    elif operator == "NEQ":
+        return [f"({left_expr[0]} != {right_expr[0]})"]
+
+
+def format_zip_column(zip_columns, base_table):
+    output = ""
+    output += f"{base_table}.{zip_columns[0]}.iter()"
+    for column in zip_columns[1:]:
+        output += f".zip({base_table}.{column}.iter())"
+    return output
+
+def build_filter_columns(filter_dict):
+    columns = set()
+
+    def collect_columns(filter_dict):
+        if not isinstance(filter_dict, dict):
+            return
+
+        left = filter_dict.get("left")
+        right = filter_dict.get("right")
+
+        # Collect column from left operand
+        if isinstance(left, str):
+            columns.add(left)
+        elif isinstance(left, dict):
+            collect_columns(left)
+
+        # Collect columns from right operand
+        if isinstance(right, dict):
+            collect_columns(right)
+        elif isinstance(right, list):
+            for item in right:
+                if isinstance(item, dict):
+                    collect_columns(item)
+
+    if filter_dict:
+        collect_columns(filter_dict)
+
+    return list(columns)
+
+def build_filter_map(zip_columns):
+    return reduce(
+        lambda accumulator, item: (accumulator, item), zip_columns
+    )
+
+def build_old_filter_map(zip_columns):
+    return reduce(
+        lambda accumulator, item: (accumulator, f"old_{item}"), zip_columns
+    )
+
+
+def build_some_conditions(zip_columns, nullable_columns) -> str:
+    zip_nullable_columns = [x for x in nullable_columns if x in zip_columns]
+    return "&&".join([f"let Some({column}) = {column}" for column in zip_nullable_columns])
+
+
+def build_code_block(alias, query_item, program_context: ProgramContext) -> CodeBlock:
     def build_zip(query_item):
         zip_columns = []
         for item in query_item['join_cond']:
@@ -1204,76 +1336,6 @@ def generate_main_block(semijoin_program: SemiJoinProgram, output_file_path) -> 
             zip_columns.append(query_item['min_select'])
         return zip_columns
 
-    def format_zip_column(zip_columns, base_table):
-        output = ""
-        output += f"{base_table}.{zip_columns[0]}.iter()"
-        for column in zip_columns[1:]:
-            output += f".zip({base_table}.{column}.iter())"
-        return output
-
-
-    def build_filter_columns(filter_dict):
-        columns = set()
-
-        def collect_columns(filter_dict):
-            if not isinstance(filter_dict, dict):
-                return
-
-            left = filter_dict.get("left")
-            right = filter_dict.get("right")
-
-            # Collect column from left operand
-            if isinstance(left, str):
-                columns.add(left)
-            elif isinstance(left, dict):
-                collect_columns(left)
-
-            # Collect columns from right operand
-            if isinstance(right, dict):
-                collect_columns(right)
-            elif isinstance(right, list):
-                for item in right:
-                    if isinstance(item, dict):
-                        collect_columns(item)
-
-        if filter_dict:
-            collect_columns(filter_dict)
-
-        return list(columns)
-
-    def build_filter_map(zip_columns, query_item):
-        return reduce(
-            lambda accumulator, item: (accumulator, item), zip_columns
-        )
-
-    def get_select_fields(query_data):
-        select_fields = []
-        for _, item in query_data.items():
-            if item["min_select"] is not None:
-                select_fields.append(item["min_select"])
-        return select_fields
-
-    def build_filter_map_out(alias, select_fields, query_item, semijoin_program: SemiJoinProgram):
-        is_min_loop = semijoin_program.get_root().alias == alias
-        if is_min_loop:
-            ret = []
-            for column in select_fields:
-                if column == "title":
-                    ret.append("title.as_str()")
-            if len(ret) == 1:
-                return f"{ret[0]}"
-            else:
-                return "(" + ",".join(ret) + ")"
-        else:
-            if query_item["min_select"] is not None:
-                parent = semijoin_program.find_parent(alias)
-                assert parent is not None
-                for join_cond in query_item["join_cond"]:
-                    if join_cond["foreign_table"]["alias"] == parent.alias:
-                        raise ValueError("Unimplemented!")
-            else:
-                raise ValueError("Unimplemented!")
-
     def get_nullable_columns(query_item) -> typing.List[str]:
         nullable_columns = []
         for column_name, column_item in query_item['columns'].items():
@@ -1281,203 +1343,237 @@ def generate_main_block(semijoin_program: SemiJoinProgram, output_file_path) -> 
                 nullable_columns.append(column_name)
         return nullable_columns
 
-    def build_filter_map_main(alias, alias_sj, query_item, semijoin_program: SemiJoinProgram):
-        nullable_columns = get_nullable_columns(query_item)
+    def join_column(alias, query_item, program_context: ProgramContext) -> Tuple[str, str]:
+        parent_relation : Relation = program_context.semijoin_program.find_parent(alias)
+        child_column = ""
+        for parent_child_column in program_context.semijoin_program.parent_child_columns:
+            if parent_child_column.parent_alias == parent_relation.alias and \
+                parent_child_column.child_alias == alias:
+                    child_column = parent_child_column.child_column
+        for join_cond in query_item["join_cond"]:
+            if join_cond["local_column"] == child_column:
+                return child_column, join_cond["key"]
+
+    def decide_type(alias, query_item, program_context:ProgramContext, key: str) -> Type:
+        if query_item["size_after_filters"] == 1:
+            return Type.numeric
+        elif not query_item["min_select"]:
+            return Type.set
+        else:
+            parent_alias = program_context.semijoin_program.find_parent(alias)
+            if not parent_alias:
+                return Type.not_need
+            else:
+                if key == "PK":
+                    return Type.map
+                else:
+                    return Type.map_vec
+
+    join_column, key = join_column(alias, query_item, program_context)
+    return CodeBlock(alias=alias,
+                     zip_columns=build_zip(query_item),
+                     nullable_columns=get_nullable_columns(query_item),
+                     join_column=join_column,
+                     type=decide_type(alias, query_item, program_context, key))
+
+def generate_code_block(code_block: CodeBlock,
+                        program_context: ProgramContext,
+                        code_gen_context: CodeGenContext) -> str:
+    def format_result_output(program_context: ProgramContext) -> str:
+        result_set_size = len(program_context.selected_fields)
+        if result_set_size == 1:
+            result_output = f"Option<{', '.join(['&str'] * result_set_size)}>"
+        else:
+            result_output = f"Option<({', '.join(['&str'] * result_set_size)})>"
+        return result_output
+
+    def build_res_match(program_context: ProgramContext) -> str:
+        res_match = Template("""
+        res = match res {
+            Some({{ old_filter_map_closure|replace("'","")}}) => Some((
+                {{ comparison }}
+            )),
+            None => Some({{ filter_map_closure|replace("'","")}}),
+        };
+        """)
+        field_columns = [field.column for field in program_context.selected_fields]
+        data["old_filter_map_closure"] = build_old_filter_map(field_columns)
+        data["filter_map_closure"] = build_filter_map(field_columns)
+        comparison = []
+        for selected_field in program_context.selected_fields:
+            if not selected_field.nullable:
+                comparison.append(f"{selected_field.column}.min(&old_{selected_field.column})")
+            else:
+                raise ValueError("Unimplemented!")
+        data["comparison"] = ",".join(comparison)
+        return res_match.render(data)
+
+    def form_join_conds(query_item, code_gen_context: CodeGenContext) -> str:
+        join_conds = []
+        merged_sj: MergedSemiJoin = code_gen_context.alias_sj[code_block.alias]
+        for ear in merged_sj.ears:
+            for join_cond in query_item["join_cond"]:
+                foreign_table_alias = join_cond["foreign_table"]["alias"]
+                if foreign_table_alias == ear.alias:
+                    if code_gen_context.alias_variable[foreign_table_alias].type == Type.numeric:
+                        join_conds.append(
+                            f"*{join_cond['local_column']} == {code_gen_context.alias_variable[foreign_table_alias].name}"
+                        )
+                    elif code_gen_context.alias_variable[foreign_table_alias].type == Type.set:
+                        join_conds.append(
+                            f"{code_gen_context.alias_variable[foreign_table_alias].name}.contains({join_cond['local_column']})"
+                        )
+                    elif code_gen_context.alias_variable[foreign_table_alias].type == Type.map:
+                        join_conds.append(
+                            f"{code_gen_context.alias_variable[foreign_table_alias].name}.contains_key({join_cond['local_column']})"
+                        )
+        return "&&".join(join_conds)
+
+    def build_filter_map_out(code_block: CodeBlock, program_context: ProgramContext) -> str:
+        is_min_loop = program_context.semijoin_program.get_root().alias == code_block.alias
+        query_item = program_context.query_data[code_block.alias]
+        if is_min_loop:
+            ret = []
+            for selected_field in program_context.selected_fields:
+                if selected_field.column == "title":
+                    ret.append("title.as_str()")
+            if len(ret) == 1:
+                return f"{ret[0]}"
+            else:
+                return "(" + ",".join(ret) + ")"
+        else:
+            if query_item["min_select"] is not None:
+                parent = program_context.semijoin_program.find_parent(code_block.alias)
+                assert parent is not None
+                for join_cond in query_item["join_cond"]:
+                    if join_cond["foreign_table"]["alias"] == parent.alias:
+                        raise ValueError("Unimplemented!")
+            else:
+                raise ValueError("Unimplemented!")
+
+    def build_filter_map_main(code_block, program_context: ProgramContext, code_gen_context: CodeGenContext) -> str:
+        query_item = program_context.query_data[code_block.alias]
         filter_columns = build_filter_columns(query_item["filters"])
-        filter_nullable_columns = [x for x in nullable_columns if x in filter_columns]
+        filter_nullable_columns = [x for x in code_block.nullable_columns if x in filter_columns]
         assert len(filter_nullable_columns) == 1
         nullable_local_variable = filter_nullable_columns[0].strip("'")
-        filter_conditions = process_filters(query_item['filters'])
+        filter_conditions = process_filters(query_item['filters'], code_gen_context)
         assert len(filter_conditions) == 1
         filter_conditions = filter_conditions[0].strip("'").strip('(').strip(')')
-        map_out = build_filter_map_out(alias, select_fields, item, semijoin_program)
-        if alias in alias_sj:
-            join_conditions = form_join_conds(alias_sj[alias])
+        map_out = build_filter_map_out(code_block, program_context)
+        if code_block.alias in code_gen_context.alias_sj:
+            join_conditions = form_join_conds(query_item, code_gen_context)
             return f"""{nullable_local_variable}
-                .filter(|&{nullable_local_variable}| { filter_conditions } && { join_conditions })
+                .filter(|&{nullable_local_variable}| {filter_conditions} && {join_conditions})
                 .map(|_| {map_out})"""
         else:
             return f"""{nullable_local_variable}
-                .filter(|&{nullable_local_variable}| { filter_conditions })
+                .filter(|&{nullable_local_variable}| {filter_conditions})
                 .map(|_| {map_out})"""
 
-    def build_some_conditions(zip_columns, query_item) -> str:
-        nullable_columns = get_nullable_columns(query_item)
-        zip_nullable_columns = [x for x in nullable_columns if x in zip_columns]
-        return "&&".join([f"let Some({column}) = {column}" for column in zip_nullable_columns])
+    data = dict()
+    data["alias"] = code_block.alias
+    data["zip_columns"] = format_zip_column(code_block.zip_columns, code_block.alias)
+    data["filter_map_closure"] = build_filter_map(code_block.zip_columns)
+    filter_conditions = process_filters(program_context.query_data[code_block.alias]["filters"],
+                                       code_gen_context)
+    data["filter_conditions"] = filter_conditions[0] if filter_conditions else None
+    data["join_column"] = code_block.join_column
 
+    if program_context.semijoin_program.get_root().alias == code_block.alias:
+        # in the min_loop
+        if len(program_context.selected_fields) == 1:
+            # in the single_output
+            raise ValueError("Unimplemented!")
+        else:
+            code_block_template = Template("""
+            let mut res: {{ result_output }} = None;
+            for {{ filter_map_closure|replace("'","")}} in
+            {{ zip_columns }}
+            {
+                {% set conditions = [] %}
+                {% if some_conditions is not none %}
+                    {% set _ = conditions.append(some_conditions) %}
+                {% endif %}
+                {% if filter_conditions is not none %}
+                    {% set _ = conditions.append(filter_conditions) %}
+                {% endif %}
+                {% if join_conditions is not none %}
+                    {% set _ = conditions.append(join_conditions) %}
+                {% endif %}
+
+                if {{ conditions | join(' && ') }} {
+                    {{ res_match }}
+                }
+            }
+            """)
+            data["result_output"] = format_result_output(program_context)
+            data["some_conditions"] = build_some_conditions(code_block.zip_columns, code_block.nullable_columns)
+            if code_block.alias in code_gen_context.alias_sj:
+                query_item = program_context.query_data[code_block.alias]
+                data["join_conditions"] = form_join_conds(query_item, code_gen_context)
+            data["res_match"] = build_res_match(program_context)
+            return code_block_template.render(data)
+    elif code_block.type == Type.numeric:
+        template = Template("""
+        let {{ alias }}_id =
+        {{ zip_column }}
+        .find(|filter_map_closure|replace("'","")}}| {{ filter_conditions|replace("'",'"') }})
+        .map(|filter_map_closure|replace("'","")}}| *{{ join_column }})
+        .unwrap();
+        """)
+        template.render(data)
+        code_gen_context.alias_variable[code_block.alias] = (
+            Variable(name=f"{code_block.alias}_id", type=code_block.type))
+    elif code_block.type == Type.set:
+        template = Template("""
+        let {{ alias }}_s : HashSet<i32> = 
+        {{ zip_column }}
+        .filter_map(|filter_map_closure|replace("'","")}}| {
+            {{ filter_conditions }}
+            .then_some(*{{ join_column }})
+        })
+        .collect();
+        """)
+        template.render(data)
+        code_gen_context.alias_variable[code_block.alias] = (
+            Variable(name=f"{code_block.alias}_s", type=code_block.type))
+    elif code_block.type == Type.map:
+        template = Template("""
+        let {{ alias }}_m: HashMap<i32, &str> =
+        {{  zip_columns }}
+        .filter_map(|{{ filter_map_closure|replace("'","")}}| {
+            {{ filter_map_main }}
+        })
+        .collect();
+        """)
+        data["filter_map_main"] = build_filter_map_main(code_block, program_context, code_gen_context)
+        template.render(data)
+        code_gen_context.alias_variable[code_block.alias] = Variable(name=f"{code_block.alias}_m", type=code_block.type)
+
+
+def generate_main_block(semijoin_program: SemiJoinProgram,
+                        output_file_path) -> str:
     with open(output_file_path, "r") as f:
         query_data = json.load(f)
 
-    env = Environment(loader=FileSystemLoader("templates"))
-    finders = []
     meat_statements = []
     main_block = ""
-
-    orders, alias_sj = semijoin_program.get_generation_order()
+    code_gen_context = CodeGenContext(alias_sj=dict(),
+                                      alias_variable=dict(),
+                                      finders=[])
+    orders, code_gen_context.alias_sj = semijoin_program.get_generation_order()
+    program_context = ProgramContext(query_data, semijoin_program)
     print(f"orders: {orders}")
-    print(f"alias_sj: {alias_sj}")
-    alias_variable = dict()
-    select_fields = get_select_fields(query_data)
-    single_output = len(select_fields) == 1
+    print(f"alias_sj: {code_gen_context.alias_sj}")
     for idx, alias in enumerate(orders):
         item = query_data[alias]
         print(item["filters"])
-        if "cct" in alias:
-            # todo: restructure this codeblock with latest API (e.g., we no longer
-            #  need string_filter but using filter_conditions instead). Also, need
-            #  to adjust template accordinly as well.
-            cct_template = env.get_template("cct.jinja")
-            assert isinstance(item["filters"]["left"], str)
-            assert "kind" in item["filters"]["left"]
-            if item["filters"]["operator"] == "EQ":
-                data = {
-                    "cct_eq": True,
-                    "alias": alias,
-                    "string_filter": item["filters"]["right"].strip("'"),
-                }
-                alias_variable[alias] = Variable(name=f"{alias}_id", type=Type.numeric)
-                meat_statements.append(cct_template.render(data))
-            elif item["filters"]["operator"] == "LIKE":
-                assert isinstance(item["filters"]["right"], str)
-                finder_name = item["filters"]["right"].strip("'").strip("%")
-                assert "%" not in finder_name
-                finders.append(
-                    f"""let {finder_name.lower()} = memmem::Finder::new("{finder_name}");"""
-                )
-                data = {
-                    "cct_like": True,
-                    "alias": alias,
-                    "finder": finder_name.lower(),
-                }
-                alias_variable[alias] = Variable(name=f"{alias}_s", type=Type.set)
-                meat_statements.append(cct_template.render(data))
-        elif "chn" in alias:
-            filter_data = process_filters(item["filters"])
-            print(f"filter_data: {filter_data}")
-            data = dict()
-            data["filter_conditions"] = filter_data[0]
-            chn_template = env.get_template("chn.jinja")
-            meat_statements.append(chn_template.render(data))
-            alias_variable[alias] = Variable(name=f"{alias}_s", type=Type.set)
-        elif "kt" in alias:
-            kt_template = env.get_template("kt.jinja")
-            assert isinstance(item["filters"]["left"], str)
-            assert "kind" in item["filters"]["left"]
-            assert item["filters"]["operator"] == "EQ"
-            data = {"string_filter": item["filters"]["right"].strip("'")}
-            meat_statements.append(kt_template.render(data))
-            alias_variable[alias] = Variable(name="kt_id", type=Type.numeric)
-        elif "t" in alias and "kt" not in alias and "ct" not in alias and "it" not in alias:
-            t_template = env.get_template("t.jinja")
-            data = dict()
-            zip_columns = build_zip(item)
-            data["min_loop"] = alias == semijoin_program.get_root().alias
-            data["single_output"] = single_output
-            data["t_m"] = item["min_select"] is not None and not data["min_loop"]
-            data["zip_columns"] = format_zip_column(zip_columns, "t")
-            data["filter_map_closure"] = build_filter_map(zip_columns, item)
-            if alias in alias_sj:
-                data["join_conditions"] = form_join_conds(alias_sj[alias])
-            filter_condtions = process_filters(item["filters"])
-            data["filter_conditions"] = filter_condtions[0] if filter_condtions else None
-            if data["min_loop"] and not single_output:
-                data["some_conditions"] = build_some_conditions(zip_columns, item)
-            else:
-                data["filter_map_main"] = build_filter_map_main(alias, alias_sj, item, semijoin_program)
-            alias_variable[alias] = Variable(name="t_m", type=Type.map)
-            meat_statements.append(t_template.render(data))
-        elif "cc" in alias and "cct" not in alias:
-            cc_template = env.get_template("cc.jinja")
-            data = dict()
-            zip_columns = build_zip(item)
-            data["zip_columns"] = format_zip_column(zip_columns, "cc")
-            if alias in alias_sj:
-                data["join_conditions"] = form_join_conds(alias_sj[alias])
-            data["filter_map_closure"] = build_filter_map(zip_columns, item)
-            meat_statements.append(cc_template.render(data))
-            alias_variable[alias] = Variable(name=f"{alias}_s", type=Type.set)
-        elif "n" in alias and "chn" not in alias:
-            n_template = env.get_template("n.jinja")
-            data = dict()
-            if item["filters"] is None:
-                meat_statements.append(n_template.render(data))
-                alias_variable[alias] = Variable(name=f"{alias}_s", type=Type.set)
-        elif "ci" in alias:
-            ci_template = env.get_template("ci.jinja")
-            data = dict()
-            zip_columns = build_zip(item)
-            data["zip_columns"] = format_zip_column(zip_columns, "ci")
-            data["filter_map_closure"] = build_filter_map(zip_columns, item)
-            if alias in alias_sj:
-                data["join_conditions"] = form_join_conds(alias_sj[alias])
-            meat_statements.append(ci_template.render(data))
-            alias_variable[alias] = Variable(name=f"{alias}_s", type=Type.set)
-        elif "k" in alias and "mk" not in alias and "kt" not in alias:
-            k_template = env.get_template("k.jinja")
-            data = dict()
-            data["target_keywords"] = process_filters(item["filters"])
-            meat_statements.append(k_template.render(data))
-            alias_variable[alias] = Variable(name=f"{alias}_s", type=Type.set)
-        elif "mk" in alias:
-            mk_template = env.get_template("mk.jinja")
-            data = dict()
-            zip_columns = build_zip(item)
-            if idx == len(orders) - 1:
-                data["min_loop"] = True
-                num_output_probe, output_probe = get_min_select(query_data, alias_variable, alias)
-                if num_output_probe == 1:
-                    data["single_output"] = single_output
-                    data["output_probe"] = output_probe
-            elif item["min_select"] is not None:
-                alias_variable[alias] = Variable(name=f"{alias}_m", type=Type.set)
-            else:
-                alias_variable[alias] = Variable(name=f"{alias}_s", type=Type.set)
-            data["zip_columns"] = format_zip_column(zip_columns, "mk")
-            data["filter_map_closure"] = build_filter_map(zip_columns, item)
-            if alias in alias_sj:
-                data["join_conditions"] = form_join_conds(alias_sj[alias])
-            meat_statements.append(mk_template.render(data))
-        elif "mi_idx" in alias:
-            mi_idx_template = env.get_template("mi_idx.jinja")
-            data = dict()
-            zip_columns = build_zip(item)
-            data["zip_columns"] = format_zip_column(zip_columns, "mi_idx")
-            data["filter_map_closure"] = build_filter_map(zip_columns, item)
-            if alias in alias_sj:
-                data["join_conditions"] = form_join_conds(alias_sj[alias])
-            meat_statements.append(mi_idx_template.render(data))
-            alias_variable[alias] = Variable(name=f"{alias}_s", type=Type.set)
-        elif "mc" in alias:
-            filter_data = process_filters(item["filters"])
-            data = dict()
-            data["filter_conditions"] = filter_data[0]
-            if alias in alias_sj:
-                data["join_conditions"] = form_join_conds(alias_sj[alias])
-            mc_template = env.get_template("mc.jinja")
-            meat_statements.append(mc_template.render(data))
-            alias_variable[alias] = Variable(name=f"{alias}_s", type=Type.set)
-        elif "ct" in alias:
-            filter_data = process_filters(item["filters"])
-            data = dict()
-            zip_columns = build_zip(item)
-            data["filter_conditions"] = filter_data[0].strip('(').strip(')')
-            data["zip_columns"] = format_zip_column(zip_columns, "ct")
-            ct_template = env.get_template("ct.jinja")
-            meat_statements.append(ct_template.render(data))
-            alias_variable[alias] = Variable(name=f"{alias}_id", type=Type.numeric)
-        elif "it" in alias:
-            filter_data = process_filters(item["filters"])
-            data = dict()
-            zip_columns = build_zip(item)
-            data["filter_conditions"] = filter_data[0]
-            data["zip_columns"] = format_zip_column(zip_columns, "it")
-            it_template = env.get_template("it.jinja")
-            meat_statements.append(it_template.render(data))
-            alias_variable[alias] = Variable(name=f"{alias}_id", type=Type.numeric)
+        code_block = build_code_block(alias, item, program_context)
+        meat_statements.append(generate_code_block(code_block, program_context, code_gen_context))
 
-
-    main_block += "\n".join(finders)
+    # todo: we can do an optimization pass (such as merge cct passes) on meat_statements
+    main_block += "\n".join(code_gen_context.finders)
     main_block += "let start = Instant::now();"
     main_block += "\n".join(meat_statements)
     return main_block
