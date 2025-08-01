@@ -13,5 +13,25 @@ let t_m: HashMap<i32, &str> =
                 {{ filter_map_main }}
             })
             .min();
+    {% else %}
+            let mut res: {{ result_output }} = None;
+            for {{ filter_map_closure|replace("'","")}} in
+            {{ zip_columns }}
+            {
+                {% set conditions = [] %}
+                {% if some_conditions is not none %}
+                    {% set _ = conditions.append(some_conditions) %}
+                {% endif %}
+                {% if filter_conditions is not none %}
+                    {% set _ = conditions.append(filter_conditions) %}
+                {% endif %}
+                {% if join_conditions is not none %}
+                    {% set _ = conditions.append(join_conditions) %}
+                {% endif %}
+
+                if {{ conditions | join(' && ') }} {
+                    {{ res_match }}
+                }
+            }
     {% endif %}
 {% endif %}

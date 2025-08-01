@@ -1,7 +1,5 @@
-let kt_id = kt
-    .kind
-    .iter()
-    .zip(kt.id.iter())
+let kt_id =
+    {{ zip_column }}
     .find(|(kind, _)| *kind == "{{ string_filter }}")
     .map(|(_, id)| *id)
     .unwrap();
