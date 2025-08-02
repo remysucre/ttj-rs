@@ -1236,9 +1236,11 @@ def decide_join_tree(output_file_path):
     return semijoin_program
 
 
-def process_filters(filter_dict, code_gen_context: CodeGenContext) -> typing.List[str]:
+def process_filters(alias, filter_dict, code_gen_context: CodeGenContext, program_context: ProgramContext) -> typing.List[str]:
     if not isinstance(filter_dict, dict):
         # Base case: it's a string value
+        if filter_dict in program_context.query_data[alias]["columns"] and not program_context.query_data[alias]["columns"][filter_dict]["nullable"]:
+            return [f"*{filter_dict}"]
         return [filter_dict]
 
     operator = filter_dict["operator"]
@@ -1247,12 +1249,16 @@ def process_filters(filter_dict, code_gen_context: CodeGenContext) -> typing.Lis
 
     # Process left and right operands
     if isinstance(left, dict):
-        left_expr = process_filters(left, code_gen_context)
+        left_expr = process_filters(alias, left, code_gen_context, program_context)
     else:
-        left_expr = [left]
+        # Check if left operand needs dereference
+        if left in program_context.query_data[alias]["columns"] and not program_context.query_data[alias]["columns"][left]["nullable"]:
+            left_expr = [f"*{left}"]
+        else:
+            left_expr = [left]
 
     if isinstance(right, dict):
-        right_expr = process_filters(right, code_gen_context)
+        right_expr = process_filters(alias, right, code_gen_context, program_context)
     else:
         right_expr = [right]
 
@@ -1276,7 +1282,7 @@ def process_filters(filter_dict, code_gen_context: CodeGenContext) -> typing.Lis
             finder_declaration = f"""let {finder_var_name} = memmem::Finder::new("{term}");"""
             code_gen_context.finders.add(finder_declaration)
             conditions.append(
-                f"{finder_var_name}.find({left_expr[0]}.as_bytes()).is_some()"
+                f"{finder_var_name}.find({left_expr[0].replace('*', '')}.as_bytes()).is_some()"
             )
 
         if conditions:
@@ -1305,7 +1311,7 @@ def process_filters(filter_dict, code_gen_context: CodeGenContext) -> typing.Lis
             finder_declaration = f"""let {finder_var_name} = memmem::Finder::new("{term}");"""
             code_gen_context.finders.add(finder_declaration)
             conditions.append(
-                f"{finder_var_name}.find({left_expr[0]}.as_bytes()).is_none()"
+                f"{finder_var_name}.find({left_expr[0].replace('*', '')}.as_bytes()).is_none()"
             )
 
         if conditions:
@@ -1328,7 +1334,7 @@ def process_filters(filter_dict, code_gen_context: CodeGenContext) -> typing.Lis
         else:
             # Create a set lookup for multiple values
             values_str = ', '.join([f'"{v}"' for v in values])
-            return [f"[{values_str}].contains(&{left_expr[0]}.as_str())"]
+            return [f"[{values_str}].contains(&{left_expr[0].replace('*', '')}.as_str())"]
 
     elif operator == "GT":
         return [f"({left_expr[0]} > {right_expr[0]})"]
@@ -1502,7 +1508,7 @@ def generate_code_block(code_block: CodeBlock,
                 if foreign_table_alias == ear.alias:
                     if code_gen_context.alias_variable[foreign_table_alias].type == Type.numeric:
                         join_conds.append(
-                            f"{join_cond['local_column']} == {code_gen_context.alias_variable[foreign_table_alias].name}"
+                            f"*{join_cond['local_column']} == {code_gen_context.alias_variable[foreign_table_alias].name}"
                         )
                     elif code_gen_context.alias_variable[foreign_table_alias].type == Type.set:
                         join_conds.append(
@@ -1550,7 +1556,7 @@ def generate_code_block(code_block: CodeBlock,
         filter_columns = build_filter_columns(query_item["filters"])
         filter_nullable_columns = [x for x in code_block.nullable_columns if x in filter_columns]
         assert len(filter_nullable_columns) <= 1
-        filter_conditions = process_filters(query_item['filters'], code_gen_context)
+        filter_conditions = process_filters(code_block.alias, query_item['filters'], code_gen_context, program_context)
         if code_block.alias in code_gen_context.alias_sj:
             join_conditions = form_join_conds(query_item, code_gen_context)
         else:
@@ -1611,8 +1617,8 @@ def generate_code_block(code_block: CodeBlock,
     data["alias"] = code_block.alias
     data["zip_columns"] = format_zip_column(code_block.zip_columns, code_block.alias)
     data["filter_map_closure"] = build_filter_map(code_block.zip_columns)
-    filter_conditions = process_filters(program_context.query_data[code_block.alias]["filters"],
-                                       code_gen_context)
+    filter_conditions = process_filters(code_block.alias, program_context.query_data[code_block.alias]["filters"],
+                                       code_gen_context, program_context)
     data["filter_conditions"] = filter_conditions[0] if filter_conditions else None
     data["join_column"] = code_block.join_column
     if code_block.alias in code_gen_context.alias_sj:
