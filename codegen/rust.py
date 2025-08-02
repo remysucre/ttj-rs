@@ -47,11 +47,13 @@ ALIAS_TO_TABLE = {
     "t": "title",
 }
 
+
 def check_argument(predicate, message):
     if predicate:
         return
     else:
         raise ValueError(message)
+
 
 @dataclass(frozen=True)
 class Attribute:
@@ -85,12 +87,12 @@ class SemiJoin:
 
 
 class Type(Enum):
-    numeric = 'numeric'
-    set = 'set'
-    map = 'map'
-    string = 'string'
-    map_vec = 'map_vec'
-    not_need = 'not_need' # happens for the min_loop relation
+    numeric = "numeric"
+    set = "set"
+    map = "map"
+    string = "string"
+    map_vec = "map_vec"
+    not_need = "not_need"  # happens for the min_loop relation
 
 
 @dataclass
@@ -200,7 +202,7 @@ class MergedLevel:
 class SemiJoinProgram:
     def __init__(self):
         self.program = []
-        self.parent_child_columns : typing.List[ParentChildColumns] = []
+        self.parent_child_columns: typing.List[ParentChildColumns] = []
 
     def append(self, level: MergedLevel):
         self.program.append(level)
@@ -225,7 +227,7 @@ class SemiJoinProgram:
         ears: ['cc'], parent: mk, score: 135086
         ears: ['mk'], parent: t, score: 4523930
         into
-        semijoin_program: 
+        semijoin_program:
         level: 0
         ears: ['cct1', 'cct2', 't'], parent: cc, score: 2287275
         ears: ['n', 'chn', 'cc'], parent: ci, score: 135146
@@ -241,16 +243,23 @@ class SemiJoinProgram:
                     found_sj.append(sj)
                     ears = [rel for rel in merged_sj.ears]
                     ears.append(sj.ear)
-                    merged_level.append(MergedSemiJoin(ears = ears, parent = sj.parent, score=merged_sj.score+sj.score))
+                    merged_level.append(
+                        MergedSemiJoin(
+                            ears=ears,
+                            parent=sj.parent,
+                            score=merged_sj.score + sj.score,
+                        )
+                    )
                     found = True
                     break
             if not found:
                 merged_level.append(merged_sj)
         for sj in level:
             if sj not in found_sj:
-                merged_level.append(MergedSemiJoin(ears=[sj.ear], parent = sj.parent, score = sj.score))
+                merged_level.append(
+                    MergedSemiJoin(ears=[sj.ear], parent=sj.parent, score=sj.score)
+                )
         self.program[0] = merged_level
-
 
     def __str__(self):
         if not self.program:
@@ -278,18 +287,18 @@ class SemiJoinProgram:
     def size(self):
         if not self.program:
             return 0
-        
+
         # Since program contains at most one MergedLevel
         level = self.program[0]
         relations = set()
-        
+
         for merged_sj in level:
             # Add the parent relation
             relations.add(merged_sj.parent)
             # Add all ear relations
             for ear in merged_sj.ears:
                 relations.add(ear)
-        
+
         return len(relations)
 
     def find_parent(self, alias: str) -> typing.Union[Relation, None]:
@@ -309,6 +318,7 @@ class SemiJoinProgram:
         for merged_sj in self.program[0]:
             if merged_sj.parent.alias == alias:
                 return [ear.alias for ear in merged_sj.ears]
+
 
 class UnionFind:
     """
@@ -445,28 +455,29 @@ class UnionFind:
             return []
 
         return [self.find(item) for item in self.parent]
-    
+
     def get_group_members(self, item) -> typing.List[Attribute]:
         """
         Returns a list of all elements in the same group as the given item.
-        
+
         Args:
             item: The item whose group members are to be found.
-            
+
         Returns:
             A list of all elements in the same group as the item.
         """
         if item not in self.parent:
             return [item]
-        
+
         root = self.find(item)
         group_members = []
-        
+
         for element in self.parent:
             if self.find(element) == root:
                 group_members.append(element)
-        
+
         return group_members
+
 
 @dataclass
 class CodeBlock:
@@ -476,12 +487,14 @@ class CodeBlock:
     zip_columns: typing.List[str]
     nullable_columns: typing.List[str]
 
+
 @dataclass
 class Field:
     alias: str
     nullable: bool
     type: Type
     column: str
+
 
 @dataclass(frozen=True)
 class ParentChildColumns:
@@ -490,10 +503,12 @@ class ParentChildColumns:
     parent_column: str
     child_column: str
 
+
 @dataclass
 class ParentChildPhysicalColumns:
     parent_field: Field
     child_field: Field
+
 
 class ProgramContext:
     def __init__(self, query_data, semijoin_program: SemiJoinProgram):
@@ -501,7 +516,9 @@ class ProgramContext:
         self.semijoin_program = semijoin_program
         self.selected_fields = self.__construct_selected_fields(query_data)
         self.attributes = self.__build_attributes_union_find(query_data)
-        self.parent_child_physical_columns : typing.List[ParentChildPhysicalColumns] = self.__construct_parent_child_physical_columns(semijoin_program, query_data)
+        self.parent_child_physical_columns: typing.List[ParentChildPhysicalColumns] = (
+            self.__construct_parent_child_physical_columns(semijoin_program, query_data)
+        )
 
     def __build_attributes_union_find(self, query_data) -> UnionFind:
         attributes = UnionFind()
@@ -524,14 +541,19 @@ class ProgramContext:
         for alias, item in query_data.items():
             column = item["min_select"]
             if column is not None:
-                select_fields.append(Field(alias,
-                                                   item["columns"][column]["nullable"],
-                                                   Type(item["columns"][column]["type"]),
-                                                   column))
+                select_fields.append(
+                    Field(
+                        alias,
+                        item["columns"][column]["nullable"],
+                        Type(item["columns"][column]["type"]),
+                        column,
+                    )
+                )
         return select_fields
 
-    def __construct_parent_child_physical_columns(self, semijoin_program: SemiJoinProgram,
-                                                  query_data) -> typing.List[ParentChildPhysicalColumns]:
+    def __construct_parent_child_physical_columns(
+        self, semijoin_program: SemiJoinProgram, query_data
+    ) -> typing.List[ParentChildPhysicalColumns]:
         parent_child_physical_columns = []
         for parent_child_column in semijoin_program.parent_child_columns:
             parent_child_physical_columns.append(
@@ -539,17 +561,27 @@ class ProgramContext:
                     parent_field=Field(
                         alias=parent_child_column.parent_alias,
                         column=parent_child_column.parent_column,
-                        nullable=query_data[parent_child_column.parent_alias]["columns"][parent_child_column.parent_column]["nullable"],
-                        type=Type(query_data[parent_child_column.parent_alias]["columns"][parent_child_column.parent_column]["type"])
+                        nullable=query_data[parent_child_column.parent_alias][
+                            "columns"
+                        ][parent_child_column.parent_column]["nullable"],
+                        type=Type(
+                            query_data[parent_child_column.parent_alias]["columns"][
+                                parent_child_column.parent_column
+                            ]["type"]
+                        ),
                     ),
                     child_field=Field(
                         alias=parent_child_column.child_alias,
                         column=parent_child_column.child_column,
-                        nullable=query_data[parent_child_column.child_alias]["columns"][parent_child_column.child_column][
-                            "nullable"],
-                        type=Type(query_data[parent_child_column.child_alias]["columns"][parent_child_column.child_column][
-                            "type"])
-                    )
+                        nullable=query_data[parent_child_column.child_alias]["columns"][
+                            parent_child_column.child_column
+                        ]["nullable"],
+                        type=Type(
+                            query_data[parent_child_column.child_alias]["columns"][
+                                parent_child_column.child_column
+                            ]["type"]
+                        ),
+                    ),
                 )
             )
         return parent_child_physical_columns
@@ -560,6 +592,7 @@ class CodeGenContext:
     alias_variable: dict
     alias_sj: dict
     finders: typing.Set[str] = field(default_factory=set)
+
 
 def format_expression_to_dict(expression):
     """
@@ -602,7 +635,9 @@ def format_expression_to_dict(expression):
         return expression.sql()
 
 
-def process_query_and_stats(sql_query, stats_filepath, output_filepath, pks, fks, table_columns):
+def process_query_and_stats(
+    sql_query, stats_filepath, output_filepath, pks, fks, table_columns
+):
     """
     Parses an SQL query, extracts metadata for each table, combines it
     with statistics from a file, and saves the result to a JSON file.
@@ -691,9 +726,9 @@ def process_query_and_stats(sql_query, stats_filepath, output_filepath, pks, fks
         # Find the corresponding size from the statistics file.
         # For aliases with numbers (like cct1, cct2), match both table name and alias suffix.
         best_match_key = ""
-        
+
         # Extract numeric suffix from alias if present
-        alias_match = re.search(r'(\D+)(\d*)$', alias)
+        alias_match = re.search(r"(\D+)(\d*)$", alias)
         if alias_match:
             alias_base, alias_suffix = alias_match.groups()
             # Try to find a key that matches both the table name and the alias pattern
@@ -702,16 +737,18 @@ def process_query_and_stats(sql_query, stats_filepath, output_filepath, pks, fks
                 if name in stats_key:
                     if alias_suffix:  # If alias has a number suffix
                         # Check if the stats key ends with the same number
-                        if stats_key.endswith(alias_suffix) and len(stats_key) > len(best_match_key):
+                        if stats_key.endswith(alias_suffix) and len(stats_key) > len(
+                            best_match_key
+                        ):
                             best_match_key = stats_key
                     else:  # If alias has no number suffix
                         # Prefer keys without numbers, or if no such key exists, take any match
-                        if not re.search(r'\d+$', stats_key):
+                        if not re.search(r"\d+$", stats_key):
                             if len(stats_key) > len(best_match_key):
                                 best_match_key = stats_key
                         elif not best_match_key:  # Fallback to any match
                             best_match_key = stats_key
-        
+
         # Fallback to original logic if no specific match found
         if not best_match_key:
             for stats_key in relation_sizes.keys():
@@ -747,9 +784,9 @@ def process_query_and_stats(sql_query, stats_filepath, output_filepath, pks, fks
                         local_col, foreign_col = right_col, left_col
 
                     # Strip trailing numbers from alias to handle cases like cct1, cct2, etc.
-                    local_alias_base = re.sub(r'\d+$', '', local_col.table)
-                    foreign_alias_base = re.sub(r'\d+$', '', foreign_col.table)
-                    
+                    local_alias_base = re.sub(r"\d+$", "", local_col.table)
+                    foreign_alias_base = re.sub(r"\d+$", "", foreign_col.table)
+
                     local_table_name = ALIAS_TO_TABLE.get(local_alias_base)
                     foreign_table_name = ALIAS_TO_TABLE.get(foreign_alias_base)
 
@@ -943,39 +980,40 @@ def parse_sql_schema(sql_file_path):
 
         # Extract column definitions
         # Split by lines and look for column definitions
-        lines = block.split('\n')
+        lines = block.split("\n")
         for line in lines:
             line = line.strip()
-            if not line or line.startswith('--') or line.startswith(')'):
+            if not line or line.startswith("--") or line.startswith(")"):
                 continue
-            
+
             # Match column definitions: column_name data_type [NOT NULL|NULL]
-            column_match = re.match(r'(\w+)\s+(integer|text|character\s+varying\(\d+\))\s*(.*)', line, re.IGNORECASE)
+            column_match = re.match(
+                r"(\w+)\s+(integer|text|character\s+varying\(\d+\))\s*(.*)",
+                line,
+                re.IGNORECASE,
+            )
             if column_match:
                 col_name = column_match.group(1)
                 col_type_raw = column_match.group(2).lower()
                 col_modifiers = column_match.group(3).lower()
-                
+
                 # Determine simplified type
-                if 'integer' in col_type_raw:
-                    col_type = 'numeric'
-                elif 'text' in col_type_raw or 'character varying' in col_type_raw:
-                    col_type = 'string'
+                if "integer" in col_type_raw:
+                    col_type = "numeric"
+                elif "text" in col_type_raw or "character varying" in col_type_raw:
+                    col_type = "string"
                 else:
-                    col_type = 'string'  # default fallback
-                
+                    col_type = "string"  # default fallback
+
                 # Determine nullability
                 # If 'not null' is explicitly specified, it's not nullable
                 # If 'primary key' is specified, it's not nullable
                 # Otherwise, it's nullable by default
                 nullable = True
-                if 'not null' in col_modifiers or 'primary key' in col_modifiers:
+                if "not null" in col_modifiers or "primary key" in col_modifiers:
                     nullable = False
-                
-                columns[table_name][col_name] = {
-                    'type': col_type,
-                    'nullable': nullable
-                }
+
+                columns[table_name][col_name] = {"type": col_type, "nullable": nullable}
 
     return pks, fks, columns
 
@@ -1020,7 +1058,9 @@ def _initialize_relation_block(
 
 
 def decide_join_tree(output_file_path):
-    def build_parent_child_columns(semijoin_program : SemiJoinProgram, attributes: UnionFind):
+    def build_parent_child_columns(
+        semijoin_program: SemiJoinProgram, attributes: UnionFind
+    ):
         assert len(semijoin_program.program) == 1
         merged_level = semijoin_program.program[0]
         for merged_sj in merged_level:
@@ -1151,7 +1191,9 @@ def decide_join_tree(output_file_path):
         last_level = semijoin_program.has_last_level()
         if last_level is None:
             last_level = level
-            all_representatives = sorted(hypergraph.get_representatives(), key=lambda x: x.alias)
+            all_representatives = sorted(
+                hypergraph.get_representatives(), key=lambda x: x.alias
+            )
             all_parent_repr = [
                 last_level.get_parent(repr) for repr in all_representatives
             ]
@@ -1236,10 +1278,20 @@ def decide_join_tree(output_file_path):
     return semijoin_program
 
 
-def process_filters(alias, filter_dict, code_gen_context: CodeGenContext, program_context: ProgramContext) -> typing.List[str]:
+def process_filters(
+    alias,
+    filter_dict,
+    code_gen_context: CodeGenContext,
+    program_context: ProgramContext,
+) -> typing.List[str]:
     if not isinstance(filter_dict, dict):
         # Base case: it's a string value
-        if filter_dict in program_context.query_data[alias]["columns"] and not program_context.query_data[alias]["columns"][filter_dict]["nullable"]:
+        if (
+            filter_dict in program_context.query_data[alias]["columns"]
+            and not program_context.query_data[alias]["columns"][filter_dict][
+                "nullable"
+            ]
+        ):
             return [f"*{filter_dict}"]
         return [filter_dict]
 
@@ -1252,7 +1304,10 @@ def process_filters(alias, filter_dict, code_gen_context: CodeGenContext, progra
         left_expr = process_filters(alias, left, code_gen_context, program_context)
     else:
         # Check if left operand needs dereference
-        if left in program_context.query_data[alias]["columns"] and not program_context.query_data[alias]["columns"][left]["nullable"]:
+        if (
+            left in program_context.query_data[alias]["columns"]
+            and not program_context.query_data[alias]["columns"][left]["nullable"]
+        ):
             left_expr = [f"*{left}"]
         else:
             left_expr = [left]
@@ -1265,11 +1320,7 @@ def process_filters(alias, filter_dict, code_gen_context: CodeGenContext, progra
     if operator == "LIKE":
         search_terms = []
         for term in right_expr:
-            if (
-                    isinstance(term, str)
-                    and term.startswith("'")
-                    and term.endswith("'")
-            ):
+            if isinstance(term, str) and term.startswith("'") and term.endswith("'"):
                 clean_term = term.strip("'").strip("%")
                 if clean_term and "%" not in clean_term:
                     search_terms.append(clean_term)
@@ -1279,7 +1330,9 @@ def process_filters(alias, filter_dict, code_gen_context: CodeGenContext, progra
         conditions = []
         for term in search_terms:
             finder_var_name = term.lower().replace(" ", "_").replace("-", "_")
-            finder_declaration = f"""let {finder_var_name} = memmem::Finder::new("{term}");"""
+            finder_declaration = (
+                f"""let {finder_var_name} = memmem::Finder::new("{term}");"""
+            )
             code_gen_context.finders.add(finder_declaration)
             conditions.append(
                 f"{finder_var_name}.find({left_expr[0].replace('*', '')}.as_bytes()).is_some()"
@@ -1294,11 +1347,7 @@ def process_filters(alias, filter_dict, code_gen_context: CodeGenContext, progra
     elif operator == "NOT LIKE":
         search_terms = []
         for term in right_expr:
-            if (
-                    isinstance(term, str)
-                    and term.startswith("'")
-                    and term.endswith("'")
-            ):
+            if isinstance(term, str) and term.startswith("'") and term.endswith("'"):
                 clean_term = term.strip("'").strip("%")
                 if clean_term and "%" not in clean_term:
                     search_terms.append(clean_term)
@@ -1308,7 +1357,9 @@ def process_filters(alias, filter_dict, code_gen_context: CodeGenContext, progra
         conditions = []
         for term in search_terms:
             finder_var_name = term.lower().replace(" ", "_").replace("-", "_")
-            finder_declaration = f"""let {finder_var_name} = memmem::Finder::new("{term}");"""
+            finder_declaration = (
+                f"""let {finder_var_name} = memmem::Finder::new("{term}");"""
+            )
             code_gen_context.finders.add(finder_declaration)
             conditions.append(
                 f"{finder_var_name}.find({left_expr[0].replace('*', '')}.as_bytes()).is_none()"
@@ -1330,11 +1381,13 @@ def process_filters(alias, filter_dict, code_gen_context: CodeGenContext, progra
         # Convert IN operator to a set-based lookup
         values = [ele.strip("'") for ele in right_expr[0]]
         if len(values) == 1:
-            return [f"({left_expr[0]} == \"{values[0]}\")"]
+            return [f'({left_expr[0]} == "{values[0]}")']
         else:
             # Create a set lookup for multiple values
-            values_str = ', '.join([f'"{v}"' for v in values])
-            return [f"[{values_str}].contains(&{left_expr[0].replace('*', '')}.as_str())"]
+            values_str = ", ".join([f'"{v}"' for v in values])
+            return [
+                f"[{values_str}].contains(&{left_expr[0].replace('*', '')}.as_str())"
+            ]
 
     elif operator == "GT":
         return [f"({left_expr[0]} > {right_expr[0]})"]
@@ -1353,6 +1406,7 @@ def format_zip_column(zip_columns, alias):
     for column in zip_columns[1:]:
         output += f".zip({base_table}.{column}.iter())"
     return output
+
 
 def build_filter_columns(filter_dict):
     columns = set()
@@ -1383,6 +1437,7 @@ def build_filter_columns(filter_dict):
 
     return list(columns)
 
+
 def build_filter_map(zip_columns):
     # return lambda accumulator, item: (accumulator, f"{item}"), zip_columns
     if not zip_columns:
@@ -1392,60 +1447,71 @@ def build_filter_map(zip_columns):
         return f"{zip_columns[0]}"
     initial_tuple = (f"{zip_columns[0]}", f"{zip_columns[1]}")
     return reduce(
-    lambda accumulator, item: (accumulator, f"{item}"),
-            zip_columns[2:],
-            initial_tuple
-        )
+        lambda accumulator, item: (accumulator, f"{item}"),
+        zip_columns[2:],
+        initial_tuple,
+    )
+
 
 def build_old_filter_map(zip_columns):
-    return reduce(
-        lambda accumulator, item: (accumulator, f"old_{item}"), zip_columns
-    )
+    return reduce(lambda accumulator, item: (accumulator, f"old_{item}"), zip_columns)
 
 
 def build_some_conditions(zip_columns, nullable_columns) -> str:
     zip_nullable_columns = [x for x in nullable_columns if x in zip_columns]
-    return "&&".join([f"let Some({column}) = {column}" for column in zip_nullable_columns])
+    return "&&".join(
+        [f"let Some({column}) = {column}" for column in zip_nullable_columns]
+    )
 
 
 def build_code_block(alias, query_item, program_context: ProgramContext) -> CodeBlock:
     def build_zip(query_item):
         zip_columns = []
-        for item in query_item['join_cond']:
+        for item in query_item["join_cond"]:
             if item["local_column"] not in zip_columns:
                 zip_columns.append(item["local_column"])
         filter_columns = build_filter_columns(query_item["filters"])
         for column in filter_columns:
             if column not in zip_columns:
                 zip_columns.append(column)
-        if query_item['min_select'] is not None and query_item['min_select'] not in zip_columns:
-            zip_columns.append(query_item['min_select'])
+        if (
+            query_item["min_select"] is not None
+            and query_item["min_select"] not in zip_columns
+        ):
+            zip_columns.append(query_item["min_select"])
         return zip_columns
 
     def get_nullable_columns(query_item) -> typing.List[str]:
         nullable_columns = []
-        for column_name, column_item in query_item['columns'].items():
-            if column_item['nullable']:
+        for column_name, column_item in query_item["columns"].items():
+            if column_item["nullable"]:
                 nullable_columns.append(column_name)
         return nullable_columns
 
-    def join_column(alias, query_item, program_context: ProgramContext) -> Tuple[
-        typing.Union[str, None], typing.Union[str, None]]:
-        parent_relation : Relation = program_context.semijoin_program.find_parent(alias)
+    def join_column(
+        alias, query_item, program_context: ProgramContext
+    ) -> Tuple[typing.Union[str, None], typing.Union[str, None]]:
+        parent_relation: Relation = program_context.semijoin_program.find_parent(alias)
         child_column = ""
         if not parent_relation:
             # can happen for the root
             return None, None
-        for parent_child_column in program_context.semijoin_program.parent_child_columns:
+        for (
+            parent_child_column
+        ) in program_context.semijoin_program.parent_child_columns:
             check_argument(parent_relation is not None, f"alias: {alias}")
-            if parent_child_column.parent_alias == parent_relation.alias and \
-                parent_child_column.child_alias == alias:
-                    child_column = parent_child_column.child_column
+            if (
+                parent_child_column.parent_alias == parent_relation.alias
+                and parent_child_column.child_alias == alias
+            ):
+                child_column = parent_child_column.child_column
         for join_cond in query_item["join_cond"]:
             if join_cond["local_column"] == child_column:
                 return child_column, join_cond["key"]
 
-    def decide_type(alias, query_item, program_context:ProgramContext, key: str) -> Type:
+    def decide_type(
+        alias, query_item, program_context: ProgramContext, key: str
+    ) -> Type:
         if query_item["size_after_filters"] == 1:
             return Type.numeric
         elif not query_item["min_select"]:
@@ -1461,15 +1527,20 @@ def build_code_block(alias, query_item, program_context: ProgramContext) -> Code
                     return Type.map_vec
 
     join_column, key = join_column(alias, query_item, program_context)
-    return CodeBlock(alias=alias,
-                     zip_columns=build_zip(query_item),
-                     nullable_columns=get_nullable_columns(query_item),
-                     join_column=join_column,
-                     type=decide_type(alias, query_item, program_context, key))
+    return CodeBlock(
+        alias=alias,
+        zip_columns=build_zip(query_item),
+        nullable_columns=get_nullable_columns(query_item),
+        join_column=join_column,
+        type=decide_type(alias, query_item, program_context, key),
+    )
 
-def generate_code_block(code_block: CodeBlock,
-                        program_context: ProgramContext,
-                        code_gen_context: CodeGenContext) -> str:
+
+def generate_code_block(
+    code_block: CodeBlock,
+    program_context: ProgramContext,
+    code_gen_context: CodeGenContext,
+) -> str:
     def format_result_output(program_context: ProgramContext) -> str:
         result_set_size = len(program_context.selected_fields)
         if result_set_size == 1:
@@ -1493,7 +1564,9 @@ def generate_code_block(code_block: CodeBlock,
         comparison = []
         for selected_field in program_context.selected_fields:
             if not selected_field.nullable:
-                comparison.append(f"{selected_field.column}.min(&old_{selected_field.column})")
+                comparison.append(
+                    f"{selected_field.column}.min(&old_{selected_field.column})"
+                )
             else:
                 raise ValueError("Unimplemented!")
         data["comparison"] = ",".join(comparison)
@@ -1506,22 +1579,35 @@ def generate_code_block(code_block: CodeBlock,
             for join_cond in query_item["join_cond"]:
                 foreign_table_alias = join_cond["foreign_table"]["alias"]
                 if foreign_table_alias == ear.alias:
-                    if code_gen_context.alias_variable[foreign_table_alias].type == Type.numeric:
+                    if (
+                        code_gen_context.alias_variable[foreign_table_alias].type
+                        == Type.numeric
+                    ):
                         join_conds.append(
                             f"*{join_cond['local_column']} == {code_gen_context.alias_variable[foreign_table_alias].name}"
                         )
-                    elif code_gen_context.alias_variable[foreign_table_alias].type == Type.set:
+                    elif (
+                        code_gen_context.alias_variable[foreign_table_alias].type
+                        == Type.set
+                    ):
                         join_conds.append(
                             f"{code_gen_context.alias_variable[foreign_table_alias].name}.contains(&{join_cond['local_column']})"
                         )
-                    elif code_gen_context.alias_variable[foreign_table_alias].type == Type.map:
+                    elif (
+                        code_gen_context.alias_variable[foreign_table_alias].type
+                        == Type.map
+                    ):
                         join_conds.append(
                             f"{code_gen_context.alias_variable[foreign_table_alias].name}.contains_key({join_cond['local_column']})"
                         )
         return "&&".join(join_conds)
 
-    def build_filter_map_out(code_block: CodeBlock, program_context: ProgramContext) -> str:
-        is_min_loop = program_context.semijoin_program.get_root().alias == code_block.alias
+    def build_filter_map_out(
+        code_block: CodeBlock, program_context: ProgramContext
+    ) -> str:
+        is_min_loop = (
+            program_context.semijoin_program.get_root().alias == code_block.alias
+        )
         query_item = program_context.query_data[code_block.alias]
         target = []
         if is_min_loop:
@@ -1537,26 +1623,38 @@ def generate_code_block(code_block: CodeBlock,
             parent = program_context.semijoin_program.find_parent(code_block.alias)
             assert parent is not None
             for parent_child_column in program_context.parent_child_physical_columns:
-                if parent_child_column.child_field.alias == code_block.alias and \
-                        parent_child_column.parent_field.alias:
+                if (
+                    parent_child_column.child_field.alias == code_block.alias
+                    and parent_child_column.parent_field.alias
+                ):
                     if parent_child_column.child_field.type == Type.numeric:
                         target.append(f"*{parent_child_column.child_field.column}")
                     elif parent_child_column.child_field.type == Type.string:
-                        target.append(f"{parent_child_column.child_field.column}.as_str()")
+                        target.append(
+                            f"{parent_child_column.child_field.column}.as_str()"
+                        )
             if min_select_column is not None:
-                min_select_column_type = Type(query_item["columns"][min_select_column]["type"])
+                min_select_column_type = Type(
+                    query_item["columns"][min_select_column]["type"]
+                )
                 if min_select_column_type == Type.numeric:
                     target.append(f"*{min_select_column}")
                 elif min_select_column_type == Type.string:
                     target.append(f"{min_select_column}.as_str()")
             return "(" + ",".join(target) + ")"
 
-    def build_filter_map_main(code_block, program_context: ProgramContext, code_gen_context: CodeGenContext) -> str:
+    def build_filter_map_main(
+        code_block, program_context: ProgramContext, code_gen_context: CodeGenContext
+    ) -> str:
         query_item = program_context.query_data[code_block.alias]
         filter_columns = build_filter_columns(query_item["filters"])
-        filter_nullable_columns = [x for x in code_block.nullable_columns if x in filter_columns]
+        filter_nullable_columns = [
+            x for x in code_block.nullable_columns if x in filter_columns
+        ]
         assert len(filter_nullable_columns) <= 1
-        filter_conditions = process_filters(code_block.alias, query_item['filters'], code_gen_context, program_context)
+        filter_conditions = process_filters(
+            code_block.alias, query_item["filters"], code_gen_context, program_context
+        )
         if code_block.alias in code_gen_context.alias_sj:
             join_conditions = form_join_conds(query_item, code_gen_context)
         else:
@@ -1573,7 +1671,9 @@ def generate_code_block(code_block: CodeBlock,
                     break
         if nullable_column_exists:
             if filter_conditions[0] is not None:
-                filter_conditions = filter_conditions[0].strip("'").strip('(').strip(')')
+                filter_conditions = (
+                    filter_conditions[0].strip("'").strip("(").strip(")")
+                )
             else:
                 filter_conditions = None
             map_out = build_filter_map_out(code_block, program_context)
@@ -1607,18 +1707,23 @@ def generate_code_block(code_block: CodeBlock,
                 {% endif %}
             """)
             data = dict()
-            data["filter_conditions"] = filter_conditions[0] if filter_conditions else None
+            data["filter_conditions"] = (
+                filter_conditions[0] if filter_conditions else None
+            )
             data["join_conditions"] = join_conditions
             data["join_column"] = code_block.join_column
             return case1_template.render(data)
-
 
     data = dict()
     data["alias"] = code_block.alias
     data["zip_columns"] = format_zip_column(code_block.zip_columns, code_block.alias)
     data["filter_map_closure"] = build_filter_map(code_block.zip_columns)
-    filter_conditions = process_filters(code_block.alias, program_context.query_data[code_block.alias]["filters"],
-                                       code_gen_context, program_context)
+    filter_conditions = process_filters(
+        code_block.alias,
+        program_context.query_data[code_block.alias]["filters"],
+        code_gen_context,
+        program_context,
+    )
     data["filter_conditions"] = filter_conditions[0] if filter_conditions else None
     data["join_column"] = code_block.join_column
     if code_block.alias in code_gen_context.alias_sj:
@@ -1626,7 +1731,9 @@ def generate_code_block(code_block: CodeBlock,
         data["join_conditions"] = form_join_conds(query_item, code_gen_context)
     else:
         data["join_conditions"] = None
-    data["filter_map_main"] = build_filter_map_main(code_block, program_context, code_gen_context)
+    data["filter_map_main"] = build_filter_map_main(
+        code_block, program_context, code_gen_context
+    )
 
     if program_context.semijoin_program.get_root().alias == code_block.alias:
         # in the min_loop
@@ -1664,7 +1771,9 @@ def generate_code_block(code_block: CodeBlock,
                 }
             }
             """)
-            data["some_conditions"] = build_some_conditions(code_block.zip_columns, code_block.nullable_columns)
+            data["some_conditions"] = build_some_conditions(
+                code_block.zip_columns, code_block.nullable_columns
+            )
             data["res_match"] = build_res_match(program_context)
             return code_block_template.render(data)
     elif code_block.type == Type.numeric:
@@ -1675,8 +1784,9 @@ def generate_code_block(code_block: CodeBlock,
         .map(|{{ filter_map_closure|replace("'","") }}| *{{ join_column }})
         .unwrap();
         """)
-        code_gen_context.alias_variable[code_block.alias] = (
-            Variable(name=f"{code_block.alias}_id", type=code_block.type))
+        code_gen_context.alias_variable[code_block.alias] = Variable(
+            name=f"{code_block.alias}_id", type=code_block.type
+        )
         return template.render(data)
     elif code_block.type == Type.set:
         template = Template("""
@@ -1687,9 +1797,12 @@ def generate_code_block(code_block: CodeBlock,
         })
         .collect();
         """)
-        data["filter_map_main"] = build_filter_map_main(code_block, program_context, code_gen_context)
-        code_gen_context.alias_variable[code_block.alias] = (
-            Variable(name=f"{code_block.alias}_s", type=code_block.type))
+        data["filter_map_main"] = build_filter_map_main(
+            code_block, program_context, code_gen_context
+        )
+        code_gen_context.alias_variable[code_block.alias] = Variable(
+            name=f"{code_block.alias}_s", type=code_block.type
+        )
         return template.render(data)
     elif code_block.type == Type.map:
         template = Template("""
@@ -1700,20 +1813,41 @@ def generate_code_block(code_block: CodeBlock,
         })
         .collect();
         """)
-        data["filter_map_main"] = build_filter_map_main(code_block, program_context, code_gen_context)
-        code_gen_context.alias_variable[code_block.alias] = Variable(name=f"{code_block.alias}_m", type=code_block.type)
+        data["filter_map_main"] = build_filter_map_main(
+            code_block, program_context, code_gen_context
+        )
+        code_gen_context.alias_variable[code_block.alias] = Variable(
+            name=f"{code_block.alias}_m", type=code_block.type
+        )
+        return template.render(data)
+    elif code_block.type == Type.map_vec:
+        template = Template("""
+        let {{ alias }}_m: HashMap<i32, Vec<&str>> =
+        {{  zip_columns }}
+        .filter_map(|{{ filter_map_closure|replace("'","")}}| {
+            {{ filter_map_main }}
+        })
+        .fold(HashMap::new(), |mut acc, (k, v)| {
+            acc.entry(k).or_insert_with(Vec::new).push(v);
+            acc
+        });
+        """)
+        data["filter_map_main"] = build_filter_map_main(
+            code_block, program_context, code_gen_context
+        )
+        code_gen_context.alias_variable[code_block.alias] = Variable(
+            name=f"{code_block.alias}_m", type=code_block.type
+        )
         return template.render(data)
 
 
-def generate_main_block(semijoin_program: SemiJoinProgram,
-                        output_file_path) -> str:
+def generate_main_block(semijoin_program: SemiJoinProgram, output_file_path) -> str:
     with open(output_file_path, "r") as f:
         query_data = json.load(f)
 
     meat_statements = []
     main_block = ""
-    code_gen_context = CodeGenContext(alias_sj=dict(),
-                                      alias_variable=dict())
+    code_gen_context = CodeGenContext(alias_sj=dict(), alias_variable=dict())
     orders, code_gen_context.alias_sj = semijoin_program.get_generation_order()
     program_context = ProgramContext(query_data, semijoin_program)
     print(f"orders: {orders}")
@@ -1722,7 +1856,9 @@ def generate_main_block(semijoin_program: SemiJoinProgram,
         item = query_data[alias]
         print(item["filters"])
         code_block = build_code_block(alias, item, program_context)
-        meat_statements.append(generate_code_block(code_block, program_context, code_gen_context))
+        meat_statements.append(
+            generate_code_block(code_block, program_context, code_gen_context)
+        )
 
     # todo: we can do an optimization pass (such as merge cct passes) on meat_statements
     main_block += "\n".join(list(code_gen_context.finders))
@@ -1762,7 +1898,6 @@ def optimization(sql_query_name, output_file_path) -> None:
         )
     except IOError as e:
         raise ValueError(f"Error writing to output file: {e}")
-
 
 
 if __name__ == "__main__":
