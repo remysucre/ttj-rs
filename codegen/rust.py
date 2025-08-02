@@ -1,10 +1,12 @@
 """
-Generate Rust implementations inside https://github.com/remysucre/ttj-rs/
-Steps:
+A bare-bone query compilation engine for Join Ordering Benchmark queries
+
+The engine generates Rust implementations inside ../src/ in the following steps:
 1. Use sqlglot to parse JOB queries and also parse stats files to extract
    necessary information. All this information is combined into a json file.
-2. Generate query implementation template, which is based on the above json file.
-3. Render the template to generate query implementation.
+2. Generate query implementation based on the json file.
+
+Author: Zeyuan Hu (zeyuan.zack.hu@gmail.com)
 """
 
 import glob
@@ -1439,10 +1441,8 @@ def build_filter_columns(filter_dict):
 
 
 def build_filter_map(zip_columns):
-    # return lambda accumulator, item: (accumulator, f"{item}"), zip_columns
     if not zip_columns:
         return None
-
     if len(zip_columns) == 1:
         return f"{zip_columns[0]}"
     initial_tuple = (f"{zip_columns[0]}", f"{zip_columns[1]}")
@@ -1454,7 +1454,16 @@ def build_filter_map(zip_columns):
 
 
 def build_old_filter_map(zip_columns):
-    return reduce(lambda accumulator, item: (accumulator, f"old_{item}"), zip_columns)
+    if not zip_columns:
+        return None
+    if len(zip_columns) == 1:
+        return f"old_{zip_columns[0]}"
+    initial_tuple = (f"old_{zip_columns[0]}", f"old_{zip_columns[1]}")
+    return reduce(
+        lambda accumulator, item: (accumulator, f"old_{item}"),
+        zip_columns[2:],
+        initial_tuple,
+    )
 
 
 def build_some_conditions(zip_columns, nullable_columns) -> str:
@@ -1888,7 +1897,7 @@ def optimization(sql_query_name, output_file_path) -> None:
     template = env.get_template("base.jinja")
     query_implementation = template.render(template_data)
     output_dir = pathlib.Path(__file__).parent.parent / "src"
-    # output_dir = "junk"
+    output_dir = "junk"
     output_file_path = os.path.join(output_dir, f"o{sql_query_name}.rs")
     try:
         with open(output_file_path, "w") as f:
