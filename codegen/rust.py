@@ -85,12 +85,12 @@ class SemiJoin:
 
 
 class Type(Enum):
-    numeric = 1
-    set = 2
-    map = 3
-    string = 4
-    map_vec = 5
-    not_need = 6 # happens for the min_loop relation
+    numeric = 'numeric'
+    set = 'set'
+    map = 'map'
+    string = 'string'
+    map_vec = 'map_vec'
+    not_need = 'not_need' # happens for the min_loop relation
 
 
 @dataclass
@@ -526,7 +526,7 @@ class ProgramContext:
             if column is not None:
                 select_fields.append(Field(alias,
                                                    item["columns"][column]["nullable"],
-                                                   item["columns"][column]["type"],
+                                                   Type(item["columns"][column]["type"]),
                                                    column))
         return select_fields
 
@@ -540,15 +540,15 @@ class ProgramContext:
                         alias=parent_child_column.parent_alias,
                         column=parent_child_column.parent_column,
                         nullable=query_data[parent_child_column.parent_alias]["columns"][parent_child_column.parent_column]["nullable"],
-                        type=query_data[parent_child_column.parent_alias]["columns"][parent_child_column.parent_column]["type"]
+                        type=Type(query_data[parent_child_column.parent_alias]["columns"][parent_child_column.parent_column]["type"])
                     ),
                     child_field=Field(
                         alias=parent_child_column.child_alias,
                         column=parent_child_column.child_column,
                         nullable=query_data[parent_child_column.child_alias]["columns"][parent_child_column.child_column][
                             "nullable"],
-                        type=query_data[parent_child_column.child_alias]["columns"][parent_child_column.child_column][
-                            "type"]
+                        type=Type(query_data[parent_child_column.child_alias]["columns"][parent_child_column.child_column][
+                            "type"])
                     )
                 )
             )
@@ -1378,16 +1378,18 @@ def build_filter_columns(filter_dict):
     return list(columns)
 
 def build_filter_map(zip_columns):
+    # return lambda accumulator, item: (accumulator, f"{item}"), zip_columns
     if not zip_columns:
         return None
+
     if len(zip_columns) == 1:
-        return f"&{zip_columns[0]}"
-    initial_tuple = (f"&{zip_columns[0]}", f"&{zip_columns[1]}")
+        return f"{zip_columns[0]}"
+    initial_tuple = (f"{zip_columns[0]}", f"{zip_columns[1]}")
     return reduce(
-        lambda accumulator, item: (accumulator, f"&{item}"),
-        zip_columns[2:],
-        initial_tuple
-    )
+    lambda accumulator, item: (accumulator, f"{item}"),
+            zip_columns[2:],
+            initial_tuple
+        )
 
 def build_old_filter_map(zip_columns):
     return reduce(
@@ -1515,36 +1517,33 @@ def generate_code_block(code_block: CodeBlock,
     def build_filter_map_out(code_block: CodeBlock, program_context: ProgramContext) -> str:
         is_min_loop = program_context.semijoin_program.get_root().alias == code_block.alias
         query_item = program_context.query_data[code_block.alias]
+        target = []
         if is_min_loop:
-            ret = []
             for selected_field in program_context.selected_fields:
                 if selected_field.column == "title":
-                    ret.append("title.as_str()")
-            if len(ret) == 1:
-                return f"{ret[0]}"
+                    target.append("title.as_str()")
+            if len(target) == 1:
+                return f"{target[0]}"
             else:
-                return "(" + ",".join(ret) + ")"
+                return "(" + ",".join(target) + ")"
         else:
             min_select_column = query_item["min_select"]
-            if min_select_column is not None:
-                target = []
-                parent = program_context.semijoin_program.find_parent(code_block.alias)
-                assert parent is not None
-                for parent_child_column in program_context.parent_child_physical_columns:
-                    if parent_child_column.child_field.alias == code_block.alias and \
+            parent = program_context.semijoin_program.find_parent(code_block.alias)
+            assert parent is not None
+            for parent_child_column in program_context.parent_child_physical_columns:
+                if parent_child_column.child_field.alias == code_block.alias and \
                         parent_child_column.parent_field.alias:
-                        if parent_child_column.child_field.type == Type.numeric:
-                            target.append(parent_child_column.child_field.column)
-                        elif parent_child_column.child_field.type == Type.string:
-                            target.append(f"{parent_child_column.child_field.column}.as_str()")
-                min_select_column_type = query_item["columns"][min_select_column]["type"]
+                    if parent_child_column.child_field.type == Type.numeric:
+                        target.append(f"*{parent_child_column.child_field.column}")
+                    elif parent_child_column.child_field.type == Type.string:
+                        target.append(f"{parent_child_column.child_field.column}.as_str()")
+            if min_select_column is not None:
+                min_select_column_type = Type(query_item["columns"][min_select_column]["type"])
                 if min_select_column_type == Type.numeric:
-                    target.append(min_select_column)
+                    target.append(f"*{min_select_column}")
                 elif min_select_column_type == Type.string:
                     target.append(f"{min_select_column}.as_str()")
-            else:
-                raise ValueError("Unimplemented!")
-
+            return "(" + ",".join(target) + ")"
 
     def build_filter_map_main(code_block, program_context: ProgramContext, code_gen_context: CodeGenContext) -> str:
         query_item = program_context.query_data[code_block.alias]
@@ -1596,9 +1595,9 @@ def generate_code_block(code_block: CodeBlock,
                 {% endif %}
                 {% if conditions %}
                 ({{ conditions | join(' && ') }})
-                .then_some({{ join_column }})
+                .then_some(*{{ join_column }})
                 {% else %}
-                Some({{ join_column }})
+                Some(*{{ join_column }})
                 {% endif %}
             """)
             data = dict()
@@ -1667,7 +1666,7 @@ def generate_code_block(code_block: CodeBlock,
         let {{ alias }}_id =
         {{ zip_columns }}
         .find(|{{ filter_map_closure|replace("'","") }}| {{ filter_conditions|replace("'",'"') }})
-        .map(|{{ filter_map_closure|replace("'","") }}| {{ join_column }})
+        .map(|{{ filter_map_closure|replace("'","") }}| *{{ join_column }})
         .unwrap();
         """)
         code_gen_context.alias_variable[code_block.alias] = (
