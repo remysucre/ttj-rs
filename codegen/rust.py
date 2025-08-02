@@ -1329,7 +1329,7 @@ def process_filters(
 
         conditions = []
         for term in search_terms:
-            finder_var_name = term.lower().replace(" ", "_").replace("-", "_")
+            finder_var_name = term.lower().replace(" ", "_").replace("-", "_").strip(')').strip('(')
             finder_declaration = (
                 f"""let {finder_var_name} = memmem::Finder::new("{term}");"""
             )
@@ -1356,7 +1356,7 @@ def process_filters(
 
         conditions = []
         for term in search_terms:
-            finder_var_name = term.lower().replace(" ", "_").replace("-", "_")
+            finder_var_name = term.lower().replace(" ", "_").replace("-", "_").strip('(').strip(')')
             finder_declaration = (
                 f"""let {finder_var_name} = memmem::Finder::new("{term}");"""
             )
@@ -1568,7 +1568,7 @@ def generate_code_block(
                     f"{selected_field.column}.min(&old_{selected_field.column})"
                 )
             else:
-                raise ValueError("Unimplemented!")
+                comparison.append(f"{selected_field.column}.iter().min().unwrap().min(&old_{selected_field.column})")
         data["comparison"] = ",".join(comparison)
         return res_match.render(data)
 
@@ -1672,7 +1672,7 @@ def generate_code_block(
         if nullable_column_exists:
             if filter_conditions[0] is not None:
                 filter_conditions = (
-                    filter_conditions[0].strip("'").strip("(").strip(")")
+                    filter_conditions[0].strip("'").removeprefix('(').removesuffix(')')
                 )
             else:
                 filter_conditions = None
@@ -1888,7 +1888,7 @@ def optimization(sql_query_name, output_file_path) -> None:
     template = env.get_template("base.jinja")
     query_implementation = template.render(template_data)
     output_dir = pathlib.Path(__file__).parent.parent / "src"
-    # output_dir = "junk"
+    output_dir = "junk"
     output_file_path = os.path.join(output_dir, f"o{sql_query_name}.rs")
     try:
         with open(output_file_path, "w") as f:
