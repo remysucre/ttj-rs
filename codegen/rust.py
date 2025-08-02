@@ -1378,8 +1378,15 @@ def build_filter_columns(filter_dict):
     return list(columns)
 
 def build_filter_map(zip_columns):
+    if not zip_columns:
+        return None
+    if len(zip_columns) == 1:
+        return f"&{zip_columns[0]}"
+    initial_tuple = (f"&{zip_columns[0]}", f"&{zip_columns[1]}")
     return reduce(
-        lambda accumulator, item: (accumulator, f"&{item}"), zip_columns
+        lambda accumulator, item: (accumulator, f"&{item}"),
+        zip_columns[2:],
+        initial_tuple
     )
 
 def build_old_filter_map(zip_columns):
@@ -1536,22 +1543,10 @@ def generate_code_block(code_block: CodeBlock,
                 elif min_select_column_type == Type.string:
                     target.append(f"{min_select_column}.as_str()")
             else:
-                # raise ValueError("Unimplemented!")
-                pass
+                raise ValueError("Unimplemented!")
+
 
     def build_filter_map_main(code_block, program_context: ProgramContext, code_gen_context: CodeGenContext) -> str:
-        """
-        TODO: I need to handle the case like
-
-        person_role_id
-                .filter(|&role| {
-                    (chn_s.contains(&role) && n_s.contains(&person_id) && cc_s.contains(&movie_id))
-                })
-                .map(|_| *movie_id)
-
-        this happens when 1) one of the column, e.g., person_role_id in .filter_map(|((movie_id, &person_role_id), &person_id)| {
-        is nullable. and 2) we need the column in our join condition, e.g., chn_s.contains(&role)
-        """
         query_item = program_context.query_data[code_block.alias]
         filter_columns = build_filter_columns(query_item["filters"])
         filter_nullable_columns = [x for x in code_block.nullable_columns if x in filter_columns]
@@ -1601,9 +1596,9 @@ def generate_code_block(code_block: CodeBlock,
                 {% endif %}
                 {% if conditions %}
                 ({{ conditions | join(' && ') }})
-                .then_some(*{{ join_column }})
+                .then_some({{ join_column }})
                 {% else %}
-                Some(*{{ join_column }})
+                Some({{ join_column }})
                 {% endif %}
             """)
             data = dict()
@@ -1672,7 +1667,7 @@ def generate_code_block(code_block: CodeBlock,
         let {{ alias }}_id =
         {{ zip_columns }}
         .find(|{{ filter_map_closure|replace("'","") }}| {{ filter_conditions|replace("'",'"') }})
-        .map(|{{ filter_map_closure|replace("'","") }}| *{{ join_column }})
+        .map(|{{ filter_map_closure|replace("'","") }}| {{ join_column }})
         .unwrap();
         """)
         code_gen_context.alias_variable[code_block.alias] = (
