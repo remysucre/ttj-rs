@@ -1551,11 +1551,16 @@ def generate_code_block(
     code_gen_context: CodeGenContext,
 ) -> str:
     def format_result_output(program_context: ProgramContext) -> str:
-        result_set_size = len(program_context.selected_fields)
-        if result_set_size == 1:
-            result_output = f"Option<{', '.join(['&str'] * result_set_size)}>"
+        types = []
+        for selected_field in program_context.selected_fields:
+            if selected_field.type == Type.string:
+                types.append("&str")
+            elif selected_field.type == Type.numeric:
+                types.append("&i32")
+        if len(types) == 1:
+            result_output = f"Option<{', '.join(types)}>"
         else:
-            result_output = f"Option<({', '.join(['&str'] * result_set_size)})>"
+            result_output = f"Option<({', '.join(types)})>"
         return result_output
 
     def build_res_match(program_context: ProgramContext) -> str:
@@ -1564,21 +1569,25 @@ def generate_code_block(
             Some({{ old_filter_map_closure|replace("'","")}}) => Some((
                 {{ comparison }}
             )),
-            None => Some({{ filter_map_closure|replace("'","")}}),
+            None => Some({{ min_none_arm|replace("'","")}}),
         };
         """)
         field_columns = [field.column for field in program_context.selected_fields]
         data["old_filter_map_closure"] = build_old_filter_map(field_columns)
         data["filter_map_closure"] = build_filter_map(field_columns)
         comparison = []
+        min_none_arm = []
         for selected_field in program_context.selected_fields:
             if not selected_field.nullable:
                 comparison.append(
                     f"{selected_field.column}.min(&old_{selected_field.column})"
                 )
+                min_none_arm.append(selected_field.column)
             else:
                 comparison.append(f"{selected_field.column}.iter().min().unwrap().min(&old_{selected_field.column})")
+                min_none_arm.append(f"{selected_field.column}.iter().min().unwrap()")
         data["comparison"] = ",".join(comparison)
+        data["min_none_arm"] = ",".join(min_none_arm)
         return res_match.render(data)
 
     def form_join_conds(query_item, code_gen_context: CodeGenContext) -> str:
