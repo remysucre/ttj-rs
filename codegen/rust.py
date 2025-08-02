@@ -1327,8 +1327,9 @@ def process_filters(filter_dict, code_gen_context: CodeGenContext) -> typing.Lis
         return [f"({left_expr[0]} != {right_expr[0]})"]
 
 
-def format_zip_column(zip_columns, base_table):
+def format_zip_column(zip_columns, alias):
     output = ""
+    base_table = re.sub(r"\d+", "", alias)
     output += f"{base_table}.{zip_columns[0]}.iter()"
     for column in zip_columns[1:]:
         output += f".zip({base_table}.{column}.iter())"
@@ -1365,7 +1366,7 @@ def build_filter_columns(filter_dict):
 
 def build_filter_map(zip_columns):
     return reduce(
-        lambda accumulator, item: (accumulator, item), zip_columns
+        lambda accumulator, item: (accumulator, f"&{item}"), zip_columns
     )
 
 def build_old_filter_map(zip_columns):
@@ -1479,11 +1480,11 @@ def generate_code_block(code_block: CodeBlock,
                 if foreign_table_alias == ear.alias:
                     if code_gen_context.alias_variable[foreign_table_alias].type == Type.numeric:
                         join_conds.append(
-                            f"*{join_cond['local_column']} == {code_gen_context.alias_variable[foreign_table_alias].name}"
+                            f"{join_cond['local_column']} == {code_gen_context.alias_variable[foreign_table_alias].name}"
                         )
                     elif code_gen_context.alias_variable[foreign_table_alias].type == Type.set:
                         join_conds.append(
-                            f"{code_gen_context.alias_variable[foreign_table_alias].name}.contains({join_cond['local_column']})"
+                            f"{code_gen_context.alias_variable[foreign_table_alias].name}.contains(&{join_cond['local_column']})"
                         )
                     elif code_gen_context.alias_variable[foreign_table_alias].type == Type.map:
                         join_conds.append(
@@ -1611,11 +1612,28 @@ def generate_code_block(code_block: CodeBlock,
         let {{ alias }}_s : HashSet<i32> = 
         {{ zip_columns }}
         .filter_map(|{{ filter_map_closure|replace("'","") }}| {
-            {{ filter_conditions }}
+            {% set conditions = [] %}
+            {% if filter_conditions is not none %}
+                {% set _ = conditions.append(filter_conditions) %}
+            {% endif %}
+            {% if join_conditions is not none %}
+                {% set _ = conditions.append(join_conditions) %}
+            {% endif %}
+            {% if conditions %}
+            ({{ conditions | join(' && ') }})
             .then_some(*{{ join_column }})
+            {% else %}
+            Some(*{{ join_column }})
+            {% endif %}
         })
         .collect();
         """)
+        # Add join_conditions to data if applicable
+        if code_block.alias in code_gen_context.alias_sj:
+            query_item = program_context.query_data[code_block.alias]
+            data["join_conditions"] = form_join_conds(query_item, code_gen_context)
+        else:
+            data["join_conditions"] = None
         code_gen_context.alias_variable[code_block.alias] = (
             Variable(name=f"{code_block.alias}_s", type=code_block.type))
         return template.render(data)
@@ -1681,7 +1699,7 @@ def optimization(sql_query_name, output_file_path) -> None:
     template = env.get_template("base.jinja")
     query_implementation = template.render(template_data)
     output_dir = pathlib.Path(__file__).parent.parent / "src"
-    output_dir = "junk"
+    # output_dir = "junk"
     output_file_path = os.path.join(output_dir, f"o{sql_query_name}.rs")
     try:
         with open(output_file_path, "w") as f:
