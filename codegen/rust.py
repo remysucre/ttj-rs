@@ -47,6 +47,11 @@ ALIAS_TO_TABLE = {
     "t": "title",
 }
 
+def check_argument(predicate, message):
+    if predicate:
+        return
+    else:
+        raise ValueError(message)
 
 @dataclass(frozen=True)
 class Attribute:
@@ -83,7 +88,7 @@ class Type(Enum):
     numeric = 1
     set = 2
     map = 3
-    text = 4
+    string = 4
     map_vec = 5
     not_need = 6 # happens for the min_loop relation
 
@@ -479,13 +484,18 @@ class ParentChildColumns:
     parent_column: str
     child_column: str
 
+@dataclass
+class ParentChildPhysicalColumns:
+    parent_field: Field
+    child_field: Field
+
 class ProgramContext:
     def __init__(self, query_data, semijoin_program: SemiJoinProgram):
         self.query_data = query_data
         self.semijoin_program = semijoin_program
         self.selected_fields = self.__construct_selected_fields(query_data)
         self.attributes = self.__build_attributes_union_find(query_data)
-        self.parent_child_columns : typing.List[ParentChildColumns] = []
+        self.parent_child_physical_columns : typing.List[ParentChildPhysicalColumns] = self.__construct_parent_child_physical_columns(semijoin_program, query_data)
 
     def __build_attributes_union_find(self, query_data) -> UnionFind:
         attributes = UnionFind()
@@ -513,6 +523,31 @@ class ProgramContext:
                                                    item["columns"][column]["type"],
                                                    column))
         return select_fields
+
+    def __construct_parent_child_physical_columns(self, semijoin_program: SemiJoinProgram,
+                                                  query_data) -> typing.List[ParentChildPhysicalColumns]:
+        parent_child_physical_columns = []
+        for parent_child_column in semijoin_program.parent_child_columns:
+            parent_child_physical_columns.append(
+                ParentChildPhysicalColumns(
+                    parent_field=Field(
+                        alias=parent_child_column.parent_alias,
+                        column=parent_child_column.parent_column,
+                        nullable=query_data[parent_child_column.parent_alias]["columns"][parent_child_column.parent_column]["nullable"],
+                        type=query_data[parent_child_column.parent_alias]["columns"][parent_child_column.parent_column]["type"]
+                    ),
+                    child_field=Field(
+                        alias=parent_child_column.child_alias,
+                        column=parent_child_column.child_column,
+                        nullable=query_data[parent_child_column.child_alias]["columns"][parent_child_column.child_column][
+                            "nullable"],
+                        type=query_data[parent_child_column.child_alias]["columns"][parent_child_column.child_column][
+                            "type"]
+                    )
+                )
+            )
+        return parent_child_physical_columns
+
 
 @dataclass
 class CodeGenContext:
@@ -682,8 +717,12 @@ def process_query_and_stats(sql_query, stats_filepath, output_filepath, pks, fks
                     else:
                         local_col, foreign_col = right_col, left_col
 
-                    local_table_name = ALIAS_TO_TABLE.get(local_col.table)
-                    foreign_table_name = ALIAS_TO_TABLE.get(foreign_col.table)
+                    # Strip trailing numbers from alias to handle cases like cct1, cct2, etc.
+                    local_alias_base = re.sub(r'\d+$', '', local_col.table)
+                    foreign_alias_base = re.sub(r'\d+$', '', foreign_col.table)
+                    
+                    local_table_name = ALIAS_TO_TABLE.get(local_alias_base)
+                    foreign_table_name = ALIAS_TO_TABLE.get(foreign_alias_base)
 
                     local_key = None
                     if pks.get(local_table_name) == local_col.this.this:
@@ -952,6 +991,23 @@ def _initialize_relation_block(
 
 
 def decide_join_tree(output_file_path):
+    def build_parent_child_columns(semijoin_program : SemiJoinProgram, attributes: UnionFind):
+        assert len(semijoin_program.program) == 1
+        merged_level = semijoin_program.program[0]
+        for merged_sj in merged_level:
+            for ear in merged_sj.ears:
+                for attr in ear.attributes:
+                    for attr2 in merged_sj.parent.attributes:
+                        if attributes.connected(attr, attr2):
+                            semijoin_program.parent_child_columns.append(
+                                ParentChildColumns(
+                                    parent_alias=merged_sj.parent.alias,
+                                    child_alias=ear.alias,
+                                    parent_column=attr2.attr,
+                                    child_column=attr.attr,
+                                )
+                            )
+
     def check_ear_consume(
         one: Relation, two: Relation, pure: bool
     ) -> typing.Union[Tuple[Relation, Relation], Tuple[None, None]]:
@@ -981,17 +1037,6 @@ def decide_join_tree(output_file_path):
                         # Handle the case of 1a where title is considered as a filter relation,
                         # which could lead to less ideal join ordering.
                         return False
-                for attr in candidate.attributes:
-                    for other_attr in other.attributes:
-                        if attributes.connected(attr, other_attr):
-                            semijoin_program.parent_child_columns.append(
-                                ParentChildColumns(
-                                    parent_alias=other.alias,
-                                    child_alias=candidate.alias,
-                                    parent_column=other_attr.attr,
-                                    child_column=attr.attr,
-                                )
-                            )
                 return True
             else:
                 # For non-pure mode: attributes either appear in itself only (size 1) or in the other relation
@@ -1011,18 +1056,6 @@ def decide_join_tree(output_file_path):
                         )
                         if not appears_in_other:
                             return False
-                for attr in candidate.attributes:
-                    if attr not in unique_attrs:
-                        for other_attr in other.attributes:
-                            if attributes.connected(attr, other_attr):
-                                semijoin_program.parent_child_columns.append(
-                                    ParentChildColumns(
-                                        parent_alias=other.alias,
-                                        child_alias=candidate.alias,
-                                        parent_column=other_attr.attr,
-                                        child_column=attr.attr,
-                                    )
-                                )
                 return True
 
         # Check if 'one' is an ear consumed by 'two'
@@ -1165,6 +1198,7 @@ def decide_join_tree(output_file_path):
         print(f"semijoin_prorgam (iteration): \n{semijoin_program}")
     print(f"semijoin_program: \n{semijoin_program}")
     assert num_relations == semijoin_program.size()
+    build_parent_child_columns(semijoin_program, attributes)
     # todo: implement the special optimization logic (idea2 in google doc) using score
     #  the idea is to first merge semijoins in semijoin_program whenever a pair of semijoins
     #  shares the same parent. Then, we update the score by the sum of filters size (note
@@ -1343,10 +1377,15 @@ def build_code_block(alias, query_item, program_context: ProgramContext) -> Code
                 nullable_columns.append(column_name)
         return nullable_columns
 
-    def join_column(alias, query_item, program_context: ProgramContext) -> Tuple[str, str]:
+    def join_column(alias, query_item, program_context: ProgramContext) -> Tuple[
+        typing.Union[str, None], typing.Union[str, None]]:
         parent_relation : Relation = program_context.semijoin_program.find_parent(alias)
         child_column = ""
+        if not parent_relation:
+            # can happen for the root
+            return None, None
         for parent_child_column in program_context.semijoin_program.parent_child_columns:
+            check_argument(parent_relation is not None, f"alias: {alias}")
             if parent_child_column.parent_alias == parent_relation.alias and \
                 parent_child_column.child_alias == alias:
                     child_column = parent_child_column.child_column
@@ -1442,12 +1481,23 @@ def generate_code_block(code_block: CodeBlock,
             else:
                 return "(" + ",".join(ret) + ")"
         else:
-            if query_item["min_select"] is not None:
+            min_select_column = query_item["min_select"]
+            if min_select_column is not None:
+                target = []
                 parent = program_context.semijoin_program.find_parent(code_block.alias)
                 assert parent is not None
-                for join_cond in query_item["join_cond"]:
-                    if join_cond["foreign_table"]["alias"] == parent.alias:
-                        raise ValueError("Unimplemented!")
+                for parent_child_column in program_context.parent_child_physical_columns:
+                    if parent_child_column.child_field.alias == code_block.alias and \
+                        parent_child_column.parent_field.alias:
+                        if parent_child_column.child_field.type == Type.numeric:
+                            target.append(parent_child_column.child_field.column)
+                        elif parent_child_column.child_field.type == Type.string:
+                            target.append(f"{parent_child_column.child_field.column}.as_str()")
+                min_select_column_type = query_item["columns"][min_select_column]["type"]
+                if min_select_column_type == Type.numeric:
+                    target.append(min_select_column)
+                elif min_select_column_type == Type.string:
+                    target.append(f"{min_select_column}.as_str()")
             else:
                 raise ValueError("Unimplemented!")
 
@@ -1610,6 +1660,7 @@ def optimization(sql_query_name, output_file_path) -> None:
         )
     except IOError as e:
         raise ValueError(f"Error writing to output file: {e}")
+
 
 
 if __name__ == "__main__":
