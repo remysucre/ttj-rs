@@ -14,7 +14,7 @@ import pathlib
 import re
 import typing
 from collections import deque, OrderedDict
-from dataclasses import dataclass
+from dataclasses import dataclass, field
 from enum import Enum
 from functools import reduce
 from typing import Tuple
@@ -553,7 +553,7 @@ class ProgramContext:
 class CodeGenContext:
     alias_variable: dict
     alias_sj: dict
-    finders :  []
+    finders: typing.Set[str] = field(default_factory=set)
 
 def format_expression_to_dict(expression):
     """
@@ -1266,11 +1266,11 @@ def process_filters(filter_dict, code_gen_context: CodeGenContext) -> typing.Lis
 
         conditions = []
         for term in search_terms:
-            code_gen_context.finders.append(
-                f"""let {term.lower().replace(" ", "_").replace("-", "_")} = memmem::Finder::new("{term}");"""
-            )
+            finder_var_name = term.lower().replace(" ", "_").replace("-", "_")
+            finder_declaration = f"""let {finder_var_name} = memmem::Finder::new("{term}");"""
+            code_gen_context.finders.add(finder_declaration)
             conditions.append(
-                f"{term.lower().replace(' ', '_').replace('-', '_')}.find({left_expr[0]}.as_bytes()).is_some()"
+                f"{finder_var_name}.find({left_expr[0]}.as_bytes()).is_some()"
             )
 
         if conditions:
@@ -1295,11 +1295,11 @@ def process_filters(filter_dict, code_gen_context: CodeGenContext) -> typing.Lis
 
         conditions = []
         for term in search_terms:
-            code_gen_context.finders.append(
-                f"""let {term.lower().replace(" ", "_").replace("-", "_")} = memmem::Finder::new("{term}");"""
-            )
+            finder_var_name = term.lower().replace(" ", "_").replace("-", "_")
+            finder_declaration = f"""let {finder_var_name} = memmem::Finder::new("{term}");"""
+            code_gen_context.finders.add(finder_declaration)
             conditions.append(
-                f"{term.lower().replace(' ', '_').replace('-', '_')}.find({left_expr[0]}.as_bytes()).is_none()"
+                f"{finder_var_name}.find({left_expr[0]}.as_bytes()).is_none()"
             )
 
         if conditions:
@@ -1315,7 +1315,14 @@ def process_filters(filter_dict, code_gen_context: CodeGenContext) -> typing.Lis
         return [f"({left_expr[0]} && {right_expr[0]})"]
 
     elif operator == "IN":
-        return [ele.strip("'") for ele in right_expr[0]]
+        # Convert IN operator to a set-based lookup
+        values = [ele.strip("'") for ele in right_expr[0]]
+        if len(values) == 1:
+            return [f"({left_expr[0]} == \"{values[0]}\")"]
+        else:
+            # Create a set lookup for multiple values
+            values_str = ', '.join([f'"{v}"' for v in values])
+            return [f"[{values_str}].contains(&{left_expr[0]}.as_str())"]
 
     elif operator == "GT":
         return [f"({left_expr[0]} > {right_expr[0]})"]
@@ -1526,24 +1533,61 @@ def generate_code_block(code_block: CodeBlock,
                 raise ValueError("Unimplemented!")
 
     def build_filter_map_main(code_block, program_context: ProgramContext, code_gen_context: CodeGenContext) -> str:
+        """
+        TODO: I need to handle the case like
+
+        person_role_id
+                .filter(|&role| {
+                    (chn_s.contains(&role) && n_s.contains(&person_id) && cc_s.contains(&movie_id))
+                })
+                .map(|_| *movie_id)
+
+        this happens when 1) one of the column, e.g., person_role_id in .filter_map(|((movie_id, &person_role_id), &person_id)| {
+        is nullable. and 2) we need the column in our join condition, e.g., chn_s.contains(&role)
+        """
         query_item = program_context.query_data[code_block.alias]
         filter_columns = build_filter_columns(query_item["filters"])
         filter_nullable_columns = [x for x in code_block.nullable_columns if x in filter_columns]
-        assert len(filter_nullable_columns) == 1
-        nullable_local_variable = filter_nullable_columns[0].strip("'")
+        assert len(filter_nullable_columns) <= 1
         filter_conditions = process_filters(query_item['filters'], code_gen_context)
-        assert len(filter_conditions) == 1
-        filter_conditions = filter_conditions[0].strip("'").strip('(').strip(')')
-        map_out = build_filter_map_out(code_block, program_context)
         if code_block.alias in code_gen_context.alias_sj:
             join_conditions = form_join_conds(query_item, code_gen_context)
-            return f"""{nullable_local_variable}
-                .filter(|&{nullable_local_variable}| {filter_conditions} && {join_conditions})
-                .map(|_| {map_out})"""
         else:
-            return f"""{nullable_local_variable}
-                .filter(|&{nullable_local_variable}| {filter_conditions})
-                .map(|_| {map_out})"""
+            join_conditions = None
+        if len(filter_nullable_columns) == 1:
+            nullable_local_variable = filter_nullable_columns[0].strip("'")
+            filter_conditions = filter_conditions[0].strip("'").strip('(').strip(')')
+            map_out = build_filter_map_out(code_block, program_context)
+            if code_block.alias in code_gen_context.alias_sj:
+                return f"""{nullable_local_variable}
+                    .filter(|&{nullable_local_variable}| {filter_conditions} && {join_conditions})
+                    .map(|_| {map_out})"""
+            else:
+                return f"""{nullable_local_variable}
+                    .filter(|&{nullable_local_variable}| {filter_conditions})
+                    .map(|_| {map_out})"""
+        else:
+            case1_template = Template("""
+                {% set conditions = [] %}
+                {% if filter_conditions is not none %}
+                    {% set _ = conditions.append(filter_conditions) %}
+                {% endif %}
+                {% if join_conditions is not none %}
+                    {% set _ = conditions.append(join_conditions) %}
+                {% endif %}
+                {% if conditions %}
+                ({{ conditions | join(' && ') }})
+                .then_some(*{{ join_column }})
+                {% else %}
+                Some(*{{ join_column }})
+                {% endif %}
+            """)
+            data = dict()
+            data["filter_conditions"] = filter_conditions[0] if filter_conditions else None
+            data["join_conditions"] = join_conditions
+            data["join_column"] = code_block.join_column
+            return case1_template.render(data)
+
 
     data = dict()
     data["alias"] = code_block.alias
@@ -1558,6 +1602,7 @@ def generate_code_block(code_block: CodeBlock,
         data["join_conditions"] = form_join_conds(query_item, code_gen_context)
     else:
         data["join_conditions"] = None
+    data["filter_map_main"] = build_filter_map_main(code_block, program_context, code_gen_context)
 
     if program_context.semijoin_program.get_root().alias == code_block.alias:
         # in the min_loop
@@ -1614,22 +1659,11 @@ def generate_code_block(code_block: CodeBlock,
         let {{ alias }}_s : HashSet<i32> = 
         {{ zip_columns }}
         .filter_map(|{{ filter_map_closure|replace("'","") }}| {
-            {% set conditions = [] %}
-            {% if filter_conditions is not none %}
-                {% set _ = conditions.append(filter_conditions) %}
-            {% endif %}
-            {% if join_conditions is not none %}
-                {% set _ = conditions.append(join_conditions) %}
-            {% endif %}
-            {% if conditions %}
-            ({{ conditions | join(' && ') }})
-            .then_some(*{{ join_column }})
-            {% else %}
-            Some(*{{ join_column }})
-            {% endif %}
+            {{ filter_map_main }}
         })
         .collect();
         """)
+        data["filter_map_main"] = build_filter_map_main(code_block, program_context, code_gen_context)
         code_gen_context.alias_variable[code_block.alias] = (
             Variable(name=f"{code_block.alias}_s", type=code_block.type))
         return template.render(data)
@@ -1655,8 +1689,7 @@ def generate_main_block(semijoin_program: SemiJoinProgram,
     meat_statements = []
     main_block = ""
     code_gen_context = CodeGenContext(alias_sj=dict(),
-                                      alias_variable=dict(),
-                                      finders=[])
+                                      alias_variable=dict())
     orders, code_gen_context.alias_sj = semijoin_program.get_generation_order()
     program_context = ProgramContext(query_data, semijoin_program)
     print(f"orders: {orders}")
@@ -1668,7 +1701,7 @@ def generate_main_block(semijoin_program: SemiJoinProgram,
         meat_statements.append(generate_code_block(code_block, program_context, code_gen_context))
 
     # todo: we can do an optimization pass (such as merge cct passes) on meat_statements
-    main_block += "\n".join(code_gen_context.finders)
+    main_block += "\n".join(list(code_gen_context.finders))
     main_block += "let start = Instant::now();"
     main_block += "\n".join(meat_statements)
     return main_block
