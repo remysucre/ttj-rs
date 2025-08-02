@@ -1685,11 +1685,11 @@ def generate_code_block(
                     conditions.append(join_conditions)
                 return f"""{nullable_local_variable}
                     .filter(|&{nullable_local_variable}| {"&&".join(conditions)})
-                    .map(|_| {map_out})"""
+                    .map(|{nullable_local_variable}| {map_out})"""
             else:
                 return f"""{nullable_local_variable}
                     .filter(|&{nullable_local_variable}| {filter_conditions})
-                    .map(|_| {map_out})"""
+                    .map(|{nullable_local_variable}| {map_out})"""
         else:
             case1_template = Template("""
                 {% set conditions = [] %}
@@ -1827,8 +1827,8 @@ def generate_code_block(
         .filter_map(|{{ filter_map_closure|replace("'","")}}| {
             {{ filter_map_main }}
         })
-        .fold(HashMap::new(), |mut acc, (k, v)| {
-            acc.entry(k).or_insert_with(Vec::new).push(v);
+        .fold(HashMap::default(), |mut acc, (k, v)| {
+            acc.entry(k).or_default().push(v);
             acc
         });
         """)
@@ -1888,7 +1888,7 @@ def optimization(sql_query_name, output_file_path) -> None:
     template = env.get_template("base.jinja")
     query_implementation = template.render(template_data)
     output_dir = pathlib.Path(__file__).parent.parent / "src"
-    output_dir = "junk"
+    # output_dir = "junk"
     output_file_path = os.path.join(output_dir, f"o{sql_query_name}.rs")
     try:
         with open(output_file_path, "w") as f:
