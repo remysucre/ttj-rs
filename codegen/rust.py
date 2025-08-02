@@ -1532,9 +1532,18 @@ def generate_code_block(code_block: CodeBlock,
 
     if program_context.semijoin_program.get_root().alias == code_block.alias:
         # in the min_loop
+        data["result_output"] = format_result_output(program_context)
         if len(program_context.selected_fields) == 1:
             # in the single_output
-            raise ValueError("Unimplemented!")
+            code_block_template = Template("""
+            let res: {{ result_output }} =
+            {{ zip_columns }}
+            .filter_map(|{{ filter_map_closure|replace("'","")}}| {
+                {{ filter_map_main }}
+            })
+            .min();
+            """)
+            return code_block_template.render(data)
         else:
             code_block_template = Template("""
             let mut res: {{ result_output }} = None;
@@ -1557,7 +1566,6 @@ def generate_code_block(code_block: CodeBlock,
                 }
             }
             """)
-            data["result_output"] = format_result_output(program_context)
             data["some_conditions"] = build_some_conditions(code_block.zip_columns, code_block.nullable_columns)
             if code_block.alias in code_gen_context.alias_sj:
                 query_item = program_context.query_data[code_block.alias]
@@ -1572,9 +1580,9 @@ def generate_code_block(code_block: CodeBlock,
         .map(|filter_map_closure|replace("'","")}}| *{{ join_column }})
         .unwrap();
         """)
-        template.render(data)
         code_gen_context.alias_variable[code_block.alias] = (
             Variable(name=f"{code_block.alias}_id", type=code_block.type))
+        return template.render(data)
     elif code_block.type == Type.set:
         template = Template("""
         let {{ alias }}_s : HashSet<i32> = 
@@ -1585,9 +1593,9 @@ def generate_code_block(code_block: CodeBlock,
         })
         .collect();
         """)
-        template.render(data)
         code_gen_context.alias_variable[code_block.alias] = (
             Variable(name=f"{code_block.alias}_s", type=code_block.type))
+        return template.render(data)
     elif code_block.type == Type.map:
         template = Template("""
         let {{ alias }}_m: HashMap<i32, &str> =
@@ -1598,8 +1606,8 @@ def generate_code_block(code_block: CodeBlock,
         .collect();
         """)
         data["filter_map_main"] = build_filter_map_main(code_block, program_context, code_gen_context)
-        template.render(data)
         code_gen_context.alias_variable[code_block.alias] = Variable(name=f"{code_block.alias}_m", type=code_block.type)
+        return template.render(data)
 
 
 def generate_main_block(semijoin_program: SemiJoinProgram,
