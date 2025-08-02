@@ -314,6 +314,15 @@ pub struct MI {
     pub note: Vec<Option<String>>,
 }
 
+// CREATE TABLE company_type (
+//                                             id integer primary key,
+//                                             kind character varying(32) NOT NULL
+// );
+pub struct CT {
+    pub id: Vec<i32>,
+    pub kind: Vec<String>,
+}
+
 pub struct Data {
     pub ci: CI,
     pub chn: CHN,
@@ -333,6 +342,7 @@ pub struct Data {
     pub lt: LT,
     pub ml: ML,
     pub mi: MI,
+    pub ct: CT,
 }
 
 impl Data {
@@ -1125,6 +1135,25 @@ impl Data {
                     .unwrap()
                     .into_iter()
                     .map(|opt| opt.map(|s| s.to_string()))
+                    .collect(),
+            },
+            ct: CT {
+                id: imdb
+                    .ct
+                    .column("id")
+                    .unwrap()
+                    .i32()
+                    .unwrap()
+                    .into_no_null_iter()
+                    .collect(),
+                kind: imdb
+                    .ct
+                    .column("kind")
+                    .unwrap()
+                    .str()
+                    .unwrap()
+                    .into_no_null_iter()
+                    .map(|s| s.to_string())
                     .collect(),
             },
         }
