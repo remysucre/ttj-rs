@@ -1553,6 +1553,11 @@ def generate_code_block(code_block: CodeBlock,
                                        code_gen_context)
     data["filter_conditions"] = filter_conditions[0] if filter_conditions else None
     data["join_column"] = code_block.join_column
+    if code_block.alias in code_gen_context.alias_sj:
+        query_item = program_context.query_data[code_block.alias]
+        data["join_conditions"] = form_join_conds(query_item, code_gen_context)
+    else:
+        data["join_conditions"] = None
 
     if program_context.semijoin_program.get_root().alias == code_block.alias:
         # in the min_loop
@@ -1591,9 +1596,6 @@ def generate_code_block(code_block: CodeBlock,
             }
             """)
             data["some_conditions"] = build_some_conditions(code_block.zip_columns, code_block.nullable_columns)
-            if code_block.alias in code_gen_context.alias_sj:
-                query_item = program_context.query_data[code_block.alias]
-                data["join_conditions"] = form_join_conds(query_item, code_gen_context)
             data["res_match"] = build_res_match(program_context)
             return code_block_template.render(data)
     elif code_block.type == Type.numeric:
@@ -1628,12 +1630,6 @@ def generate_code_block(code_block: CodeBlock,
         })
         .collect();
         """)
-        # Add join_conditions to data if applicable
-        if code_block.alias in code_gen_context.alias_sj:
-            query_item = program_context.query_data[code_block.alias]
-            data["join_conditions"] = form_join_conds(query_item, code_gen_context)
-        else:
-            data["join_conditions"] = None
         code_gen_context.alias_variable[code_block.alias] = (
             Variable(name=f"{code_block.alias}_s", type=code_block.type))
         return template.render(data)
