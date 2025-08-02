@@ -49,6 +49,10 @@ ALIAS_TO_TABLE = {
     "t": "title",
 }
 
+@dataclass
+class TemplateData:
+    template: Template
+    data: dict
 
 def check_argument(predicate, message):
     if predicate:
@@ -593,6 +597,7 @@ class ProgramContext:
 class CodeGenContext:
     alias_variable: dict
     alias_sj: dict
+    template_data: TemplateData
     finders: typing.Set[str] = field(default_factory=set)
 
 
@@ -1020,22 +1025,29 @@ def parse_sql_schema(sql_file_path):
     return pks, fks, columns
 
 
-def _result_output_and_expected_result_set(sql_query_name: str) -> Tuple[str, str]:
+def get_expected_result_set(sql_query_name: str, program_context: ProgramContext) -> str:
+    types = get_rust_types_for_fields(program_context.selected_fields)
     try:
         with open("expected_results.json", "r") as f:
             stats_data = json.load(f)
         result_set = stats_data.get(sql_query_name, {})
         if len(result_set) == 1:
-            result_output = f"Option<{', '.join(['&str'] * len(result_set))}>"
-            expected_result_set = f'"{result_set[0]}"'
+            if types[0] == "&str":
+                expected_result_set = f'"{result_set[0]}"'
+            elif types[0] == "&i32":
+                expected_result_set = f'{result_set[0]}'
         else:
-            result_output = f"Option<({', '.join(['&str'] * len(result_set))})>"
-            expected_result_set = (
-                "(" + ", ".join([f'"{element}"' for element in result_set]) + ")"
-            )
-        return result_output, expected_result_set
+            expected_result_set = []
+            for i, type in enumerate(types):
+                if type == "&str":
+                    expected_result_set.append(f'"{result_set[i]}"')
+                elif type == "&i32":
+                    expected_result_set.append(f'{result_set[i]}')
+        return "(" + ", ".join(expected_result_set) + ")"
     except (IOError, json.JSONDecodeError) as e:
         raise ValueError(f"Error reading or parsing statistics file: {e}")
+
+
 
 
 def _initialize_relation_block(
@@ -1544,25 +1556,30 @@ def build_code_block(alias, query_item, program_context: ProgramContext) -> Code
         type=decide_type(alias, query_item, program_context, key),
     )
 
+def get_rust_types_for_fields(fields: typing.List[Field]) -> typing.List[str]:
+    types = []
+    for selected_field in fields:
+        if selected_field.type == Type.string:
+            types.append("&str")
+        elif selected_field.type == Type.numeric:
+            types.append("&i32")
+    return types
+
+
+def format_result_output(program_context: ProgramContext) -> str:
+    types = get_rust_types_for_fields(program_context.selected_fields)
+    if len(types) == 1:
+        result_output = f"Option<{', '.join(types)}>"
+    else:
+        result_output = f"Option<({', '.join(types)})>"
+    return result_output
+
 
 def generate_code_block(
     code_block: CodeBlock,
     program_context: ProgramContext,
     code_gen_context: CodeGenContext,
 ) -> str:
-    def format_result_output(program_context: ProgramContext) -> str:
-        types = []
-        for selected_field in program_context.selected_fields:
-            if selected_field.type == Type.string:
-                types.append("&str")
-            elif selected_field.type == Type.numeric:
-                types.append("&i32")
-        if len(types) == 1:
-            result_output = f"Option<{', '.join(types)}>"
-        else:
-            result_output = f"Option<({', '.join(types)})>"
-        return result_output
-
     def build_res_match(program_context: ProgramContext) -> str:
         res_match = Template("""
         res = match res {
@@ -1755,7 +1772,7 @@ def generate_code_block(
 
     if program_context.semijoin_program.get_root().alias == code_block.alias:
         # in the min_loop
-        data["result_output"] = format_result_output(program_context)
+        data["result_output"] = code_gen_context.template_data.data["result_output"]
         if len(program_context.selected_fields) == 1:
             # in the single_output
             code_block_template = Template("""
@@ -1859,17 +1876,27 @@ def generate_code_block(
         return template.render(data)
 
 
-def generate_main_block(semijoin_program: SemiJoinProgram, output_file_path) -> str:
+def generate_main_block(semijoin_program: SemiJoinProgram,
+                        sql_query_name,
+                        output_file_path,
+                        template_data: TemplateData):
     with open(output_file_path, "r") as f:
         query_data = json.load(f)
 
     meat_statements = []
     main_block = ""
-    code_gen_context = CodeGenContext(alias_sj=dict(), alias_variable=dict())
+    code_gen_context = CodeGenContext(alias_sj=dict(), alias_variable=dict(),
+                                      template_data=template_data)
     orders, code_gen_context.alias_sj = semijoin_program.get_generation_order()
     program_context = ProgramContext(query_data, semijoin_program)
     print(f"orders: {orders}")
     print(f"alias_sj: {code_gen_context.alias_sj}")
+    code_gen_context.template_data.data["result_output"] = format_result_output(program_context)
+    code_gen_context.template_data.data["expected_result_set"] = get_expected_result_set(
+        sql_query_name,
+        program_context
+    )
+    code_gen_context.template_data.data["query_name"] = "q" + sql_query_name
     for idx, alias in enumerate(orders):
         item = query_data[alias]
         print(item["filters"])
@@ -1882,29 +1909,23 @@ def generate_main_block(semijoin_program: SemiJoinProgram, output_file_path) -> 
     main_block += "\n".join(list(code_gen_context.finders))
     main_block += "let start = Instant::now();"
     main_block += "\n".join(meat_statements)
-    return main_block
+    template_data.data["main_block"] = main_block
 
 
 def optimization(sql_query_name, output_file_path) -> None:
     """
     Generate query implementation based on base.jinja
     """
-    semijoin_program = decide_join_tree(output_file_path)
-    main_block = generate_main_block(semijoin_program, output_file_path)
-    result_output, expected_result_set = _result_output_and_expected_result_set(
-        sql_query_name
-    )
-    initialize_relation_block = _initialize_relation_block(output_file_path, [])
-    template_data = {
-        "result_output": result_output,
-        "expected_result_set": expected_result_set,
-        "query_name": "q" + sql_query_name,
-        "initialize_relation_block": initialize_relation_block,
-        "main_block": main_block,
-    }
     env = Environment(loader=FileSystemLoader("templates"))
-    template = env.get_template("base.jinja")
-    query_implementation = template.render(template_data)
+    template_data = TemplateData(template=env.get_template("base.jinja"),
+                                 data=dict())
+
+    semijoin_program = decide_join_tree(output_file_path)
+    generate_main_block(semijoin_program, sql_query_name, output_file_path, template_data)
+    template_data.data["initialize_relation_block"] = _initialize_relation_block(output_file_path, [])
+
+
+    query_implementation = template_data.template.render(template_data.data)
     output_dir = pathlib.Path(__file__).parent.parent / "src"
     output_dir = "junk"
     output_file_path = os.path.join(output_dir, f"o{sql_query_name}.rs")
