@@ -1,6 +1,6 @@
 use crate::data;
 use ahash::HashMap;
-use polars::prelude::{col, lit, IntoLazy, LazyFrame, ScanArgsParquet};
+use polars::prelude::{IntoLazy, LazyFrame, ScanArgsParquet, col, lit};
 use std::env;
 use std::time::Instant;
 
