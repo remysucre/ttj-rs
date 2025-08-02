@@ -682,12 +682,35 @@ def process_query_and_stats(sql_query, stats_filepath, output_filepath, pks, fks
             "columns": table_columns.get(name, {}),
         }
 
-        # Find the corresponding size from the statistics file using a "longest match" strategy.
-        # This prevents incorrect matches for tables with similar names (e.g., 'info_type' vs 'movie_info_type').
+        # Find the corresponding size from the statistics file.
+        # For aliases with numbers (like cct1, cct2), match both table name and alias suffix.
         best_match_key = ""
-        for stats_key in relation_sizes.keys():
-            if name in stats_key and len(stats_key) > len(best_match_key):
-                best_match_key = stats_key
+        
+        # Extract numeric suffix from alias if present
+        alias_match = re.search(r'(\D+)(\d*)$', alias)
+        if alias_match:
+            alias_base, alias_suffix = alias_match.groups()
+            # Try to find a key that matches both the table name and the alias pattern
+            for stats_key in relation_sizes.keys():
+                # Look for patterns like "q20a_comp_cast_type1" for alias "cct1"
+                if name in stats_key:
+                    if alias_suffix:  # If alias has a number suffix
+                        # Check if the stats key ends with the same number
+                        if stats_key.endswith(alias_suffix) and len(stats_key) > len(best_match_key):
+                            best_match_key = stats_key
+                    else:  # If alias has no number suffix
+                        # Prefer keys without numbers, or if no such key exists, take any match
+                        if not re.search(r'\d+$', stats_key):
+                            if len(stats_key) > len(best_match_key):
+                                best_match_key = stats_key
+                        elif not best_match_key:  # Fallback to any match
+                            best_match_key = stats_key
+        
+        # Fallback to original logic if no specific match found
+        if not best_match_key:
+            for stats_key in relation_sizes.keys():
+                if name in stats_key and len(stats_key) > len(best_match_key):
+                    best_match_key = stats_key
 
         if best_match_key:
             table_info["size_after_filters"] = relation_sizes[best_match_key]
@@ -1538,7 +1561,7 @@ def generate_code_block(code_block: CodeBlock,
             code_block_template = Template("""
             let res: {{ result_output }} =
             {{ zip_columns }}
-            .filter_map(|{{ filter_map_closure|replace("'","")}}| {
+            .filter_map(|{{ filter_map_closure|replace("'","") }}| {
                 {{ filter_map_main }}
             })
             .min();
@@ -1575,9 +1598,9 @@ def generate_code_block(code_block: CodeBlock,
     elif code_block.type == Type.numeric:
         template = Template("""
         let {{ alias }}_id =
-        {{ zip_column }}
-        .find(|filter_map_closure|replace("'","")}}| {{ filter_conditions|replace("'",'"') }})
-        .map(|filter_map_closure|replace("'","")}}| *{{ join_column }})
+        {{ zip_columns }}
+        .find(|{{ filter_map_closure|replace("'","") }}| {{ filter_conditions|replace("'",'"') }})
+        .map(|{{ filter_map_closure|replace("'","") }}| *{{ join_column }})
         .unwrap();
         """)
         code_gen_context.alias_variable[code_block.alias] = (
@@ -1586,8 +1609,8 @@ def generate_code_block(code_block: CodeBlock,
     elif code_block.type == Type.set:
         template = Template("""
         let {{ alias }}_s : HashSet<i32> = 
-        {{ zip_column }}
-        .filter_map(|filter_map_closure|replace("'","")}}| {
+        {{ zip_columns }}
+        .filter_map(|{{ filter_map_closure|replace("'","") }}| {
             {{ filter_conditions }}
             .then_some(*{{ join_column }})
         })
