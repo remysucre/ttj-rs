@@ -304,6 +304,12 @@ class SemiJoinProgram:
         assert len(self.program) == 1
         return self.program[0].level[-1].parent
 
+    def get_all_ears(self, alias: str) -> typing.List[str]:
+        assert len(self.program) == 1
+        for merged_sj in self.program[0]:
+            if merged_sj.parent.alias == alias:
+                return [ear.alias for ear in merged_sj.ears]
+
 class UnionFind:
     """
     A Union-Find (or Disjoint Set Union) data structure.
@@ -1530,7 +1536,8 @@ def generate_code_block(code_block: CodeBlock,
                 elif min_select_column_type == Type.string:
                     target.append(f"{min_select_column}.as_str()")
             else:
-                raise ValueError("Unimplemented!")
+                # raise ValueError("Unimplemented!")
+                pass
 
     def build_filter_map_main(code_block, program_context: ProgramContext, code_gen_context: CodeGenContext) -> str:
         """
@@ -1554,13 +1561,30 @@ def generate_code_block(code_block: CodeBlock,
             join_conditions = form_join_conds(query_item, code_gen_context)
         else:
             join_conditions = None
-        if len(filter_nullable_columns) == 1:
+        nullable_local_variable = None
+        nullable_column_exists = len(filter_nullable_columns) == 1
+        if nullable_column_exists:
             nullable_local_variable = filter_nullable_columns[0].strip("'")
-            filter_conditions = filter_conditions[0].strip("'").strip('(').strip(')')
+        else:
+            for zip_column in code_block.zip_columns:
+                if query_item["columns"][zip_column]["nullable"]:
+                    nullable_column_exists = True
+                    nullable_local_variable = zip_column
+                    break
+        if nullable_column_exists:
+            if filter_conditions[0] is not None:
+                filter_conditions = filter_conditions[0].strip("'").strip('(').strip(')')
+            else:
+                filter_conditions = None
             map_out = build_filter_map_out(code_block, program_context)
             if code_block.alias in code_gen_context.alias_sj:
+                conditions = []
+                if filter_conditions is not None:
+                    conditions.append(filter_conditions)
+                if join_conditions is not None:
+                    conditions.append(join_conditions)
                 return f"""{nullable_local_variable}
-                    .filter(|&{nullable_local_variable}| {filter_conditions} && {join_conditions})
+                    .filter(|&{nullable_local_variable}| {"&&".join(conditions)})
                     .map(|_| {map_out})"""
             else:
                 return f"""{nullable_local_variable}
