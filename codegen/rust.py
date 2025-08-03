@@ -1147,7 +1147,9 @@ def decide_join_tree(output_file_path):
                 for attr in candidate.attributes:
                     # set_size = attributes.get_set_size(attr)
                     set_size = len(attribute_alias[attr.attr])
-                    if set_size == 1:
+                    if set_size == 1 or (set_size == 2 and
+                        not attributes.connected(attr, Attribute(alias=other.alias,
+                                                                 attr=attr.attr))):
                         # Attribute appears in itself only
                         unique_attrs.append(attr)
                         continue
