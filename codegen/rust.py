@@ -8,7 +8,7 @@ The engine generates Rust implementations inside ../src/ in the following steps:
 
 Author: Zeyuan Hu (zeyuan.zack.hu@gmail.com)
 """
-
+import argparse
 import glob
 import json
 import os
@@ -855,8 +855,8 @@ def process_query_and_stats(
         raise ValueError(f"Error writing to output file: {e}")
 
 
-def main(sql_dir='join-order-benchmark/',
-         stats_dir='stats_jsons/',
+def main(sql_dir='join-order-benchmark',
+         stats_dir='stats_jsons',
          output_dir='jsons',
          src_output_dir=pathlib.Path(__file__).parent.parent / "src"):
     """
@@ -938,7 +938,7 @@ def main(sql_dir='join-order-benchmark/',
             raise ValueError(
                 f"An unexpected error occurred while processing {sql_file_path}: {e}"
             )
-    os.system(f"cargo fmt -- {os.path.join(output_dir, '*.rs')}")
+    os.system(f"cargo fmt -- {os.path.join(src_output_dir, '*.rs')}")
 
 
 def parse_sql_schema(sql_file_path):
@@ -1024,6 +1024,7 @@ def get_expected_result_set(sql_query_name: str, program_context: ProgramContext
                 expected_result_set = f'"{result_set[0]}"'
             elif types[0] == "&i32":
                 expected_result_set = f'&{result_set[0]}'
+            return expected_result_set
         else:
             expected_result_set = []
             for i, type in enumerate(types):
@@ -2008,7 +2009,11 @@ def optimization(sql_query_name, output_file_path, src_output_dir) -> None:
 
 
 if __name__ == "__main__":
-    # Test
-    main(sql_dir='junk', stats_dir='junk', output_dir='junk', src_output_dir=pathlib.Path('junk'))
-    # Prod
-    # main()
+    parser = argparse.ArgumentParser()
+    parser.add_argument('--sql_dir', type=str, default="join-order-benchmark",
+                        help='path to the directory of JOB sqls')
+    parser.add_argument('--stats_dir', type=str, default="stats_jsons", help='path to stats jsons')
+    parser.add_argument('--output_dir', type=str, default='jsons', help='path to output IR jsons')
+    parser.add_argument('--src_output_dir', type=str, default=pathlib.Path(__file__).parent.parent / "src", help='directory to generate Rust source code')
+    args = parser.parse_args()
+    main(sql_dir=args.sql_dir, stats_dir=args.stats_dir, src_output_dir=args.src_output_dir)
