@@ -545,16 +545,17 @@ class ProgramContext:
     def __construct_selected_fields(self, query_data) -> typing.List[Field]:
         select_fields = []
         for alias, item in query_data.items():
-            column = item["min_select"]
-            if column is not None:
-                select_fields.append(
-                    Field(
-                        alias,
-                        item["columns"][column]["nullable"],
-                        Type(item["columns"][column]["type"]),
-                        column,
+            columns = item["min_select"]
+            if columns:
+                for column in columns:
+                    select_fields.append(
+                        Field(
+                            alias,
+                            item["columns"][column]["nullable"],
+                            Type(item["columns"][column]["type"]),
+                            column,
+                        )
                     )
-                )
         return select_fields
 
     def __construct_parent_child_physical_columns(
@@ -676,7 +677,7 @@ def process_query_and_stats(
 
     # Extract aggregation functions from SELECT clause
     select_clause = parsed_query.find(exp.Select)
-    aggregation_map = {}  # Maps alias to column name for aggregations
+    aggregation_map = {}  # Maps alias to list of column names for aggregations
     if select_clause:
         for expression in select_clause.expressions:
             # Check if this is an aggregation function (MIN, MAX, COUNT, SUM, AVG)
@@ -691,23 +692,38 @@ def process_query_and_stats(
                 # Extract the column reference
                 column = actual_expr.this
                 if isinstance(column, exp.Column) and column.table:
-                    aggregation_map[column.table] = column.this.this
+                    if column.table not in aggregation_map:
+                        aggregation_map[column.table] = []
+                    if column.this.this not in aggregation_map[column.table]:
+                        aggregation_map[column.table].append(column.this.this)
             elif isinstance(actual_expr, exp.Max):
                 column = actual_expr.this
                 if isinstance(column, exp.Column) and column.table:
-                    aggregation_map[column.table] = column.this.this
+                    if column.table not in aggregation_map:
+                        aggregation_map[column.table] = []
+                    if column.this.this not in aggregation_map[column.table]:
+                        aggregation_map[column.table].append(column.this.this)
             elif isinstance(actual_expr, exp.Count):
                 column = actual_expr.this
                 if isinstance(column, exp.Column) and column.table:
-                    aggregation_map[column.table] = column.this.this
+                    if column.table not in aggregation_map:
+                        aggregation_map[column.table] = []
+                    if column.this.this not in aggregation_map[column.table]:
+                        aggregation_map[column.table].append(column.this.this)
             elif isinstance(actual_expr, exp.Sum):
                 column = actual_expr.this
                 if isinstance(column, exp.Column) and column.table:
-                    aggregation_map[column.table] = column.this.this
+                    if column.table not in aggregation_map:
+                        aggregation_map[column.table] = []
+                    if column.this.this not in aggregation_map[column.table]:
+                        aggregation_map[column.table].append(column.this.this)
             elif isinstance(actual_expr, exp.Avg):
                 column = actual_expr.this
                 if isinstance(column, exp.Column) and column.table:
-                    aggregation_map[column.table] = column.this.this
+                    if column.table not in aggregation_map:
+                        aggregation_map[column.table] = []
+                    if column.this.this not in aggregation_map[column.table]:
+                        aggregation_map[column.table].append(column.this.this)
 
     # Extract all conditions from the WHERE clause
     where_clause = parsed_query.find(exp.Where)
@@ -726,7 +742,7 @@ def process_query_and_stats(
             "size_after_filters": -1,
             "filters": [],
             "join_cond": [],
-            "min_select": aggregation_map.get(alias, None),
+            "min_select": aggregation_map.get(alias, []),
             "columns": table_columns.get(name, {}),
         }
 
@@ -1454,17 +1470,8 @@ def build_filter_map(zip_columns):
     )
 
 
-def build_old_filter_map(zip_columns):
-    if not zip_columns:
-        return None
-    if len(zip_columns) == 1:
-        return f"old_{zip_columns[0]}"
-    initial_tuple = (f"old_{zip_columns[0]}", f"old_{zip_columns[1]}")
-    return reduce(
-        lambda accumulator, item: (accumulator, f"old_{item}"),
-        zip_columns[2:],
-        initial_tuple,
-    )
+def build_old_filter_map(zip_columns) -> str:
+    return "(" + ",".join([f"old_{col}" for col in zip_columns]) + ")"
 
 
 def build_some_conditions(zip_columns, nullable_columns) -> str:
@@ -1484,11 +1491,10 @@ def build_code_block(alias, query_item, program_context: ProgramContext) -> Code
         for column in filter_columns:
             if column not in zip_columns:
                 zip_columns.append(column)
-        if (
-            query_item["min_select"] is not None
-            and query_item["min_select"] not in zip_columns
-        ):
-            zip_columns.append(query_item["min_select"])
+        if query_item["min_select"]:  
+            for min_col in query_item["min_select"]:
+                if min_col not in zip_columns:
+                    zip_columns.append(min_col)
         return zip_columns
 
     def get_nullable_columns(query_item) -> typing.List[str]:
@@ -1587,9 +1593,12 @@ def generate_code_block(
             if (selected_field.alias in code_gen_context.alias_variable and \
                 code_gen_context.alias_variable[selected_field.alias].type != Type.map_vec)\
                     or code_block.alias == selected_field.alias:
-                comparison.append(
-                    f"{selected_field.column}.min(&old_{selected_field.column})"
-                )
+                if selected_field.type == Type.string:
+                    comparison.append(f"{selected_field.column}.as_str().min(&old_{selected_field.column})")
+                else:
+                    comparison.append(
+                        f"{selected_field.column}.min(&old_{selected_field.column})"
+                    )
                 min_none_arm.append(selected_field.column)
             else:
                 comparison.append(f"{selected_field.column}.iter().min().unwrap().min(&old_{selected_field.column})")
@@ -1679,7 +1688,6 @@ def generate_code_block(
             else:
                 return "(" + ",".join(target) + ")"
         else:
-            min_select_column = query_item["min_select"]
             parent = program_context.semijoin_program.find_parent(code_block.alias)
             assert parent is not None
             for parent_child_column in program_context.parent_child_physical_columns:
@@ -1693,14 +1701,15 @@ def generate_code_block(
                         target.append(
                             f"{parent_child_column.child_field.column}.as_str()"
                         )
-            if min_select_column is not None:
-                min_select_column_type = Type(
-                    query_item["columns"][min_select_column]["type"]
-                )
-                if min_select_column_type == Type.numeric:
-                    target.append(f"*{min_select_column}")
-                elif min_select_column_type == Type.string:
-                    target.append(f"{min_select_column}.as_str()")
+            if query_item["min_select"]: 
+                for min_select_column in query_item["min_select"]:
+                    min_select_column_type = Type(
+                        query_item["columns"][min_select_column]["type"]
+                    )
+                    if min_select_column_type == Type.numeric:
+                        target.append(f"*{min_select_column}")
+                    elif min_select_column_type == Type.string:
+                        target.append(f"{min_select_column}.as_str()")
             return "(" + ",".join(target) + ")"
 
     def build_filter_map_main(
@@ -1960,7 +1969,7 @@ def generate_main_block(semijoin_program: SemiJoinProgram,
 
     program_context = ProgramContext(query_data, semijoin_program)
     # ensure_select_ears_appear_in_semijoin_program(program_context)
-    print(f"final semijoin_program before codegen: {semijoin_program}")
+    # print(f"final semijoin_program before codegen: {semijoin_program}")
 
     code_gen_context.template_data.data["result_output"] = format_result_output(program_context)
     code_gen_context.template_data.data["expected_result_set"] = get_expected_result_set(
@@ -2016,4 +2025,4 @@ if __name__ == "__main__":
     parser.add_argument('--output_dir', type=str, default='jsons', help='path to output IR jsons')
     parser.add_argument('--src_output_dir', type=str, default=pathlib.Path(__file__).parent.parent / "src", help='directory to generate Rust source code')
     args = parser.parse_args()
-    main(sql_dir=args.sql_dir, stats_dir=args.stats_dir, src_output_dir=args.src_output_dir)
+    main(sql_dir=args.sql_dir, stats_dir=args.stats_dir, output_dir=args.output_dir, src_output_dir=args.src_output_dir)
