@@ -16,7 +16,7 @@ import os
 import pathlib
 import re
 import typing
-from collections import deque, OrderedDict
+from collections import OrderedDict
 from dataclasses import dataclass, field
 from enum import Enum
 from functools import reduce
@@ -185,7 +185,7 @@ class Level:
 
 class MergedLevel:
     def __init__(self):
-        self.level = []
+        self.level : typing.List[MergedSemiJoin] = []
 
     def __iter__(self):
         return iter(self.level)
@@ -223,7 +223,7 @@ class SemiJoinProgram:
     def append(self, level: MergedLevel):
         self.program.append(level)
 
-    def has_last_level(self):
+    def has_last_level(self) -> typing.Union[MergedLevel, None]:
         if len(self.program) > 0:
             return self.program[-1]
         else:
@@ -1244,7 +1244,9 @@ def decide_join_tree(output_file_path):
     num_relations = len(query_data.items())
     semijoin_program = SemiJoinProgram()
     removed_ear = []
+    iteration = 0
     while hypergraph.num_sets() > 1:
+        iteration += 1
         level = Level()
         last_level = semijoin_program.has_last_level()
         if last_level is None:
@@ -1256,7 +1258,17 @@ def decide_join_tree(output_file_path):
                 last_level.get_parent(repr) for repr in all_representatives
             ]
         else:
-            all_parent_repr = sorted(last_level.get_parents(), key=lambda x: x.alias)
+            all_parent_repr = []
+            for parent in last_level.get_parents():
+                found = False
+                for merged_sj in last_level.level:
+                    if parent in merged_sj.ears:
+                        found = True
+                        break
+                if not found:
+                    all_parent_repr.append(parent)
+            all_parent_repr = sorted(all_parent_repr, key=lambda x: x.alias)
+            print(f"all_parent_repr: {all_parent_repr}")
             for repr in sorted(hypergraph.get_representatives(), key=lambda x: x.alias):
                 if repr not in all_parent_repr and not last_level.is_in_level(repr):
                     all_parent_repr.append(repr)
@@ -1294,6 +1306,7 @@ def decide_join_tree(output_file_path):
             # Sort to ensure deterministic order
             sorted_parent_repr = sorted(all_parent_repr, key=lambda x: x.alias)
             queue.extend(sorted_parent_repr)
+            print(f"queue: {queue}")
             while len(queue) > 0:
                 relation1 = queue.popleft()
                 relation2 = queue.popleft()
@@ -1324,7 +1337,7 @@ def decide_join_tree(output_file_path):
             semijoin_program.append(level.merge())
         else:
             semijoin_program.merge_up(level)
-        print(f"semijoin_prorgam (iteration): \n{semijoin_program}")
+        print(f"semijoin_prorgam (iteration: {iteration}): \n{semijoin_program}")
     print(f"semijoin_program: \n{semijoin_program}")
     assert num_relations == semijoin_program.size()
     build_parent_child_columns(semijoin_program, attributes)
