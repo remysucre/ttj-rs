@@ -1,7 +1,7 @@
 [project]
 name = "codegen"
 version = "0.1.0"
-description = "Add your description here"
+description = "A bare-bone query compilation engine for Join Ordering Benchmark queries"
 readme = "README.md"
 requires-python = ">=3.9"
 dependencies = [
