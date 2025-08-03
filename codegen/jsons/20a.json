@@ -38,7 +38,7 @@
                 "foreign_table": {
                     "alias": "cct1",
                     "column": "id",
-                    "key": null
+                    "key": "PK"
                 }
             },
             {
@@ -47,31 +47,61 @@
                 "foreign_table": {
                     "alias": "cct2",
                     "column": "id",
-                    "key": null
+                    "key": "PK"
                 }
             }
-        ]
+        ],
+        "min_select": null,
+        "columns": {
+            "id": {
+                "type": "numeric",
+                "nullable": false
+            },
+            "movie_id": {
+                "type": "numeric",
+                "nullable": false
+            },
+            "subject_id": {
+                "type": "numeric",
+                "nullable": false
+            },
+            "status_id": {
+                "type": "numeric",
+                "nullable": false
+            }
+        }
     },
     "cct1": {
         "relation_name": "comp_cast_type",
         "alias": "cct1",
-        "size_after_filters": 2,
+        "size_after_filters": 1,
         "filters": {
             "operator": "EQ",
-            "left": "cct1.kind",
+            "left": "kind",
             "right": "'cast'"
         },
         "join_cond": [
             {
                 "local_column": "id",
-                "key": null,
+                "key": "PK",
                 "foreign_table": {
                     "alias": "cc",
                     "column": "subject_id",
                     "key": "FK"
                 }
             }
-        ]
+        ],
+        "min_select": null,
+        "columns": {
+            "id": {
+                "type": "numeric",
+                "nullable": false
+            },
+            "kind": {
+                "type": "string",
+                "nullable": false
+            }
+        }
     },
     "cct2": {
         "relation_name": "comp_cast_type",
@@ -79,20 +109,31 @@
         "size_after_filters": 2,
         "filters": {
             "operator": "LIKE",
-            "left": "cct2.kind",
+            "left": "kind",
             "right": "'%complete%'"
         },
         "join_cond": [
             {
                 "local_column": "id",
-                "key": null,
+                "key": "PK",
                 "foreign_table": {
                     "alias": "cc",
                     "column": "status_id",
                     "key": "FK"
                 }
             }
-        ]
+        ],
+        "min_select": null,
+        "columns": {
+            "id": {
+                "type": "numeric",
+                "nullable": false
+            },
+            "kind": {
+                "type": "string",
+                "nullable": false
+            }
+        }
     },
     "chn": {
         "relation_name": "char_name",
@@ -101,23 +142,20 @@
         "filters": {
             "operator": "AND",
             "left": {
-                "operator": "NOT",
-                "left": {
-                    "operator": "LIKE",
-                    "left": "chn.name",
-                    "right": "'%Sherlock%'"
-                }
+                "operator": "NOT LIKE",
+                "left": "name",
+                "right": "'%Sherlock%'"
             },
             "right": {
                 "operator": "OR",
                 "left": {
                     "operator": "LIKE",
-                    "left": "chn.name",
+                    "left": "name",
                     "right": "'%Tony%Stark%'"
                 },
                 "right": {
                     "operator": "LIKE",
-                    "left": "chn.name",
+                    "left": "name",
                     "right": "'%Iron%Man%'"
                 }
             }
@@ -132,7 +170,38 @@
                     "key": null
                 }
             }
-        ]
+        ],
+        "min_select": null,
+        "columns": {
+            "id": {
+                "type": "numeric",
+                "nullable": false
+            },
+            "name": {
+                "type": "string",
+                "nullable": false
+            },
+            "imdb_index": {
+                "type": "string",
+                "nullable": true
+            },
+            "imdb_id": {
+                "type": "numeric",
+                "nullable": true
+            },
+            "name_pcode_nf": {
+                "type": "string",
+                "nullable": true
+            },
+            "surname_pcode": {
+                "type": "string",
+                "nullable": true
+            },
+            "md5sum": {
+                "type": "string",
+                "nullable": true
+            }
+        }
     },
     "ci": {
         "relation_name": "cast_info",
@@ -185,7 +254,38 @@
                     "key": "PK"
                 }
             }
-        ]
+        ],
+        "min_select": null,
+        "columns": {
+            "id": {
+                "type": "numeric",
+                "nullable": false
+            },
+            "person_id": {
+                "type": "numeric",
+                "nullable": false
+            },
+            "movie_id": {
+                "type": "numeric",
+                "nullable": false
+            },
+            "person_role_id": {
+                "type": "numeric",
+                "nullable": true
+            },
+            "note": {
+                "type": "string",
+                "nullable": true
+            },
+            "nr_order": {
+                "type": "numeric",
+                "nullable": true
+            },
+            "role_id": {
+                "type": "numeric",
+                "nullable": false
+            }
+        }
     },
     "k": {
         "relation_name": "keyword",
@@ -193,7 +293,7 @@
         "size_after_filters": 4523930,
         "filters": {
             "operator": "IN",
-            "left": "k.keyword",
+            "left": "keyword",
             "right": [
                 "'superhero'",
                 "'sequel'",
@@ -215,7 +315,22 @@
                     "key": "FK"
                 }
             }
-        ]
+        ],
+        "min_select": null,
+        "columns": {
+            "id": {
+                "type": "numeric",
+                "nullable": false
+            },
+            "keyword": {
+                "type": "string",
+                "nullable": false
+            },
+            "phonetic_code": {
+                "type": "string",
+                "nullable": true
+            }
+        }
     },
     "kt": {
         "relation_name": "kind_type",
@@ -223,7 +338,7 @@
         "size_after_filters": 1,
         "filters": {
             "operator": "EQ",
-            "left": "kt.kind",
+            "left": "kind",
             "right": "'movie'"
         },
         "join_cond": [
@@ -236,7 +351,18 @@
                     "key": "FK"
                 }
             }
-        ]
+        ],
+        "min_select": null,
+        "columns": {
+            "id": {
+                "type": "numeric",
+                "nullable": false
+            },
+            "kind": {
+                "type": "string",
+                "nullable": false
+            }
+        }
     },
     "mk": {
         "relation_name": "movie_keyword",
@@ -280,7 +406,22 @@
                     "key": "PK"
                 }
             }
-        ]
+        ],
+        "min_select": null,
+        "columns": {
+            "id": {
+                "type": "numeric",
+                "nullable": false
+            },
+            "movie_id": {
+                "type": "numeric",
+                "nullable": false
+            },
+            "keyword_id": {
+                "type": "numeric",
+                "nullable": false
+            }
+        }
     },
     "n": {
         "relation_name": "name",
@@ -297,7 +438,46 @@
                     "key": "FK"
                 }
             }
-        ]
+        ],
+        "min_select": null,
+        "columns": {
+            "id": {
+                "type": "numeric",
+                "nullable": false
+            },
+            "name": {
+                "type": "string",
+                "nullable": false
+            },
+            "imdb_index": {
+                "type": "string",
+                "nullable": true
+            },
+            "imdb_id": {
+                "type": "numeric",
+                "nullable": true
+            },
+            "gender": {
+                "type": "string",
+                "nullable": true
+            },
+            "name_pcode_cf": {
+                "type": "string",
+                "nullable": true
+            },
+            "name_pcode_nf": {
+                "type": "string",
+                "nullable": true
+            },
+            "surname_pcode": {
+                "type": "string",
+                "nullable": true
+            },
+            "md5sum": {
+                "type": "string",
+                "nullable": true
+            }
+        }
     },
     "t": {
         "relation_name": "title",
@@ -305,7 +485,7 @@
         "size_after_filters": 2287271,
         "filters": {
             "operator": "GT",
-            "left": "t.production_year",
+            "left": "production_year",
             "right": "1950"
         },
         "join_cond": [
@@ -345,6 +525,57 @@
                     "key": "FK"
                 }
             }
-        ]
+        ],
+        "min_select": "title",
+        "columns": {
+            "id": {
+                "type": "numeric",
+                "nullable": false
+            },
+            "title": {
+                "type": "string",
+                "nullable": false
+            },
+            "imdb_index": {
+                "type": "string",
+                "nullable": true
+            },
+            "kind_id": {
+                "type": "numeric",
+                "nullable": false
+            },
+            "production_year": {
+                "type": "numeric",
+                "nullable": true
+            },
+            "imdb_id": {
+                "type": "numeric",
+                "nullable": true
+            },
+            "phonetic_code": {
+                "type": "string",
+                "nullable": true
+            },
+            "episode_of_id": {
+                "type": "numeric",
+                "nullable": true
+            },
+            "season_nr": {
+                "type": "numeric",
+                "nullable": true
+            },
+            "episode_nr": {
+                "type": "numeric",
+                "nullable": true
+            },
+            "series_years": {
+                "type": "string",
+                "nullable": true
+            },
+            "md5sum": {
+                "type": "string",
+                "nullable": true
+            }
+        }
     }
 }
