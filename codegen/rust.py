@@ -1715,7 +1715,7 @@ def generate_code_block(
             return "(" + ",".join(target) + ")"
 
     def build_filter_map_main(
-        code_block, program_context: ProgramContext, code_gen_context: CodeGenContext
+        code_block : CodeBlock, program_context: ProgramContext, code_gen_context: CodeGenContext
     ) -> str:
         query_item = program_context.query_data[code_block.alias]
         filter_columns = build_filter_columns(query_item["filters"])
@@ -1733,7 +1733,7 @@ def generate_code_block(
         nullable_local_variable = None
         nullable_column_exists = len(filter_nullable_columns) == 1
         if nullable_column_exists:
-            nullable_local_variable = filter_nullable_columns[0].strip("'")
+            nullable_local_variable = filter_nullable_columns[0]
         else:
             for zip_column in code_block.zip_columns:
                 if query_item["columns"][zip_column]["nullable"]:
@@ -1741,6 +1741,10 @@ def generate_code_block(
                     nullable_local_variable = zip_column
                     break
         if nullable_column_exists:
+            corresponding_type = None
+            for field in program_context.selected_fields:
+                if field.column == nullable_local_variable:
+                    corresponding_type = field.type
             if filter_conditions[0] is not None:
                 filter_conditions = (
                     filter_conditions[0].strip("'").removeprefix('(').removesuffix(')')
@@ -1748,19 +1752,26 @@ def generate_code_block(
             else:
                 filter_conditions = None
             map_out = build_filter_map_out(code_block, program_context)
-            if code_block.alias in code_gen_context.alias_sj:
-                conditions = []
-                if filter_conditions is not None:
-                    conditions.append(filter_conditions)
-                if join_conditions is not None:
-                    conditions.append(join_conditions)
-                return f"""{nullable_local_variable}
-                    .filter(|&{nullable_local_variable}| {"&&".join(conditions)})
-                    .map(|{nullable_local_variable}| {map_out})"""
-            else:
-                return f"""{nullable_local_variable}
-                    .filter(|&{nullable_local_variable}| {filter_conditions})
-                    .map(|{nullable_local_variable}| {map_out})"""
+            conditions = []
+            if filter_conditions is not None:
+                conditions.append(filter_conditions)
+            if join_conditions is not None:
+                conditions.append(join_conditions)
+            template = Template("""
+            {{ nullable_local_variable|replace("'","") }}
+            {% if corresponding_type_str %}
+            .as_ref()
+            {% endif %}
+            .filter(|&{{ nullable_local_variable }}| {{ join_conditions }})
+            .map(|{{ nullable_local_variable }}| {{ map_out }})
+            """)
+            data = {
+                "nullable_local_variable": nullable_local_variable,
+                "corresponding_type_str": corresponding_type == Type.string,
+                "join_conditions": "&&".join(conditions),
+                "map_out": map_out,
+            }
+            return template.render(data)
         else:
             case1_template = Template("""
                 {% set conditions = [] %}
@@ -1998,7 +2009,7 @@ def optimization(sql_query_name, output_file_path) -> None:
 
     query_implementation = template_data.template.render(template_data.data)
     output_dir = pathlib.Path(__file__).parent.parent / "src"
-    output_dir = "junk"
+    # output_dir = "junk"
     output_file_path = os.path.join(output_dir, f"o{sql_query_name}.rs")
     try:
         with open(output_file_path, "w") as f:
