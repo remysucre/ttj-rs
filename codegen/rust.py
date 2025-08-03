@@ -595,7 +595,7 @@ class ProgramContext:
 
 @dataclass
 class CodeGenContext:
-    alias_variable: dict
+    alias_variable: dict[str, Variable]
     alias_sj: dict
     template_data: TemplateData
     finders: typing.Set[str] = field(default_factory=set)
@@ -1035,14 +1035,14 @@ def get_expected_result_set(sql_query_name: str, program_context: ProgramContext
             if types[0] == "&str":
                 expected_result_set = f'"{result_set[0]}"'
             elif types[0] == "&i32":
-                expected_result_set = f'{result_set[0]}'
+                expected_result_set = f'&{result_set[0]}'
         else:
             expected_result_set = []
             for i, type in enumerate(types):
                 if type == "&str":
                     expected_result_set.append(f'"{result_set[i]}"')
                 elif type == "&i32":
-                    expected_result_set.append(f'{result_set[i]}')
+                    expected_result_set.append(f'&{result_set[i]}')
         return "(" + ", ".join(expected_result_set) + ")"
     except (IOError, json.JSONDecodeError) as e:
         raise ValueError(f"Error reading or parsing statistics file: {e}")
@@ -1580,7 +1580,8 @@ def generate_code_block(
     program_context: ProgramContext,
     code_gen_context: CodeGenContext,
 ) -> str:
-    def build_res_match(program_context: ProgramContext) -> str:
+    def build_res_match(program_context: ProgramContext,
+                        code_gen_context: CodeGenContext) -> str:
         res_match = Template("""
         res = match res {
             Some({{ old_filter_map_closure|replace("'","")}}) => Some((
@@ -1591,11 +1592,12 @@ def generate_code_block(
         """)
         field_columns = [field.column for field in program_context.selected_fields]
         data["old_filter_map_closure"] = build_old_filter_map(field_columns)
-        data["filter_map_closure"] = build_filter_map(field_columns)
         comparison = []
         min_none_arm = []
         for selected_field in program_context.selected_fields:
-            if not selected_field.nullable:
+            if (selected_field.alias in code_gen_context.alias_variable and \
+                code_gen_context.alias_variable[selected_field.alias].type != Type.map_vec)\
+                    or code_block.alias == selected_field.alias:
                 comparison.append(
                     f"{selected_field.column}.min(&old_{selected_field.column})"
                 )
@@ -1604,7 +1606,10 @@ def generate_code_block(
                 comparison.append(f"{selected_field.column}.iter().min().unwrap().min(&old_{selected_field.column})")
                 min_none_arm.append(f"{selected_field.column}.iter().min().unwrap()")
         data["comparison"] = ",".join(comparison)
-        data["min_none_arm"] = ",".join(min_none_arm)
+        if len(program_context.selected_fields) == 1:
+            data["min_none_arm"] = ",".join(min_none_arm)
+        else:
+             data["min_none_arm"] = "(" + ",".join(min_none_arm) + ")"
         return res_match.render(data)
 
     def form_join_conds(query_item, code_gen_context: CodeGenContext) -> str:
@@ -1636,6 +1641,37 @@ def generate_code_block(
                             f"{code_gen_context.alias_variable[foreign_table_alias].name}.contains_key({join_cond['local_column']})"
                         )
         return "&&".join(join_conds)
+
+    def form_join_some_conds(code_block: CodeBlock,
+                             code_gen_context: CodeGenContext,
+                             program_context: ProgramContext) -> typing.Union[str, None]:
+        join_some_conds = []
+        selected_field_not_in_zip : typing.List[Field] = []
+        for selected_field in program_context.selected_fields:
+            if selected_field.column not in code_block.zip_columns:
+                selected_field_not_in_zip.append(selected_field)
+        if len(selected_field_not_in_zip) == 0:
+            return None
+        else:
+            for field in selected_field_not_in_zip:
+                variable = code_gen_context.alias_variable[field.alias]
+                assert field.nullable
+                if variable.type == Type.set or \
+                    variable.type == Type.map_vec:
+                    for parent_child_column in program_context.parent_child_physical_columns:
+                        if parent_child_column.child_field.alias == field.alias:
+                            while parent_child_column.parent_field.alias != code_block.alias:
+                                for column in program_context.parent_child_physical_columns:
+                                    if column.child_field.alias == parent_child_column.parent_field.alias:
+                                        parent_child_column = column
+                                        break
+                            join_some_conds.append(
+                                f"let Some({field.column}) = {variable.name}.get(&{parent_child_column.parent_field.column})"
+                            )
+                            break
+                else:
+                    raise ValueError("Unimplemented!")
+            return "&&".join(join_some_conds)
 
     def build_filter_map_out(
         code_block: CodeBlock, program_context: ProgramContext
@@ -1800,16 +1836,21 @@ def generate_code_block(
                 {% if join_conditions is not none %}
                     {% set _ = conditions.append(join_conditions) %}
                 {% endif %}
+                {% if join_some_conditions is not none %}
+                    {% set _ = conditions.append(join_some_conditions) %}
+                {% endif %}
 
                 if {{ conditions | join(' && ') }} {
                     {{ res_match }}
                 }
             }
             """)
+            data["filter_map_closure"] = build_filter_map(code_block.zip_columns)
             data["some_conditions"] = build_some_conditions(
                 code_block.zip_columns, code_block.nullable_columns
             )
-            data["res_match"] = build_res_match(program_context)
+            data["join_some_conditions"] = form_join_some_conds(code_block, code_gen_context, program_context)
+            data["res_match"] = build_res_match(program_context, code_gen_context)
             return code_block_template.render(data)
     elif code_block.type == Type.numeric:
         template = Template("""
@@ -1880,6 +1921,32 @@ def generate_main_block(semijoin_program: SemiJoinProgram,
                         sql_query_name,
                         output_file_path,
                         template_data: TemplateData):
+    def ensure_select_ears_appear_in_semijoin_program(program_context: ProgramContext):
+        """
+        If a relation has selected field, but it doesn't appear in the ears of the root,
+        we want to add the relation to the ears.
+        """
+        def construct_relation_from_alias(alias, program_context: ProgramContext) -> Relation:
+            info = program_context.query_data[alias]
+            relation_attributes = []
+            for join_cond in info.get("join_cond", []):
+                local_attr = Attribute(attr=join_cond["local_column"], alias=alias)
+                if local_attr not in relation_attributes:
+                    relation_attributes.append(local_attr)
+            return Relation(
+                alias=alias,
+                relation_name=info["relation_name"],
+                attributes=tuple(relation_attributes),
+                size=info["size_after_filters"],
+            )
+
+        last_merged_sj = program_context.semijoin_program.program[0].level[-1]
+        target_ear_alias = [ear.alias for ear in last_merged_sj.ears]
+        for selected_field in program_context.selected_fields:
+            if selected_field.alias not in target_ear_alias and selected_field.alias != last_merged_sj.parent.alias:
+                last_merged_sj.ears.append(construct_relation_from_alias(selected_field.alias, program_context))
+
+
     with open(output_file_path, "r") as f:
         query_data = json.load(f)
 
@@ -1888,9 +1955,13 @@ def generate_main_block(semijoin_program: SemiJoinProgram,
     code_gen_context = CodeGenContext(alias_sj=dict(), alias_variable=dict(),
                                       template_data=template_data)
     orders, code_gen_context.alias_sj = semijoin_program.get_generation_order()
-    program_context = ProgramContext(query_data, semijoin_program)
     print(f"orders: {orders}")
     print(f"alias_sj: {code_gen_context.alias_sj}")
+
+    program_context = ProgramContext(query_data, semijoin_program)
+    # ensure_select_ears_appear_in_semijoin_program(program_context)
+    print(f"final semijoin_program before codegen: {semijoin_program}")
+
     code_gen_context.template_data.data["result_output"] = format_result_output(program_context)
     code_gen_context.template_data.data["expected_result_set"] = get_expected_result_set(
         sql_query_name,
