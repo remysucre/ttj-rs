@@ -8,6 +8,7 @@ The engine generates Rust implementations inside ../src/ in the following steps:
 
 Author: Zeyuan Hu (zeyuan.zack.hu@gmail.com)
 """
+
 import argparse
 import glob
 import json
@@ -49,10 +50,12 @@ ALIAS_TO_TABLE = {
     "t": "title",
 }
 
+
 @dataclass
 class TemplateData:
     template: Template
     data: dict
+
 
 def check_argument(predicate, message):
     if predicate:
@@ -564,12 +567,7 @@ class ProgramContext:
         for alias, item in query_data.items():
             for column, prop in item["columns"].items():
                 all_fields.append(
-                    Field(
-                        alias,
-                        prop["nullable"],
-                        Type(prop["type"]),
-                        column
-                    )
+                    Field(alias, prop["nullable"], Type(prop["type"]), column)
                 )
         return all_fields
 
@@ -886,10 +884,12 @@ def process_query_and_stats(
         raise ValueError(f"Error writing to output file: {e}")
 
 
-def main(sql_dir='join-order-benchmark',
-         stats_dir='stats_jsons',
-         output_dir='jsons',
-         src_output_dir=pathlib.Path(__file__).parent.parent / "src"):
+def main(
+    sql_dir="join-order-benchmark",
+    stats_dir="stats_jsons",
+    output_dir="jsons",
+    src_output_dir=pathlib.Path(__file__).parent.parent / "src",
+):
     """
     Main function to process all .sql files in a directory.
     """
@@ -1044,7 +1044,9 @@ def parse_sql_schema(sql_file_path):
     return pks, fks, columns
 
 
-def get_expected_result_set(sql_query_name: str, program_context: ProgramContext) -> str:
+def get_expected_result_set(
+    sql_query_name: str, program_context: ProgramContext
+) -> str:
     types = get_rust_types_for_fields(program_context.selected_fields)
     try:
         with open("expected_results.json", "r") as f:
@@ -1054,7 +1056,7 @@ def get_expected_result_set(sql_query_name: str, program_context: ProgramContext
             if types[0] == "&str":
                 expected_result_set = f'"{result_set[0]}"'
             elif types[0] == "&i32":
-                expected_result_set = f'&{result_set[0]}'
+                expected_result_set = f"&{result_set[0]}"
             return expected_result_set
         else:
             expected_result_set = []
@@ -1062,12 +1064,10 @@ def get_expected_result_set(sql_query_name: str, program_context: ProgramContext
                 if type == "&str":
                     expected_result_set.append(f'"{result_set[i]}"')
                 elif type == "&i32":
-                    expected_result_set.append(f'&{result_set[i]}')
+                    expected_result_set.append(f"&{result_set[i]}")
         return "(" + ", ".join(expected_result_set) + ")"
     except (IOError, json.JSONDecodeError) as e:
         raise ValueError(f"Error reading or parsing statistics file: {e}")
-
-
 
 
 def _initialize_relation_block(
@@ -1147,9 +1147,12 @@ def decide_join_tree(output_file_path):
                 for attr in candidate.attributes:
                     # set_size = attributes.get_set_size(attr)
                     set_size = len(attribute_alias[attr.attr])
-                    if set_size == 1 or (set_size == 2 and
-                        not attributes.connected(attr, Attribute(alias=other.alias,
-                                                                 attr=attr.attr))):
+                    if set_size == 1 or (
+                        set_size == 2
+                        and not attributes.connected(
+                            attr, Attribute(alias=other.alias, attr=attr.attr)
+                        )
+                    ):
                         # Attribute appears in itself only
                         unique_attrs.append(attr)
                         continue
@@ -1365,7 +1368,9 @@ def process_filters(
 
         conditions = []
         for term in search_terms:
-            finder_var_name = term.lower().replace(" ", "_").replace("-", "_").strip(')').strip('(')
+            finder_var_name = (
+                term.lower().replace(" ", "_").replace("-", "_").strip(")").strip("(")
+            )
             finder_declaration = (
                 f"""let {finder_var_name} = memmem::Finder::new("{term}");"""
             )
@@ -1392,7 +1397,9 @@ def process_filters(
 
         conditions = []
         for term in search_terms:
-            finder_var_name = term.lower().replace(" ", "_").replace("-", "_").strip('(').strip(')')
+            finder_var_name = (
+                term.lower().replace(" ", "_").replace("-", "_").strip("(").strip(")")
+            )
             finder_declaration = (
                 f"""let {finder_var_name} = memmem::Finder::new("{term}");"""
             )
@@ -1510,7 +1517,7 @@ def build_code_block(alias, query_item, program_context: ProgramContext) -> Code
         for column in filter_columns:
             if column not in zip_columns:
                 zip_columns.append(column)
-        if query_item["min_select"]:  
+        if query_item["min_select"]:
             for min_col in query_item["min_select"]:
                 if min_col not in zip_columns:
                     zip_columns.append(min_col)
@@ -1570,6 +1577,7 @@ def build_code_block(alias, query_item, program_context: ProgramContext) -> Code
         type=decide_type(alias, query_item, program_context, key),
     )
 
+
 def get_rust_types_for_fields(fields: typing.List[Field]) -> typing.List[str]:
     types = []
     for selected_field in fields:
@@ -1594,8 +1602,9 @@ def generate_code_block(
     program_context: ProgramContext,
     code_gen_context: CodeGenContext,
 ) -> str:
-    def build_res_match(program_context: ProgramContext,
-                        code_gen_context: CodeGenContext) -> str:
+    def build_res_match(
+        program_context: ProgramContext, code_gen_context: CodeGenContext
+    ) -> str:
         res_match = Template("""
         res = match res {
             Some({{ old_filter_map_closure|replace("'","")}}) => Some((
@@ -1609,24 +1618,30 @@ def generate_code_block(
         comparison = []
         min_none_arm = []
         for selected_field in program_context.selected_fields:
-            if (selected_field.alias in code_gen_context.alias_variable and \
-                code_gen_context.alias_variable[selected_field.alias].type != Type.map_vec)\
-                    or code_block.alias == selected_field.alias:
+            if (
+                selected_field.alias in code_gen_context.alias_variable
+                and code_gen_context.alias_variable[selected_field.alias].type
+                != Type.map_vec
+            ) or code_block.alias == selected_field.alias:
                 if selected_field.type == Type.string:
-                    comparison.append(f"{selected_field.column}.as_str().min(&old_{selected_field.column})")
+                    comparison.append(
+                        f"{selected_field.column}.as_str().min(&old_{selected_field.column})"
+                    )
                 else:
                     comparison.append(
                         f"{selected_field.column}.min(&old_{selected_field.column})"
                     )
                 min_none_arm.append(selected_field.column)
             else:
-                comparison.append(f"{selected_field.column}.iter().min().unwrap().min(&old_{selected_field.column})")
+                comparison.append(
+                    f"{selected_field.column}.iter().min().unwrap().min(&old_{selected_field.column})"
+                )
                 min_none_arm.append(f"{selected_field.column}.iter().min().unwrap()")
         data["comparison"] = ",".join(comparison)
         if len(program_context.selected_fields) == 1:
             data["min_none_arm"] = ",".join(min_none_arm)
         else:
-             data["min_none_arm"] = "(" + ",".join(min_none_arm) + ")"
+            data["min_none_arm"] = "(" + ",".join(min_none_arm) + ")"
         return res_match.render(data)
 
     def form_join_conds(query_item, code_gen_context: CodeGenContext) -> str:
@@ -1659,11 +1674,13 @@ def generate_code_block(
                         )
         return "&&".join(join_conds)
 
-    def form_join_some_conds(code_block: CodeBlock,
-                             code_gen_context: CodeGenContext,
-                             program_context: ProgramContext) -> typing.Union[str, None]:
+    def form_join_some_conds(
+        code_block: CodeBlock,
+        code_gen_context: CodeGenContext,
+        program_context: ProgramContext,
+    ) -> typing.Union[str, None]:
         join_some_conds = []
-        selected_field_not_in_zip : typing.List[Field] = []
+        selected_field_not_in_zip: typing.List[Field] = []
         for selected_field in program_context.selected_fields:
             if selected_field.column not in code_block.zip_columns:
                 selected_field_not_in_zip.append(selected_field)
@@ -1673,13 +1690,22 @@ def generate_code_block(
             for field in selected_field_not_in_zip:
                 variable = code_gen_context.alias_variable[field.alias]
                 assert field.nullable
-                if variable.type == Type.set or \
-                    variable.type == Type.map_vec:
-                    for parent_child_column in program_context.parent_child_physical_columns:
+                if variable.type == Type.set or variable.type == Type.map_vec:
+                    for (
+                        parent_child_column
+                    ) in program_context.parent_child_physical_columns:
                         if parent_child_column.child_field.alias == field.alias:
-                            while parent_child_column.parent_field.alias != code_block.alias:
-                                for column in program_context.parent_child_physical_columns:
-                                    if column.child_field.alias == parent_child_column.parent_field.alias:
+                            while (
+                                parent_child_column.parent_field.alias
+                                != code_block.alias
+                            ):
+                                for (
+                                    column
+                                ) in program_context.parent_child_physical_columns:
+                                    if (
+                                        column.child_field.alias
+                                        == parent_child_column.parent_field.alias
+                                    ):
                                         parent_child_column = column
                                         break
                             join_some_conds.append(
@@ -1720,7 +1746,7 @@ def generate_code_block(
                         target.append(
                             f"{parent_child_column.child_field.column}.as_str()"
                         )
-            if query_item["min_select"]: 
+            if query_item["min_select"]:
                 for min_select_column in query_item["min_select"]:
                     min_select_column_type = Type(
                         query_item["columns"][min_select_column]["type"]
@@ -1732,7 +1758,9 @@ def generate_code_block(
             return "(" + ",".join(target) + ")"
 
     def build_filter_map_main(
-        code_block : CodeBlock, program_context: ProgramContext, code_gen_context: CodeGenContext
+        code_block: CodeBlock,
+        program_context: ProgramContext,
+        code_gen_context: CodeGenContext,
     ) -> str:
         query_item = program_context.query_data[code_block.alias]
         filter_columns = build_filter_columns(query_item["filters"])
@@ -1764,7 +1792,7 @@ def generate_code_block(
                     corresponding_type = field.type
             if filter_conditions[0] is not None:
                 filter_conditions = (
-                    filter_conditions[0].strip("'").removeprefix('(').removesuffix(')')
+                    filter_conditions[0].strip("'").removeprefix("(").removesuffix(")")
                 )
             else:
                 filter_conditions = None
@@ -1887,7 +1915,9 @@ def generate_code_block(
             data["some_conditions"] = build_some_conditions(
                 code_block.zip_columns, code_block.nullable_columns
             )
-            data["join_some_conditions"] = form_join_some_conds(code_block, code_gen_context, program_context)
+            data["join_some_conditions"] = form_join_some_conds(
+                code_block, code_gen_context, program_context
+            )
             data["res_match"] = build_res_match(program_context, code_gen_context)
             return code_block_template.render(data)
     elif code_block.type == Type.numeric:
@@ -1955,16 +1985,21 @@ def generate_code_block(
         return template.render(data)
 
 
-def generate_main_block(semijoin_program: SemiJoinProgram,
-                        sql_query_name,
-                        output_file_path,
-                        template_data: TemplateData):
+def generate_main_block(
+    semijoin_program: SemiJoinProgram,
+    sql_query_name,
+    output_file_path,
+    template_data: TemplateData,
+):
     def ensure_select_ears_appear_in_semijoin_program(program_context: ProgramContext):
         """
         If a relation has selected field, but it doesn't appear in the ears of the root,
         we want to add the relation to the ears.
         """
-        def construct_relation_from_alias(alias, program_context: ProgramContext) -> Relation:
+
+        def construct_relation_from_alias(
+            alias, program_context: ProgramContext
+        ) -> Relation:
             info = program_context.query_data[alias]
             relation_attributes = []
             for join_cond in info.get("join_cond", []):
@@ -1981,17 +2016,22 @@ def generate_main_block(semijoin_program: SemiJoinProgram,
         last_merged_sj = program_context.semijoin_program.program[0].level[-1]
         target_ear_alias = [ear.alias for ear in last_merged_sj.ears]
         for selected_field in program_context.selected_fields:
-            if selected_field.alias not in target_ear_alias and selected_field.alias != last_merged_sj.parent.alias:
-                last_merged_sj.ears.append(construct_relation_from_alias(selected_field.alias, program_context))
-
+            if (
+                selected_field.alias not in target_ear_alias
+                and selected_field.alias != last_merged_sj.parent.alias
+            ):
+                last_merged_sj.ears.append(
+                    construct_relation_from_alias(selected_field.alias, program_context)
+                )
 
     with open(output_file_path, "r") as f:
         query_data = json.load(f)
 
     meat_statements = []
     main_block = ""
-    code_gen_context = CodeGenContext(alias_sj=dict(), alias_variable=dict(),
-                                      template_data=template_data)
+    code_gen_context = CodeGenContext(
+        alias_sj=dict(), alias_variable=dict(), template_data=template_data
+    )
     orders, code_gen_context.alias_sj = semijoin_program.get_generation_order()
     print(f"orders: {orders}")
     print(f"alias_sj: {code_gen_context.alias_sj}")
@@ -2000,10 +2040,11 @@ def generate_main_block(semijoin_program: SemiJoinProgram,
     # ensure_select_ears_appear_in_semijoin_program(program_context)
     # print(f"final semijoin_program before codegen: {semijoin_program}")
 
-    code_gen_context.template_data.data["result_output"] = format_result_output(program_context)
-    code_gen_context.template_data.data["expected_result_set"] = get_expected_result_set(
-        sql_query_name,
+    code_gen_context.template_data.data["result_output"] = format_result_output(
         program_context
+    )
+    code_gen_context.template_data.data["expected_result_set"] = (
+        get_expected_result_set(sql_query_name, program_context)
     )
     code_gen_context.template_data.data["query_name"] = "q" + sql_query_name
     for idx, alias in enumerate(orders):
@@ -2026,13 +2067,15 @@ def optimization(sql_query_name, output_file_path, src_output_dir) -> None:
     Generate query implementation based on base.jinja
     """
     env = Environment(loader=FileSystemLoader("templates"))
-    template_data = TemplateData(template=env.get_template("base.jinja"),
-                                 data=dict())
+    template_data = TemplateData(template=env.get_template("base.jinja"), data=dict())
 
     semijoin_program = decide_join_tree(output_file_path)
-    generate_main_block(semijoin_program, sql_query_name, output_file_path, template_data)
-    template_data.data["initialize_relation_block"] = _initialize_relation_block(output_file_path, [])
-
+    generate_main_block(
+        semijoin_program, sql_query_name, output_file_path, template_data
+    )
+    template_data.data["initialize_relation_block"] = _initialize_relation_block(
+        output_file_path, []
+    )
 
     query_implementation = template_data.template.render(template_data.data)
     output_file_path = os.path.join(src_output_dir, f"o{sql_query_name}.rs")
@@ -2048,10 +2091,28 @@ def optimization(sql_query_name, output_file_path, src_output_dir) -> None:
 
 if __name__ == "__main__":
     parser = argparse.ArgumentParser()
-    parser.add_argument('--sql_dir', type=str, default="join-order-benchmark",
-                        help='path to the directory of JOB sqls')
-    parser.add_argument('--stats_dir', type=str, default="stats_jsons", help='path to stats jsons')
-    parser.add_argument('--output_dir', type=str, default='jsons', help='path to output IR jsons')
-    parser.add_argument('--src_output_dir', type=str, default=pathlib.Path(__file__).parent.parent / "src", help='directory to generate Rust source code')
+    parser.add_argument(
+        "--sql_dir",
+        type=str,
+        default="join-order-benchmark",
+        help="path to the directory of JOB sqls",
+    )
+    parser.add_argument(
+        "--stats_dir", type=str, default="stats_jsons", help="path to stats jsons"
+    )
+    parser.add_argument(
+        "--output_dir", type=str, default="jsons", help="path to output IR jsons"
+    )
+    parser.add_argument(
+        "--src_output_dir",
+        type=str,
+        default=pathlib.Path(__file__).parent.parent / "src",
+        help="directory to generate Rust source code",
+    )
     args = parser.parse_args()
-    main(sql_dir=args.sql_dir, stats_dir=args.stats_dir, output_dir=args.output_dir, src_output_dir=args.src_output_dir)
+    main(
+        sql_dir=args.sql_dir,
+        stats_dir=args.stats_dir,
+        output_dir=args.output_dir,
+        src_output_dir=args.src_output_dir,
+    )
