@@ -521,6 +521,7 @@ class ProgramContext:
         self.query_data = query_data
         self.semijoin_program = semijoin_program
         self.selected_fields = self.__construct_selected_fields(query_data)
+        self.all_fields = self.__construct_all_fields(query_data)
         self.attributes = self.__build_attributes_union_find(query_data)
         self.parent_child_physical_columns: typing.List[ParentChildPhysicalColumns] = (
             self.__construct_parent_child_physical_columns(semijoin_program, query_data)
@@ -557,6 +558,20 @@ class ProgramContext:
                         )
                     )
         return select_fields
+
+    def __construct_all_fields(self, query_data) -> typing.List[Field]:
+        all_fields = []
+        for alias, item in query_data.items():
+            for column, prop in item["columns"].items():
+                all_fields.append(
+                    Field(
+                        alias,
+                        prop["nullable"],
+                        Type(prop["type"]),
+                        column
+                    )
+                )
+        return all_fields
 
     def __construct_parent_child_physical_columns(
         self, semijoin_program: SemiJoinProgram, query_data
@@ -1412,7 +1427,9 @@ def process_filters(
         return [f"({left_expr[0]} > {right_expr[0]})"]
 
     elif operator == "EQ":
-        return [f"({left_expr[0]} == {right_expr[0]})"]
+        if right_expr[0].isnumeric():
+            return [f"""({left_expr[0]} == {right_expr[0]})"""]
+        return [f"""({left_expr[0]} == \"{right_expr[0].strip("'")}\")"""]
 
     elif operator == "NEQ":
         return [f"({left_expr[0]} != {right_expr[0]})"]
@@ -1740,7 +1757,7 @@ def generate_code_block(
                     break
         if nullable_column_exists:
             corresponding_type = None
-            for field in program_context.selected_fields:
+            for field in program_context.all_fields:
                 if field.column == nullable_local_variable:
                     corresponding_type = field.type
             if filter_conditions[0] is not None:
@@ -1781,9 +1798,9 @@ def generate_code_block(
                 {% endif %}
                 {% if conditions %}
                 ({{ conditions | join(' && ') }})
-                .then_some(*{{ join_column }})
+                .then_some({{ join_column }})
                 {% else %}
-                Some(*{{ join_column }})
+                Some({{ join_column }})
                 {% endif %}
             """)
             data = dict()
@@ -1791,7 +1808,17 @@ def generate_code_block(
                 filter_conditions[0] if filter_conditions else None
             )
             data["join_conditions"] = join_conditions
-            data["join_column"] = code_block.join_column
+            # todo: it's better we can make join_column as Field.
+            #  Here, we assume a hack that data["join_column"] would be numeric.
+            data["join_column"] = f"*{code_block.join_column}"
+            selected_field_in_zip: typing.List[Field] = []
+            for selected_field in program_context.selected_fields:
+                if selected_field.column in code_block.zip_columns:
+                    selected_field_in_zip.append(selected_field)
+            if len(selected_field_in_zip) != 0:
+                assert len(selected_field_in_zip) == 1
+                assert selected_field_in_zip[0].type == Type.string
+                data["join_column"] = f"{selected_field_in_zip[0].column}.as_str()"
             return case1_template.render(data)
 
     data = dict()
