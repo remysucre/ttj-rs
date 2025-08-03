@@ -81,6 +81,9 @@ class Relation:
     attributes: typing.Tuple[Attribute, ...]
     size: int
 
+    def __repr__(self):
+        return f"{self.alias}({','.join([attr.attr for attr in self.attributes])})"
+
 
 @dataclass
 class SemiJoin:
@@ -89,10 +92,12 @@ class SemiJoin:
     For example, score could be the size of parent after this semijoin.
     Or, score could be the size of the ear relation.
     """
-
     ear: Relation
     parent: Relation
     score: int
+
+    def __repr__(self):
+        return f"ear: {self.ear.alias}, parent: {self.parent.alias}, score: {self.score}"
 
 
 class Type(Enum):
@@ -120,6 +125,8 @@ class MergedSemiJoin:
     parent: Relation
     score: int
 
+    def __repr__(self):
+        return f"ears: {[relation.alias for relation in self.ears]}, parent: {self.parent.alias}, score: {self.score}"
 
 class Level:
     def __init__(self):
@@ -210,7 +217,7 @@ class MergedLevel:
 
 class SemiJoinProgram:
     def __init__(self):
-        self.program = []
+        self.program = [] #todo: is it better to use OrderDict?
         self.parent_child_columns: typing.List[ParentChildColumns] = []
 
     def append(self, level: MergedLevel):
@@ -242,6 +249,7 @@ class SemiJoinProgram:
         ears: ['n', 'chn', 'cc'], parent: ci, score: 135146
         ears: ['k', 'ci'], parent: mk, score: 40768274
         """
+        merged_level_dict = dict()
         merged_level = MergedLevel()
         assert len(self.program) == 1
         found_sj = []
@@ -250,24 +258,35 @@ class SemiJoinProgram:
             for sj in level:
                 if sj.parent == merged_sj.parent:
                     found_sj.append(sj)
-                    ears = [rel for rel in merged_sj.ears]
-                    ears.append(sj.ear)
-                    merged_level.append(
-                        MergedSemiJoin(
-                            ears=ears,
-                            parent=sj.parent,
-                            score=merged_sj.score + sj.score,
-                        )
-                    )
+                    if sj.parent in merged_level_dict.keys():
+                        merged_level_dict[sj.parent].ears.append(sj.ear)
+                    else:
+                        ears = [rel for rel in merged_sj.ears]
+                        ears.append(sj.ear)
+                        merged_level_dict[sj.parent] = MergedSemiJoin(
+                                ears=ears,
+                                parent=sj.parent,
+                                score=merged_sj.score + sj.score,
+                            )
                     found = True
-                    break
             if not found:
-                merged_level.append(merged_sj)
+                merged_level_dict[merged_sj.parent] = merged_sj
+        def ordering(target, merged_level_dict, orders : OrderedDict[str, MergedSemiJoin]):
+            for ear in merged_level_dict[target].ears:
+                if ear in merged_level_dict.keys():
+                    ordering(ear, merged_level_dict, orders)
+            if target not in orders.keys():
+                orders[target] = merged_level_dict[target]
+        orders = OrderedDict()
+        for parent in merged_level_dict.keys():
+            ordering(parent, merged_level_dict, orders)
+        for merged_sj in orders.values():
+            merged_level.append(merged_sj)
         for sj in level:
             if sj not in found_sj:
-                merged_level.append(
-                    MergedSemiJoin(ears=[sj.ear], parent=sj.parent, score=sj.score)
-                )
+                merged_level.append(MergedSemiJoin(ears=[sj.ear], parent=sj.parent, score=sj.score))
+        for key, item in merged_level_dict.items():
+            merged_level.append(item)
         self.program[0] = merged_level
 
     def __str__(self):
@@ -1136,10 +1155,10 @@ def decide_join_tree(output_file_path):
                     )
                     if not appears_in_other:
                         return False
-                    if attributes.get_set_size(attr) > 2:
-                        # Handle the case of 1a where title is considered as a filter relation,
-                        # which could lead to less ideal join ordering.
-                        return False
+                    # if attributes.get_set_size(attr) > 2:
+                    #     # Handle the case of 1a where title is considered as a filter relation,
+                    #     # which could lead to less ideal join ordering.
+                    #     return False
                 return True
             else:
                 # For non-pure mode: attributes either appear in itself only (size 1) or in the other relation
