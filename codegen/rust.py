@@ -1276,61 +1276,30 @@ def decide_join_tree(output_file_path):
         num_representatives = len(all_parent_repr)
         # Sort representatives for deterministic ordering
         all_parent_repr = sorted(all_parent_repr, key=lambda x: x.alias)
-        if num_relations == num_representatives:
-            for i in range(num_representatives):
-                for j in range(num_representatives):
-                    if (
-                        i != j
-                        and all_parent_repr[i] not in removed_ear
-                        and all_parent_repr[j] not in removed_ear
-                    ):
-                        print(
-                            f"call check_ear_consume({all_parent_repr[i]}, {all_parent_repr[j]}, {num_relations == num_representatives})"
-                        )
-                        ear, parent = check_ear_consume(
-                            all_parent_repr[i],
-                            all_parent_repr[j],
-                            num_relations == num_representatives,
-                        )
-                        if ear is not None and parent is not None and ear != parent:
-                            print(
-                                f"{ear.alias}, {parent.alias} = check_ear_consume({all_parent_repr[i]}, {all_parent_repr[j]}, {num_relations == num_representatives})"
-                            )
-                            level.append(
-                                SemiJoin(ear=ear, parent=parent, score=ear.size)
-                            )
-                            hypergraph.union(ear, parent)
-                            removed_ear.append(ear)
-        else:
-            queue = deque()
-            # Sort to ensure deterministic order
-            sorted_parent_repr = sorted(all_parent_repr, key=lambda x: x.alias)
-            queue.extend(sorted_parent_repr)
-            print(f"queue: {queue}")
-            while len(queue) > 0:
-                relation1 = queue.popleft()
-                relation2 = queue.popleft()
-                # todo: Here, we can implement some tiebreaking rule such as set relation1 with
-                #  with the relation that has the smallest size filter relations. We need tiebreaking
-                #  because relation1 could be ear and relation2 could be parent and vice versa.
-                print(
-                    f"call check_ear_consume({relation1}, {relation2}, {num_relations == num_representatives})"
-                )
-                ear, parent = check_ear_consume(
-                    relation1,
-                    relation2,
-                    num_relations == num_representatives,
-                )
-                if ear is not None and parent is not None and ear != parent:
+        for i in range(num_representatives):
+            for j in range(num_representatives):
+                if (
+                    i != j
+                    and all_parent_repr[i] not in removed_ear
+                    and all_parent_repr[j] not in removed_ear
+                ):
                     print(
-                        f"{ear.alias}, {parent.alias} = check_ear_consume({relation1}, {relation2}, {num_relations == num_representatives})"
+                        f"call check_ear_consume({all_parent_repr[i]}, {all_parent_repr[j]}, {num_relations == num_representatives})"
                     )
-                    level.append(SemiJoin(ear=ear, parent=parent, score=ear.size))
-                    hypergraph.union(ear, parent)
-                    removed_ear.append(ear)
-                    if len(queue) > 0:
-                        queue.appendleft(parent)
-
+                    ear, parent = check_ear_consume(
+                        all_parent_repr[i],
+                        all_parent_repr[j],
+                        num_relations == num_representatives,
+                    )
+                    if ear is not None and parent is not None and ear != parent:
+                        print(
+                            f"{ear.alias}, {parent.alias} = check_ear_consume({all_parent_repr[i]}, {all_parent_repr[j]}, {num_relations == num_representatives})"
+                        )
+                        level.append(
+                            SemiJoin(ear=ear, parent=parent, score=ear.size)
+                        )
+                        hypergraph.union(ear, parent)
+                        removed_ear.append(ear)
         print(level)
         print(hypergraph)
         if semijoin_program.has_last_level() is None:
