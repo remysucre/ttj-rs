@@ -5,7 +5,7 @@
         "size_after_filters": 1,
         "filters": {
             "operator": "EQ",
-            "left": "ct.kind",
+            "left": "kind",
             "right": "'production companies'"
         },
         "join_cond": [
@@ -18,7 +18,18 @@
                     "key": "FK"
                 }
             }
-        ]
+        ],
+        "min_select": null,
+        "columns": {
+            "id": {
+                "type": "numeric",
+                "nullable": false
+            },
+            "kind": {
+                "type": "string",
+                "nullable": false
+            }
+        }
     },
     "it": {
         "relation_name": "info_type",
@@ -26,7 +37,7 @@
         "size_after_filters": 1,
         "filters": {
             "operator": "EQ",
-            "left": "it.info",
+            "left": "info",
             "right": "'top 250 rank'"
         },
         "join_cond": [
@@ -39,7 +50,18 @@
                     "key": "FK"
                 }
             }
-        ]
+        ],
+        "min_select": null,
+        "columns": {
+            "id": {
+                "type": "numeric",
+                "nullable": false
+            },
+            "info": {
+                "type": "string",
+                "nullable": false
+            }
+        }
     },
     "mc": {
         "relation_name": "movie_companies",
@@ -48,23 +70,20 @@
         "filters": {
             "operator": "AND",
             "left": {
-                "operator": "NOT",
-                "left": {
-                    "operator": "LIKE",
-                    "left": "mc.note",
-                    "right": "'%(as Metro-Goldwyn-Mayer Pictures)%'"
-                }
+                "operator": "NOT LIKE",
+                "left": "note",
+                "right": "'%(as Metro-Goldwyn-Mayer Pictures)%'"
             },
             "right": {
                 "operator": "OR",
                 "left": {
                     "operator": "LIKE",
-                    "left": "mc.note",
+                    "left": "note",
                     "right": "'%(co-production)%'"
                 },
                 "right": {
                     "operator": "LIKE",
-                    "left": "mc.note",
+                    "left": "note",
                     "right": "'%(presents)%'"
                 }
             }
@@ -97,7 +116,30 @@
                     "key": "FK"
                 }
             }
-        ]
+        ],
+        "min_select": "note",
+        "columns": {
+            "id": {
+                "type": "numeric",
+                "nullable": false
+            },
+            "movie_id": {
+                "type": "numeric",
+                "nullable": false
+            },
+            "company_id": {
+                "type": "numeric",
+                "nullable": false
+            },
+            "company_type_id": {
+                "type": "numeric",
+                "nullable": false
+            },
+            "note": {
+                "type": "string",
+                "nullable": true
+            }
+        }
     },
     "mi_idx": {
         "relation_name": "movie_info_idx",
@@ -132,7 +174,30 @@
                     "key": "PK"
                 }
             }
-        ]
+        ],
+        "min_select": null,
+        "columns": {
+            "id": {
+                "type": "numeric",
+                "nullable": false
+            },
+            "movie_id": {
+                "type": "numeric",
+                "nullable": false
+            },
+            "info_type_id": {
+                "type": "numeric",
+                "nullable": false
+            },
+            "info": {
+                "type": "string",
+                "nullable": false
+            },
+            "note": {
+                "type": "string",
+                "nullable": true
+            }
+        }
     },
     "t": {
         "relation_name": "title",
@@ -158,6 +223,57 @@
                     "key": "FK"
                 }
             }
-        ]
+        ],
+        "min_select": "production_year",
+        "columns": {
+            "id": {
+                "type": "numeric",
+                "nullable": false
+            },
+            "title": {
+                "type": "string",
+                "nullable": false
+            },
+            "imdb_index": {
+                "type": "string",
+                "nullable": true
+            },
+            "kind_id": {
+                "type": "numeric",
+                "nullable": false
+            },
+            "production_year": {
+                "type": "numeric",
+                "nullable": true
+            },
+            "imdb_id": {
+                "type": "numeric",
+                "nullable": true
+            },
+            "phonetic_code": {
+                "type": "string",
+                "nullable": true
+            },
+            "episode_of_id": {
+                "type": "numeric",
+                "nullable": true
+            },
+            "season_nr": {
+                "type": "numeric",
+                "nullable": true
+            },
+            "episode_nr": {
+                "type": "numeric",
+                "nullable": true
+            },
+            "series_years": {
+                "type": "string",
+                "nullable": true
+            },
+            "md5sum": {
+                "type": "string",
+                "nullable": true
+            }
+        }
     }
 }
