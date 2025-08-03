@@ -855,27 +855,17 @@ def process_query_and_stats(
         raise ValueError(f"Error writing to output file: {e}")
 
 
-def main():
+def main(sql_dir='join-order-benchmark/',
+         stats_dir='stats_jsons/',
+         output_dir='jsons',
+         src_output_dir=pathlib.Path(__file__).parent.parent / "src"):
     """
     Main function to process all .sql files in a directory.
     """
-    # Directory containing the SQL query files
-    # sql_dir = 'join-order-benchmark/'
-    sql_dir = "junk/"
-    # Directory containing the statistics JSON files
-    # stats_dir = 'stats_jsons/'
-    stats_dir = "junk/"
-    # Directory to save the output JSON files
-    # output_dir = 'jsons'
-    output_dir = "junk/"
-
-    # Create the output directory if it doesn't exist
     if not os.path.exists(output_dir):
         os.makedirs(output_dir)
 
     pks, fks, table_columns = parse_sql_schema("imdb-original-mysql.sql")
-
-    # Find all .sql files in the specified directory
     sql_files = glob.glob(os.path.join(sql_dir, "*.sql"))
 
     if not sql_files:
@@ -886,7 +876,6 @@ def main():
             "expected_results.json is missing! Run extract_results.py to create one."
         )
 
-    # Process each SQL file
     for sql_file_path in sql_files:
         print(f"Processing {sql_file_path}...")
         try:
@@ -935,14 +924,13 @@ def main():
             with open(sql_file_path, "r") as f:
                 sql_query = f.read()
 
-            # Construct the output file path
             output_file_path = os.path.join(output_dir, f"{sql_query_name}.json")
 
             process_query_and_stats(
                 sql_query, stats_file_path, output_file_path, pks, fks, table_columns
             )
 
-            optimization(sql_query_name, output_file_path)
+            optimization(sql_query_name, output_file_path, src_output_dir)
 
         except IOError as e:
             raise ValueError(f"Error reading SQL file {sql_file_path}: {e}")
@@ -1994,7 +1982,7 @@ def generate_main_block(semijoin_program: SemiJoinProgram,
     template_data.data["main_block"] = main_block
 
 
-def optimization(sql_query_name, output_file_path) -> None:
+def optimization(sql_query_name, output_file_path, src_output_dir) -> None:
     """
     Generate query implementation based on base.jinja
     """
@@ -2008,9 +1996,7 @@ def optimization(sql_query_name, output_file_path) -> None:
 
 
     query_implementation = template_data.template.render(template_data.data)
-    output_dir = pathlib.Path(__file__).parent.parent / "src"
-    # output_dir = "junk"
-    output_file_path = os.path.join(output_dir, f"o{sql_query_name}.rs")
+    output_file_path = os.path.join(src_output_dir, f"o{sql_query_name}.rs")
     try:
         with open(output_file_path, "w") as f:
             f.write(query_implementation)
@@ -2022,4 +2008,7 @@ def optimization(sql_query_name, output_file_path) -> None:
 
 
 if __name__ == "__main__":
-    main()
+    # Test
+    main(sql_dir='junk', stats_dir='junk', output_dir='junk', src_output_dir=pathlib.Path('junk'))
+    # Prod
+    # main()
