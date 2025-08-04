@@ -80,6 +80,7 @@ class Relation:
     relation_name: str
     attributes: typing.Tuple[Attribute, ...]
     size: int
+    selected_fields: typing.Tuple[Attribute, ...]
 
     def __repr__(self):
         return f"{self.alias}({','.join([attr.attr for attr in self.attributes])})"
@@ -1262,15 +1263,20 @@ def decide_join_tree(output_file_path):
 
     def build_relation(alias: str, query_item : typing.Dict) -> Relation:
         relation_attributes = []
+        selected_attributes: typing.List[Attribute] = []
         for join_cond in query_item.get("join_cond", []):
             local_attr = Attribute(attr=join_cond["local_column"], alias=alias)
             if local_attr not in relation_attributes:
                 relation_attributes.append(local_attr)
+        if info["min_select"]:
+            for select_attr in query_item["min_select"]:
+                selected_attributes.append(Attribute(alias=alias, attr=select_attr))
         return Relation(
             alias=alias,
             relation_name=query_item["relation_name"],
             attributes=tuple(relation_attributes),
             size=query_item["size_after_filters"],
+            selected_fields=tuple(selected_attributes),
         )
 
     def build_selected_relations(query_data) -> typing.Dict[str, Relation]:
@@ -1294,6 +1300,7 @@ def decide_join_tree(output_file_path):
     for alias in sorted(query_data.keys()):
         info = query_data[alias]
         relation_attributes = []
+        selected_attributes: typing.List[Attribute] = []
         for join_cond in info.get("join_cond", []):
             local_attr = Attribute(attr=join_cond["local_column"], alias=alias)
             if local_attr not in relation_attributes:
@@ -1303,11 +1310,15 @@ def decide_join_tree(output_file_path):
                 attr=foreign_table_info["column"], alias=foreign_table_info["alias"]
             )
             attributes.union(local_attr, foreign_attr)
+        if info["min_select"]:
+            for select_attr in info["min_select"]:
+                selected_attributes.append(Attribute(alias=alias, attr=select_attr))
         relation_obj = Relation(
             alias=alias,
             relation_name=info["relation_name"],
             attributes=tuple(relation_attributes),
             size=info["size_after_filters"],
+            selected_fields=tuple(selected_attributes)
         )
         print(f"relation: {relation_obj}")
         hypergraph.find(relation_obj)
@@ -1331,6 +1342,9 @@ def decide_join_tree(output_file_path):
             for relation in all_relations:
                 if relation.relation_name == "cast_info":
                     return relation
+        for relation in selected_relations:
+            if len(relation.selected_fields) > 1:
+                return relation
 
     selected_relations = build_selected_relations(query_data)
     root = determine_root(list(selected_relations.values()), hypergraph.get_all_elements())
@@ -2103,15 +2117,20 @@ def generate_main_block(
         ) -> Relation:
             info = program_context.query_data[alias]
             relation_attributes = []
+            selected_attributes = []
             for join_cond in info.get("join_cond", []):
                 local_attr = Attribute(attr=join_cond["local_column"], alias=alias)
                 if local_attr not in relation_attributes:
                     relation_attributes.append(local_attr)
+            if info["min_select"]:
+                for select_attr in info["min_select"]:
+                    selected_attributes.append(Attribute(alias=alias, attr=select_attr))
             return Relation(
                 alias=alias,
                 relation_name=info["relation_name"],
                 attributes=tuple(relation_attributes),
                 size=info["size_after_filters"],
+                selected_fields=tuple(selected_attributes),
             )
 
         last_merged_sj = program_context.semijoin_program.program[0].level[-1]
