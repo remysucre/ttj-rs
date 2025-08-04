@@ -1462,9 +1462,14 @@ def process_filters(
                 f"""let {finder_var_name} = memmem::Finder::new("{term}");"""
             )
             code_gen_context.finders.add(finder_declaration)
-            conditions.append(
-                f"{finder_var_name}.find({left_expr[0].replace('*', '')}.as_bytes()).is_some()"
-            )
+            if not right_expr[0].startswith("%"):
+                conditions.append(
+                    f"{finder_var_name}.find({left_expr[0].replace('*', '')}.as_bytes()) == Some(0)"
+                )
+            else:
+                conditions.append(
+                    f"{finder_var_name}.find({left_expr[0].replace('*', '')}.as_bytes()).is_some()"
+                )
 
         if conditions:
             if len(conditions) == 1:
