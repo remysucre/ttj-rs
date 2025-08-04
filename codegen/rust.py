@@ -1154,7 +1154,7 @@ def decide_join_tree(output_file_path):
                             )
 
     def check_ear_consume(
-        one: Relation, two: Relation, pure: bool
+        one: Relation, two: Relation, pure: bool, root: Relation
     ) -> typing.Union[Tuple[Relation, Relation], Tuple[None, None]]:
         """
         Check if one relation is an ear and is consumed by the other.
@@ -1166,6 +1166,9 @@ def decide_join_tree(output_file_path):
         If pure is True:
         - Check if one relation has all its attributes appearing in the other relation
         - Return [ear, parent] where ear is the relation with all attributes in the other, [None, None] otherwise
+
+        root is set to some relation to enforce the root relation has to be a parent if one or two is root. If
+        root is None, then the restriction is lifted.
         """
 
         def check_one_is_ear(candidate: Relation, other: Relation) -> bool:
@@ -1209,7 +1212,7 @@ def decide_join_tree(output_file_path):
                 return True
 
         # Check if 'one' is an ear consumed by 'two'
-        if check_one_is_ear(one, two):
+        if check_one_is_ear(one, two) and root is not None and one != root:
             for attr in one.attributes:
                 print(
                     f"remove {one.alias} from attribute_alias[{attr.attr}]: {attribute_alias[attr.attr]}"
@@ -1218,7 +1221,7 @@ def decide_join_tree(output_file_path):
             return one, two
 
         # Check if 'two' is an ear consumed by 'one'
-        if check_one_is_ear(two, one):
+        if check_one_is_ear(two, one) and root is not None and two != root:
             for attr in two.attributes:
                 print(
                     f"remove {two.alias} from attribute_alias[{attr.attr}]: {attribute_alias[attr.attr]}"
@@ -1227,6 +1230,27 @@ def decide_join_tree(output_file_path):
             return two, one
 
         return None, None
+
+    def build_relation(alias: str, query_item : typing.Dict) -> Relation:
+        relation_attributes = []
+        for join_cond in query_item.get("join_cond", []):
+            local_attr = Attribute(attr=join_cond["local_column"], alias=alias)
+            if local_attr not in relation_attributes:
+                relation_attributes.append(local_attr)
+        return Relation(
+            alias=alias,
+            relation_name=query_item["relation_name"],
+            attributes=tuple(relation_attributes),
+            size=query_item["size_after_filters"],
+        )
+
+    def build_selected_relations(query_data) -> typing.Dict[str, Relation]:
+        selected_relations = dict()
+        for alias, item in query_data.items():
+            columns = item["min_select"]
+            if columns:
+                selected_relations[alias] = build_relation(alias, item)
+        return selected_relations
 
     attributes = UnionFind()
     hypergraph = UnionFind()
@@ -1268,6 +1292,14 @@ def decide_join_tree(output_file_path):
     semijoin_program = SemiJoinProgram()
     removed_ear = []
     iteration = 0
+
+    selected_relations = build_selected_relations(query_data)
+    root = None
+    if len(selected_relations) == 1:
+        root : Relation = list(selected_relations.values())[0]
+    else:
+        raise ValueError("Unimplemented!")
+
     while hypergraph.num_sets() > 1:
         iteration += 1
         level = Level()
@@ -1307,12 +1339,13 @@ def decide_join_tree(output_file_path):
                     and all_parent_repr[j] not in removed_ear
                 ):
                     print(
-                        f"call check_ear_consume({all_parent_repr[i]}, {all_parent_repr[j]}, {num_relations == num_representatives})"
+                        f"call check_ear_consume({all_parent_repr[i]}, {all_parent_repr[j]}, {num_relations == num_representatives}, {root})"
                     )
                     ear, parent = check_ear_consume(
                         all_parent_repr[i],
                         all_parent_repr[j],
                         num_relations == num_representatives,
+                        root
                     )
                     if ear is not None and parent is not None and ear != parent:
                         print(
@@ -1329,7 +1362,7 @@ def decide_join_tree(output_file_path):
             semijoin_program.append(level.merge())
         else:
             semijoin_program.merge_up(level)
-        print(f"semijoin_prorgam (iteration: {iteration}): \n{semijoin_program}")
+    print(f"semijoin_prorgam (iteration: {iteration}): \n{semijoin_program}")
     print(f"semijoin_program: \n{semijoin_program}")
     assert num_relations == semijoin_program.size()
     build_parent_child_columns(semijoin_program, attributes)
@@ -1810,10 +1843,6 @@ def generate_code_block(
                     nullable_local_variable = zip_column
                     break
         if nullable_column_exists:
-            corresponding_type = None
-            for field in program_context.all_fields:
-                if field.column == nullable_local_variable:
-                    corresponding_type = field.type
             if filter_conditions[0] is not None:
                 filter_conditions = (
                     filter_conditions[0].strip("'").removeprefix("(").removesuffix(")")
@@ -1836,7 +1865,7 @@ def generate_code_block(
             """)
             data = {
                 "nullable_local_variable": nullable_local_variable.column,
-                "corresponding_type_str": corresponding_type == Type.string,
+                "corresponding_type_str": nullable_local_variable.type == Type.string,
                 "join_conditions": "&&".join(conditions),
                 "map_out": map_out,
             }
