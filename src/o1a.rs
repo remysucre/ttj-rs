@@ -1,86 +1,59 @@
-use crate::data::ImdbData;
-// use ahash::HashSet;
+use crate::data::Data;
+use ahash::{HashMap, HashSet};
+use memchr::memmem::Finder;
 use polars::prelude::*;
 use std::time::Instant;
 
-use rustc_hash::FxHashSet as HashSet;
-
-pub fn q1a(db: &ImdbData) -> Result<Option<(&str, i32)>, PolarsError> {
+pub fn q1a(db: &Data) -> Result<Option<(&str, &str, &i32)>, PolarsError> {
     let ct = &db.ct;
     let it = &db.it;
     let mc = &db.mc;
     let mi_idx = &db.mi_idx;
     let t = &db.t;
 
+    let pictures = Finder::new("(as Metro-Goldwyn-Mayer Pictures)");
+    let productions = Finder::new("(co-production)");
+    let presents = Finder::new("(presents)");
+
     let start = Instant::now();
 
-    let ct_s: HashSet<i32> = ct
-        .column("kind")?
-        .str()?
-        .into_iter()
-        .zip(ct.column("id")?.i32()?)
-        .filter_map(|(kind, id)| {
-            if let (Some(kind), Some(id)) = (kind, id) {
-                if kind == "production companies" {
-                    Some(id)
-                } else {
-                    None
-                }
-            } else {
-                None
-            }
-        })
+    let ct_id = ct
+        .kind
+        .iter()
+        .zip(ct.id.iter())
+        .find(|(kind, _)| *kind == "production companies")
+        .map(|(_, id)| id)
+        .unwrap();
+
+    let it_id: &i32 = it
+        .info
+        .iter()
+        .zip(it.id.iter())
+        .find(|(info, _)| *info == "top 250 rank")
+        .map(|(_, id)| id)
+        .unwrap();
+
+    let mi_idx_s: HashSet<i32> = mi_idx
+        .movie_id
+        .iter()
+        .zip(mi_idx.info_type_id.iter())
+        .filter_map(|(movie_id, info_type_id)| (it_id == info_type_id).then_some(*movie_id))
         .collect();
 
-    let it_s: HashSet<i32> = it
-        .column("info")?
-        .str()?
-        .into_iter()
-        .zip(it.column("id")?.i32()?)
-        .filter_map(|(info, id)| {
-            if let (Some(info), Some(id)) = (info, id) {
-                if info == "top 250 rank" {
-                    Some(id)
-                } else {
-                    None
-                }
-            } else {
-                None
-            }
-        })
-        .collect();
-
-    let mut mi_idx_s: HashSet<i32> = HashSet::default();
-
-    for (x, y) in mi_idx
-        .column("movie_id")?
-        .i32()?
-        .into_iter()
-        .zip(mi_idx.column("info_type_id")?.i32()?.into_iter())
-    {
-        if let (Some(movie_id), Some(info_type_id)) = (x, y) {
-            if it_s.contains(&info_type_id) {
-                mi_idx_s.insert(movie_id);
-            }
-        }
-    }
-
-    let mc_s: HashSet<i32> = mc
-        .column("note")?
-        .str()?
-        .into_iter()
-        .zip(mc.column("company_type_id")?.i32()?)
-        .zip(mc.column("movie_id")?.i32()?)
+    let mc_m: HashMap<i32, Vec<&str>> = mc
+        .note
+        .iter()
+        .zip(mc.company_type_id.iter())
+        .zip(mc.movie_id.iter())
         .filter_map(|((note, company_type_id), movie_id)| {
-            if let (Some(note), Some(company_type_id), Some(movie_id)) =
-                (note, company_type_id, movie_id)
-            {
-                if ct_s.contains(&company_type_id)
+            if let Some(note) = note {
+                if company_type_id == ct_id
+                    && pictures.find(note.as_bytes()).is_none()
+                    && (productions.find(note.as_bytes()).is_some()
+                        || presents.find(note.as_bytes()).is_some())
                     && mi_idx_s.contains(&movie_id)
-                    && !note.contains("(as Metro-Goldwyn-Mayer Pictures)")
-                    && (note.contains("(co-production)") || note.contains("(presents)"))
                 {
-                    Some(movie_id)
+                    Some((*movie_id, note.as_str()))
                 } else {
                     None
                 }
@@ -88,30 +61,29 @@ pub fn q1a(db: &ImdbData) -> Result<Option<(&str, i32)>, PolarsError> {
                 None
             }
         })
-        .collect();
+        .fold(HashMap::default(), |mut acc, (movie_id, note)| {
+            acc.entry(movie_id).or_default().push(note);
+            acc
+        });
 
-    let mut res = None;
+    let mut res: Option<(&str, &str, &i32)> = None;
 
-    for ((x, y), z) in t
-        .column("id")?
-        .i32()?
-        .into_iter()
-        .zip(t.column("title")?.str()?.into_iter())
-        .zip(t.column("production_year")?.i32()?.into_iter())
+    for ((id, title), production_year) in
+        t.id.iter()
+            .zip(t.title.iter())
+            .zip(t.production_year.iter())
     {
-        if let (Some(id), Some(title), Some(production_year)) = (x, y, z) {
-            if mc_s.contains(&id) {
-                if let Some((old_title, old_year)) = res.as_mut() {
-                    if production_year < *old_year {
-                        *old_year = production_year;
-                    }
-                    if title < *old_title {
-                        *old_title = title;
-                    }
-                } else {
-                    res = Some((title, production_year));
-                }
-            }
+        if let Some(note) = mc_m.get(&id)
+            && let Some(production_year) = production_year
+        {
+            res = match res {
+                Some((old_note, old_title, old_production_year)) => Some((
+                    note.iter().min().unwrap().min(&old_note),
+                    title.as_str().min(&old_title),
+                    production_year.min(&old_production_year),
+                )),
+                None => Some((note.iter().min().unwrap(), title, production_year)),
+            };
         }
     }
 
@@ -142,15 +114,23 @@ pub fn q1a(db: &ImdbData) -> Result<Option<(&str, i32)>, PolarsError> {
 //   AND it.id = mi_idx.info_type_id;
 
 #[cfg(test)]
-mod test_1a {
+mod test_q1a {
     use super::*;
     use crate::data::ImdbData;
 
     #[test]
     fn test_q1a() -> Result<(), PolarsError> {
         let db = ImdbData::new();
-        let res = q1a(&db)?;
-        assert_eq!(res, Some(("A Clockwork Orange", 1934)));
+        let data = Data::new(&db);
+        let res = q1a(&data)?;
+        assert_eq!(
+            res,
+            Some((
+                "(A Warner Bros.-First National Picture) (presents)",
+                "A Clockwork Orange",
+                &1934
+            ))
+        );
         Ok(())
     }
 }
