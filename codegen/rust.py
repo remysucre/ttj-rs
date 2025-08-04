@@ -20,7 +20,7 @@ from collections import OrderedDict
 from dataclasses import dataclass, field
 from enum import Enum
 from functools import reduce
-from typing import Tuple
+from typing import Tuple, Union, Any
 
 import sqlglot
 from jinja2 import Environment, FileSystemLoader, Template
@@ -507,21 +507,22 @@ class UnionFind:
         return group_members
 
 
-@dataclass
-class CodeBlock:
-    alias: str
-    type: Type
-    join_column: str
-    zip_columns: typing.List[str]
-    nullable_columns: typing.List[str]
-
-
-@dataclass
+@dataclass(frozen=True)
 class Field:
     alias: str
     nullable: bool
     type: Type
     column: str
+
+
+@dataclass
+class CodeBlock:
+    alias: str
+    type: Type
+    join_column: Field
+    zip_columns: typing.List[Field]
+    nullable_columns: typing.List[Field]
+    filter_columns: typing.List[Field]
 
 
 @dataclass(frozen=True)
@@ -548,6 +549,7 @@ class ProgramContext:
         self.parent_child_physical_columns: typing.List[ParentChildPhysicalColumns] = (
             self.__construct_parent_child_physical_columns(semijoin_program, query_data)
         )
+        self.alias_column_field = self.__construct_alias_column_fields(query_data)
 
     def __build_attributes_union_find(self, query_data) -> UnionFind:
         attributes = UnionFind()
@@ -625,6 +627,20 @@ class ProgramContext:
             )
         return parent_child_physical_columns
 
+    def __construct_alias_column_fields(self, query_data) -> typing.Dict[str, typing.Dict[str, Field]]:
+        alias_column_fields : typing.Dict[str, dict[str, Field]] = dict()
+        for alias, item in query_data.items():
+            column_fields: typing.Dict[str, Field] = dict()
+            for column, prop in item["columns"].items():
+                column_fields[column] = Field(
+                    alias=alias,
+                    column=column,
+                    nullable=prop["nullable"],
+                    type=Type(prop["type"]),
+                )
+            alias_column_fields[alias] = column_fields
+        return alias_column_fields
+
 
 @dataclass
 class CodeGenContext:
@@ -633,6 +649,13 @@ class CodeGenContext:
     template_data: TemplateData
     finders: typing.Set[str] = field(default_factory=set)
 
+def join(items: typing.List[Any], delimiter: str) -> typing.Union[str, None]:
+    if len(items) == 0:
+        return None
+    if len(items) == 1:
+        return f"{items[0]}"
+    else:
+        return f"({delimiter.join(items)})"
 
 def format_expression_to_dict(expression):
     """
@@ -1445,16 +1468,16 @@ def process_filters(
         return [f"({left_expr[0]} != {right_expr[0]})"]
 
 
-def format_zip_column(zip_columns, alias):
+def format_zip_column(zip_columns: typing.List[Field], alias) -> str:
     output = ""
     base_table = re.sub(r"\d+", "", alias)
-    output += f"{base_table}.{zip_columns[0]}.iter()"
+    output += f"{base_table}.{zip_columns[0].column}.iter()"
     for column in zip_columns[1:]:
-        output += f".zip({base_table}.{column}.iter())"
+        output += f".zip({base_table}.{column.column}.iter())"
     return output
 
 
-def build_filter_columns(filter_dict):
+def build_filter_columns(filter_dict, column_fields: dict[str, Field]) -> typing.List[Field]:
     columns = set()
 
     def collect_columns(filter_dict):
@@ -1464,13 +1487,11 @@ def build_filter_columns(filter_dict):
         left = filter_dict.get("left")
         right = filter_dict.get("right")
 
-        # Collect column from left operand
         if isinstance(left, str):
-            columns.add(left)
+            columns.add(column_fields[left])
         elif isinstance(left, dict):
             collect_columns(left)
 
-        # Collect columns from right operand
         if isinstance(right, dict):
             collect_columns(right)
         elif isinstance(right, list):
@@ -1484,14 +1505,14 @@ def build_filter_columns(filter_dict):
     return list(columns)
 
 
-def build_filter_map(zip_columns):
+def build_filter_map(zip_columns: typing.List[Field]) -> Union[None, str, tuple[Any, str]]:
     if not zip_columns:
         return None
     if len(zip_columns) == 1:
-        return f"{zip_columns[0]}"
-    initial_tuple = (f"{zip_columns[0]}", f"{zip_columns[1]}")
+        return f"{zip_columns[0].column}"
+    initial_tuple = (f"{zip_columns[0].column}", f"{zip_columns[1].column}")
     return reduce(
-        lambda accumulator, item: (accumulator, f"{item}"),
+        lambda accumulator, item: (accumulator, f"{item.column}"),
         zip_columns[2:],
         initial_tuple,
     )
@@ -1509,31 +1530,30 @@ def build_some_conditions(zip_columns, nullable_columns) -> str:
 
 
 def build_code_block(alias, query_item, program_context: ProgramContext) -> CodeBlock:
-    def build_zip(query_item):
+    def build_zip(query_item, filter_columns: typing.List[Field], program_context: ProgramContext) -> typing.List[Field]:
         zip_columns = []
         for item in query_item["join_cond"]:
             if item["local_column"] not in zip_columns:
                 zip_columns.append(item["local_column"])
-        filter_columns = build_filter_columns(query_item["filters"])
-        for column in filter_columns:
-            if column not in zip_columns:
-                zip_columns.append(column)
+        for filter_field in filter_columns:
+            if filter_field.column not in zip_columns:
+                zip_columns.append(filter_field.column)
         if query_item["min_select"]:
             for min_col in query_item["min_select"]:
                 if min_col not in zip_columns:
                     zip_columns.append(min_col)
-        return zip_columns
+        return [program_context.alias_column_field[alias][col] for col in zip_columns]
 
-    def get_nullable_columns(query_item) -> typing.List[str]:
+    def get_nullable_columns(column_fields: dict[str, Field]) -> typing.List[Field]:
         nullable_columns = []
-        for column_name, column_item in query_item["columns"].items():
-            if column_item["nullable"]:
-                nullable_columns.append(column_name)
+        for column, c_field in column_fields.items():
+            if c_field.nullable:
+                nullable_columns.append(c_field)
         return nullable_columns
 
     def join_column(
         alias, query_item, program_context: ProgramContext
-    ) -> Tuple[typing.Union[str, None], typing.Union[str, None]]:
+    ) -> Tuple[typing.Union[Field, None], typing.Union[str, None]]:
         parent_relation: Relation = program_context.semijoin_program.find_parent(alias)
         child_column = ""
         if not parent_relation:
@@ -1550,7 +1570,7 @@ def build_code_block(alias, query_item, program_context: ProgramContext) -> Code
                 child_column = parent_child_column.child_column
         for join_cond in query_item["join_cond"]:
             if join_cond["local_column"] == child_column:
-                return child_column, join_cond["key"]
+                return program_context.alias_column_field[alias][child_column], join_cond["key"]
 
     def decide_type(
         alias, query_item, program_context: ProgramContext, key: str
@@ -1569,13 +1589,17 @@ def build_code_block(alias, query_item, program_context: ProgramContext) -> Code
                 else:
                     return Type.map_vec
 
+
+    filter_columns = build_filter_columns(query_item["filters"], program_context.alias_column_field[alias])
     join_column, key = join_column(alias, query_item, program_context)
+
     return CodeBlock(
         alias=alias,
-        zip_columns=build_zip(query_item),
-        nullable_columns=get_nullable_columns(query_item),
+        zip_columns=build_zip(query_item, filter_columns, program_context),
         join_column=join_column,
         type=decide_type(alias, query_item, program_context, key),
+        filter_columns=filter_columns,
+        nullable_columns=get_nullable_columns(program_context.alias_column_field[alias]),
     )
 
 
@@ -1764,9 +1788,8 @@ def generate_code_block(
         code_gen_context: CodeGenContext,
     ) -> str:
         query_item = program_context.query_data[code_block.alias]
-        filter_columns = build_filter_columns(query_item["filters"])
-        filter_nullable_columns = [
-            x for x in code_block.nullable_columns if x in filter_columns
+        filter_nullable_columns : typing.List[Field] = [
+            x for x in code_block.nullable_columns if x in code_block.filter_columns
         ]
         assert len(filter_nullable_columns) <= 1
         filter_conditions = process_filters(
@@ -1782,7 +1805,7 @@ def generate_code_block(
             nullable_local_variable = filter_nullable_columns[0]
         else:
             for zip_column in code_block.zip_columns:
-                if query_item["columns"][zip_column]["nullable"]:
+                if zip_column.nullable:
                     nullable_column_exists = True
                     nullable_local_variable = zip_column
                     break
@@ -1812,7 +1835,7 @@ def generate_code_block(
             .map(|{{ nullable_local_variable }}| {{ map_out }})
             """)
             data = {
-                "nullable_local_variable": nullable_local_variable,
+                "nullable_local_variable": nullable_local_variable.column,
                 "corresponding_type_str": corresponding_type == Type.string,
                 "join_conditions": "&&".join(conditions),
                 "map_out": map_out,
@@ -1829,9 +1852,9 @@ def generate_code_block(
                 {% endif %}
                 {% if conditions %}
                 ({{ conditions | join(' && ') }})
-                .then_some({{ join_column }})
+                .then_some({{ join_columns }})
                 {% else %}
-                Some({{ join_column }})
+                Some({{ join_columns }})
                 {% endif %}
             """)
             data = dict()
@@ -1839,17 +1862,16 @@ def generate_code_block(
                 filter_conditions[0] if filter_conditions else None
             )
             data["join_conditions"] = join_conditions
-            # todo: it's better we can make join_column as Field.
-            #  Here, we assume a hack that data["join_column"] would be numeric.
-            data["join_column"] = f"*{code_block.join_column}"
-            selected_field_in_zip: typing.List[Field] = []
-            for selected_field in program_context.selected_fields:
-                if selected_field.column in code_block.zip_columns:
-                    selected_field_in_zip.append(selected_field)
-            if len(selected_field_in_zip) != 0:
-                assert len(selected_field_in_zip) == 1
-                assert selected_field_in_zip[0].type == Type.string
-                data["join_column"] = f"{selected_field_in_zip[0].column}.as_str()"
+            join_columns : typing.List[str] = []
+            if code_block.join_column is not None and code_block.join_column.type == Type.numeric:
+                join_columns.append(f"*{code_block.join_column.column}")
+            selected_field_in_zip: typing.List[Field] = [column for column in program_context.selected_fields if column in code_block.zip_columns]
+            for selected_field in selected_field_in_zip:
+                if selected_field.type == Type.string:
+                    join_columns.append(f"{selected_field_in_zip[0].column}.as_str()")
+                else:
+                    raise ValueError("Unimplemented!")
+            data["join_columns"] = join(join_columns, ",")
             return case1_template.render(data)
 
     data = dict()
@@ -1863,7 +1885,7 @@ def generate_code_block(
         program_context,
     )
     data["filter_conditions"] = filter_conditions[0] if filter_conditions else None
-    data["join_column"] = code_block.join_column
+    data["join_column"] = code_block.join_column.column if code_block.join_column is not None else None
     if code_block.alias in code_gen_context.alias_sj:
         query_item = program_context.query_data[code_block.alias]
         data["join_conditions"] = form_join_conds(query_item, code_gen_context)
