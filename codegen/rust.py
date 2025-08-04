@@ -1237,7 +1237,7 @@ def decide_join_tree(output_file_path):
                         return True
 
         # Check if 'one' is an ear consumed by 'two'
-        if check_one_is_ear(one, two) and root is not None and one != root:
+        if check_one_is_ear(one, two) and ((root is not None and one != root) or root is None):
             check_argument(check_joinable(one, two), f"{one} and {two} are not joinable")
             print(f"one,two attribute_alias: {attribute_alias}")
             for attr in one.attributes:
@@ -1248,7 +1248,7 @@ def decide_join_tree(output_file_path):
             return one, two
 
         # Check if 'two' is an ear consumed by 'one'
-        if check_one_is_ear(two, one) and root is not None and two != root:
+        if check_one_is_ear(two, one) and ((root is not None and one != root) or root is None):
             check_argument(check_joinable(one, two), f"{one} and {two} are not joinable")
             print(f"two,one attribute_alias: {attribute_alias}")
             for attr in two.attributes:
