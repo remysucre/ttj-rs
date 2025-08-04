@@ -1590,11 +1590,12 @@ def build_old_filter_map(zip_columns) -> str:
     return "(" + ",".join([f"old_{col}" for col in zip_columns]) + ")"
 
 
-def build_some_conditions(zip_columns, nullable_columns) -> str:
+def build_some_conditions(zip_columns, nullable_columns) -> typing.Union[None, str]:
     zip_nullable_columns = [x for x in nullable_columns if x in zip_columns]
-    return "&&".join(
-        [f"let Some({column}) = {column}" for column in zip_nullable_columns]
-    )
+    tmp = [f"let Some({column}) = {column}" for column in zip_nullable_columns]
+    if len(tmp) > 0:
+        return "&&".join(tmp)
+    return None
 
 
 def build_code_block(alias, query_item, program_context: ProgramContext) -> CodeBlock:
@@ -1717,8 +1718,12 @@ def generate_code_block(
                 != Type.map_vec
             ) or code_block.alias == selected_field.alias:
                 if selected_field.type == Type.string:
+                    # todo: need to figure out when to use as_str() and when not
+                    #  bottom line is we can use nightly build as follows to have a uniform generation
+                    #  use of unstable library feature `str_as_str`
+                    #  see issue #130366 <https://github.com/rust-lang/rust/issues/130366> for more information
                     comparison.append(
-                        f"{selected_field.column}.as_str().min(&old_{selected_field.column})"
+                        f"{selected_field.column}.min(&old_{selected_field.column})"
                     )
                 else:
                     comparison.append(
@@ -1782,31 +1787,27 @@ def generate_code_block(
         else:
             for field in selected_field_not_in_zip:
                 variable = code_gen_context.alias_variable[field.alias]
-                assert field.nullable
-                if variable.type == Type.set or variable.type == Type.map_vec:
-                    for (
-                        parent_child_column
-                    ) in program_context.parent_child_physical_columns:
-                        if parent_child_column.child_field.alias == field.alias:
-                            while (
-                                parent_child_column.parent_field.alias
-                                != code_block.alias
-                            ):
-                                for (
-                                    column
-                                ) in program_context.parent_child_physical_columns:
-                                    if (
-                                        column.child_field.alias
-                                        == parent_child_column.parent_field.alias
-                                    ):
-                                        parent_child_column = column
-                                        break
-                            join_some_conds.append(
-                                f"let Some({field.column}) = {variable.name}.get(&{parent_child_column.parent_field.column})"
-                            )
-                            break
-                else:
-                    raise ValueError("Unimplemented!")
+                for (
+                    parent_child_column
+                ) in program_context.parent_child_physical_columns:
+                    if parent_child_column.child_field.alias == field.alias:
+                        while (
+                            parent_child_column.parent_field.alias
+                            != code_block.alias
+                        ):
+                            for (
+                                column
+                            ) in program_context.parent_child_physical_columns:
+                                if (
+                                    column.child_field.alias
+                                    == parent_child_column.parent_field.alias
+                                ):
+                                    parent_child_column = column
+                                    break
+                        join_some_conds.append(
+                            f"let Some({field.column}) = {variable.name}.get(&{parent_child_column.parent_field.column})"
+                        )
+                        break
             return "&&".join(join_some_conds)
 
     def build_filter_map_out(
@@ -1987,51 +1988,39 @@ def generate_code_block(
     if program_context.semijoin_program.get_root().alias == code_block.alias:
         # in the min_loop
         data["result_output"] = code_gen_context.template_data.data["result_output"]
-        if len(program_context.selected_fields) == 1:
-            # in the single_output
-            code_block_template = Template("""
-            let res: {{ result_output }} =
-            {{ zip_columns }}
-            .filter_map(|{{ filter_map_closure|replace("'","") }}| {
-                {{ filter_map_main }}
-            })
-            .min();
-            """)
-            return code_block_template.render(data)
-        else:
-            code_block_template = Template("""
-            let mut res: {{ result_output }} = None;
-            for {{ filter_map_closure|replace("'","")}} in
-            {{ zip_columns }}
-            {
-                {% set conditions = [] %}
-                {% if some_conditions is not none %}
-                    {% set _ = conditions.append(some_conditions) %}
-                {% endif %}
-                {% if filter_conditions is not none %}
-                    {% set _ = conditions.append(filter_conditions) %}
-                {% endif %}
-                {% if join_conditions is not none %}
-                    {% set _ = conditions.append(join_conditions) %}
-                {% endif %}
-                {% if join_some_conditions is not none %}
-                    {% set _ = conditions.append(join_some_conditions) %}
-                {% endif %}
+        code_block_template = Template("""
+        let mut res: {{ result_output }} = None;
+        for {{ filter_map_closure|replace("'","")}} in
+        {{ zip_columns }}
+        {
+            {% set conditions = [] %}
+            {% if some_conditions is not none %}
+                {% set _ = conditions.append(some_conditions) %}
+            {% endif %}
+            {% if filter_conditions is not none %}
+                {% set _ = conditions.append(filter_conditions) %}
+            {% endif %}
+            {% if join_conditions is not none %}
+                {% set _ = conditions.append(join_conditions) %}
+            {% endif %}
+            {% if join_some_conditions is not none %}
+                {% set _ = conditions.append(join_some_conditions) %}
+            {% endif %}
 
-                if {{ conditions | join(' && ') }} {
-                    {{ res_match }}
-                }
+            if {{ conditions | join(' && ') }} {
+                {{ res_match }}
             }
-            """)
-            data["filter_map_closure"] = build_filter_map(code_block.zip_columns)
-            data["some_conditions"] = build_some_conditions(
-                code_block.zip_columns, code_block.nullable_columns
-            )
-            data["join_some_conditions"] = form_join_some_conds(
-                code_block, code_gen_context, program_context
-            )
-            data["res_match"] = build_res_match(program_context, code_gen_context)
-            return code_block_template.render(data)
+        }
+        """)
+        data["filter_map_closure"] = build_filter_map(code_block.zip_columns)
+        data["some_conditions"] = build_some_conditions(
+            code_block.zip_columns, code_block.nullable_columns
+        )
+        data["join_some_conditions"] = form_join_some_conds(
+            code_block, code_gen_context, program_context
+        )
+        data["res_match"] = build_res_match(program_context, code_gen_context)
+        return code_block_template.render(data)
     elif code_block.type == Type.numeric:
         template = Template("""
         let {{ alias }}_id =
