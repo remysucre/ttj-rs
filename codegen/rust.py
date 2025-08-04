@@ -1133,211 +1133,223 @@ def _initialize_relation_block(
         raise ValueError(f"Error reading or parsing statistics file: {e}")
 
 
-def decide_join_tree(output_file_path):
-    def build_parent_child_columns(
-        semijoin_program: SemiJoinProgram, attributes: UnionFind
-    ):
-        assert len(semijoin_program.program) == 1
-        merged_level = semijoin_program.program[0]
-        for merged_sj in merged_level:
-            for ear in merged_sj.ears:
-                for attr in ear.attributes:
-                    for attr2 in merged_sj.parent.attributes:
-                        if attributes.connected(attr, attr2):
-                            semijoin_program.parent_child_columns.append(
-                                ParentChildColumns(
-                                    parent_alias=merged_sj.parent.alias,
-                                    child_alias=ear.alias,
-                                    parent_column=attr2.attr,
-                                    child_column=attr.attr,
-                                )
-                            )
-
-    def check_ear_consume(
-        one: Relation, two: Relation, pure: bool
-    ) -> typing.Union[Tuple[Relation, Relation], Tuple[None, None]]:
-        """
-        Check if one relation is an ear and is consumed by the other.
-
-        If pure is False:
-        - Check if one relation's attributes either appear in itself only (set size 1) or appear in the other relation
-        - Return [ear, parent] if check passes, [None, None] if it fails
-
-        If pure is True:
-        - Check if one relation has all its attributes appearing in the other relation
-        - Return [ear, parent] where ear is the relation with all attributes in the other, [None, None] otherwise
-        """
-
-        def check_one_is_ear(candidate: Relation, other: Relation) -> bool:
-            if pure:
-                # For pure mode: all attributes of candidate must appear in other
-                for attr in candidate.attributes:
-                    appears_in_other = any(
-                        attributes.connected(attr, other_attr)
-                        for other_attr in other.attributes
-                    )
-                    if not appears_in_other:
-                        return False
-                    # if attributes.get_set_size(attr) > 2:
-                    #     # Handle the case of 1a where title is considered as a filter relation,
-                    #     # which could lead to less ideal join ordering.
-                    #     return False
-                return True
+def check_one_is_ear(candidate: Relation, other: Relation, pure: bool,
+                     attributes: UnionFind,
+                     attribute_alias: typing.Dict[str, typing.List[str]]) -> bool:
+    if pure:
+        # For pure mode: all attributes of candidate must appear in other
+        for attr in candidate.attributes:
+            appears_in_other = any(
+                attributes.connected(attr, other_attr)
+                for other_attr in other.attributes
+            )
+            if not appears_in_other:
+                return False
+        return True
+    else:
+        # For non-pure mode: attributes either appear in itself only (size 1) or in the other relation
+        unique_attrs = []
+        for attr in candidate.attributes:
+            set_size = len(attribute_alias[attr.attr])
+            if set_size == 1 or (
+                set_size == 2
+                and not attributes.connected(
+                    attr, Attribute(alias=other.alias, attr=attr.attr)
+                )
+                and candidate in attribute_alias[attr.attr]
+                and other in attribute_alias[attr.attr]
+            ):
+                # Attribute appears in itself only
+                unique_attrs.append(attr)
+                continue
             else:
-                # For non-pure mode: attributes either appear in itself only (size 1) or in the other relation
-                unique_attrs = []
-                for attr in candidate.attributes:
-                    # set_size = attributes.get_set_size(attr)
-                    set_size = len(attribute_alias[attr.attr])
-                    if set_size == 1 or (
-                        set_size == 2
-                        and not attributes.connected(
-                            attr, Attribute(alias=other.alias, attr=attr.attr)
-                        )
-                    ):
-                        # Attribute appears in itself only
-                        unique_attrs.append(attr)
-                        continue
-                    else:
-                        # Check if it appears in the other relation
-                        appears_in_other = any(
-                            attributes.connected(attr, other_attr)
-                            for other_attr in other.attributes
-                        )
-                        if not appears_in_other:
-                            return False
-                return True
-
-        # Check if 'one' is an ear consumed by 'two'
-        if check_one_is_ear(one, two):
-            for attr in one.attributes:
-                print(
-                    f"remove {one.alias} from attribute_alias[{attr.attr}]: {attribute_alias[attr.attr]}"
+                # Check if it appears in the other relation
+                appears_in_other = any(
+                    attributes.connected(attr, other_attr)
+                    for other_attr in other.attributes
                 )
-                attribute_alias[attr.attr].remove(one.alias)
-            return one, two
+                if not appears_in_other:
+                    return False
+        return True
 
-        # Check if 'two' is an ear consumed by 'one'
-        if check_one_is_ear(two, one):
-            for attr in two.attributes:
-                print(
-                    f"remove {two.alias} from attribute_alias[{attr.attr}]: {attribute_alias[attr.attr]}"
+def check_ear_consume(
+    one: Relation, two: Relation, pure: bool, attributes: UnionFind, attribute_alias: dict[str, typing.List[str]]
+) -> typing.Union[Tuple[Relation, Relation], Tuple[None, None]]:
+    """
+    Check if one relation is an ear and is consumed by the other.
+
+    If pure is False:
+    - Check if one relation's attributes either appear in itself only (set size 1) or appear in the other relation
+    - Return [ear, parent] if check passes, [None, None] if it fails
+
+    If pure is True:
+    - Check if one relation has all its attributes appearing in the other relation
+    - Return [ear, parent] where ear is the relation with all attributes in the other, [None, None] otherwise
+    """
+    # Check if 'one' is an ear consumed by 'two'
+    if check_one_is_ear(one, two, pure, attributes, attribute_alias):
+        return one, two
+    # Check if 'two' is an ear consumed by 'one'
+    if check_one_is_ear(two, one, pure, attributes, attribute_alias):
+        return two, one
+    return None, None
+
+
+def decide_join_tree2(output_file_path):
+    """
+    Top-down approach to build a join tree.
+
+    We need to ensure that the relations that have "min_select" non-null (i.e., contains final
+    selected fields) have to either be the root or be the relations that are child of the root.
+
+    Let selected_relations denote the set of relations with selected fields.
+    Heuristics:
+
+    If there is one relation in the selected_relations, we let the relation be the root.
+    If there are multiple relations in the selected_relations, we let the
+    relation with the maximum size be the root.
+    """
+    def build_relation(alias: str, query_item : typing.Dict) -> Relation:
+        relation_attributes = []
+        for join_cond in query_item.get("join_cond", []):
+            local_attr = Attribute(attr=join_cond["local_column"], alias=alias)
+            if local_attr not in relation_attributes:
+                relation_attributes.append(local_attr)
+        return Relation(
+            alias=alias,
+            relation_name=query_item["relation_name"],
+            attributes=tuple(relation_attributes),
+            size=query_item["size_after_filters"],
+        )
+
+    def build_selected_relations(query_data) -> typing.Dict[str, Relation]:
+        selected_relations = dict()
+        for alias, item in query_data.items():
+            columns = item["min_select"]
+            if columns:
+                selected_relations[alias] = build_relation(alias, item)
+        return selected_relations
+
+    def find_maximum_relation(relation_set: dict[str, Relation]) -> Relation:
+        maximum = 0
+        ret_relation = None
+        for alias, relation in relation_set.items():
+            if relation.size > maximum:
+                maximum = relation.size
+                ret_relation = relation
+        return ret_relation
+    
+    def build_three_components(query_data) -> typing.Tuple[UnionFind, UnionFind, typing.Dict[str, typing.List[str]]]:
+        attributes = UnionFind()
+        hypergraph = UnionFind()
+        attribute_alias = dict()
+
+        # Sort by alias to ensure deterministic ordering
+        for alias in sorted(query_data.keys()):
+            info = query_data[alias]
+            relation_attributes = []
+            for join_cond in info.get("join_cond", []):
+                local_attr = Attribute(attr=join_cond["local_column"], alias=alias)
+                if local_attr not in relation_attributes:
+                    relation_attributes.append(local_attr)
+                foreign_table_info = join_cond["foreign_table"]
+                foreign_attr = Attribute(
+                    attr=foreign_table_info["column"], alias=foreign_table_info["alias"]
                 )
-                attribute_alias[attr.attr].remove(two.alias)
-            return two, one
+                attributes.union(local_attr, foreign_attr)
+            relation_obj = Relation(
+                alias=alias,
+                relation_name=info["relation_name"],
+                attributes=tuple(relation_attributes),
+                size=info["size_after_filters"],
+            )
+            print(f"relation: {relation_obj}")
+            hypergraph.find(relation_obj)
+            for attr in relation_obj.attributes:
+                if attr.attr not in attribute_alias:
+                    attribute_alias[attr.attr] = [alias]
+                else:
+                    attribute_alias[attr.attr].append(alias)
+        print(f"attribute_alias: {attribute_alias}")
+        return attributes, hypergraph, attribute_alias
 
-        return None, None
+    def find_all_pure_ears(parent:Relation, candidate_relations: typing.List[Relation],
+                           attribute_alias: typing.Dict[str, typing.List[str]],
+                           attributes: UnionFind) -> typing.List[Relation]:
+        pure_ears = []
+        for candidate in candidate_relations:
+            if candidate != parent and check_one_is_ear(candidate, parent, True, attributes, attribute_alias):
+                pure_ears.append(candidate)
+        return pure_ears
 
-    attributes = UnionFind()
-    hypergraph = UnionFind()
-    attribute_alias = dict()
+    def check_one_is_pure_ear(relation: Relation, candidate_relations: typing.List[Relation],
+                              attribute_alias: typing.Dict[str, typing.List[str]],
+                              attributes: UnionFind) -> typing.Union[Relation, None]:
+        for candidate in candidate_relations:
+            if candidate != relation and check_one_is_ear(relation, candidate, True, attributes, attribute_alias):
+                return candidate
+        return None
+
+    def construct_join_subtree(root: Relation,
+                               skip_root: bool,
+                               attributes: UnionFind,
+                               hypergraph: UnionFind,
+                               attribute_alias: typing.Dict[str, typing.List[str]],
+                               removed_ear: typing.List[Relation],
+                               semijoin_program: SemiJoinProgram,
+                               ) -> ():
+        print(f"root: {root}")
+        print(f"attributes: \n{attributes}")
+        print(f"hypergraph: \n{hypergraph}")
+        print(f"attribute_alias: {attribute_alias}")
+        print(f"removed_ear: {removed_ear}")
+        print(f"semijoin_program: {semijoin_program}")
+        level = Level()
+        all_relations: typing.List[Relation] = hypergraph.get_all_elements()
+        if not skip_root:
+            parent = check_one_is_pure_ear(root, all_relations, attribute_alias, attributes)
+            if parent is not None:
+                level.append(SemiJoin(ear=root, parent=parent, score=root.size))
+                hypergraph.union(root, parent)
+                removed_ear.append(root)
+                for attr in root.attributes:
+                    print(
+                        f"remove {root.alias} from attribute_alias[{attr.attr}]: {attribute_alias[attr.attr]}"
+                    )
+                    attribute_alias[attr.attr].remove(root.alias)
+                semijoin_program.append(level.merge())
+                return
+        all_pure_ears = find_all_pure_ears(root, all_relations, attribute_alias, attributes)
+        for ear in all_pure_ears:
+            level.append(SemiJoin(ear=ear, parent=root, score=ear.size))
+            hypergraph.union(ear, root)
+            removed_ear.append(ear)
+            for attr in ear.attributes:
+                print(
+                    f"remove {ear.alias} from attribute_alias[{attr.attr}]: {attribute_alias[attr.attr]}"
+                )
+                attribute_alias[attr.attr].remove(ear.alias)
+        for relation in all_relations:
+            if relation != root and relation not in removed_ear:
+                construct_join_subtree(relation, False, attributes, hypergraph, attribute_alias, removed_ear, semijoin_program)
+        semijoin_program.append(level.merge())
+
     try:
         with open(output_file_path, "r") as f:
             query_data = json.load(f)
     except (IOError, json.JSONDecodeError) as e:
         raise ValueError(f"Error reading or parsing query data file: {e}")
 
-    # Sort by alias to ensure deterministic ordering
-    for alias in sorted(query_data.keys()):
-        info = query_data[alias]
-        relation_attributes = []
-        for join_cond in info.get("join_cond", []):
-            local_attr = Attribute(attr=join_cond["local_column"], alias=alias)
-            if local_attr not in relation_attributes:
-                relation_attributes.append(local_attr)
-            foreign_table_info = join_cond["foreign_table"]
-            foreign_attr = Attribute(
-                attr=foreign_table_info["column"], alias=foreign_table_info["alias"]
-            )
-            attributes.union(local_attr, foreign_attr)
-        relation_obj = Relation(
-            alias=alias,
-            relation_name=info["relation_name"],
-            attributes=tuple(relation_attributes),
-            size=info["size_after_filters"],
-        )
-        print(f"relation: {relation_obj}")
-        hypergraph.find(relation_obj)
-        for attr in relation_obj.attributes:
-            if attr.attr not in attribute_alias:
-                attribute_alias[attr.attr] = [alias]
-            else:
-                attribute_alias[attr.attr].append(alias)
-    print(f"attribute_alias: {attribute_alias}")
-    num_relations = len(query_data.items())
+    attributes, hypergraph, attribute_alias = build_three_components(query_data)
     semijoin_program = SemiJoinProgram()
-    removed_ear = []
-    iteration = 0
-    while hypergraph.num_sets() > 1:
-        iteration += 1
-        level = Level()
-        last_level = semijoin_program.has_last_level()
-        if last_level is None:
-            last_level = level
-            all_representatives = sorted(
-                hypergraph.get_representatives(), key=lambda x: x.alias
-            )
-            all_parent_repr = [
-                last_level.get_parent(repr) for repr in all_representatives
-            ]
-        else:
-            all_parent_repr = []
-            for parent in last_level.get_parents():
-                found = False
-                for merged_sj in last_level.level:
-                    if parent in merged_sj.ears:
-                        found = True
-                        break
-                if not found:
-                    all_parent_repr.append(parent)
-            all_parent_repr = sorted(all_parent_repr, key=lambda x: x.alias)
-            print(f"all_parent_repr: {all_parent_repr}")
-            for repr in sorted(hypergraph.get_representatives(), key=lambda x: x.alias):
-                if repr not in all_parent_repr and not last_level.is_in_level(repr):
-                    all_parent_repr.append(repr)
-            print(f"all_parent_repr (not pure): {all_parent_repr}")
-        num_representatives = len(all_parent_repr)
-        # Sort representatives for deterministic ordering
-        all_parent_repr = sorted(all_parent_repr, key=lambda x: x.alias)
-        for i in range(num_representatives):
-            for j in range(num_representatives):
-                if (
-                    i != j
-                    and all_parent_repr[i] not in removed_ear
-                    and all_parent_repr[j] not in removed_ear
-                ):
-                    print(
-                        f"call check_ear_consume({all_parent_repr[i]}, {all_parent_repr[j]}, {num_relations == num_representatives})"
-                    )
-                    ear, parent = check_ear_consume(
-                        all_parent_repr[i],
-                        all_parent_repr[j],
-                        num_relations == num_representatives,
-                    )
-                    if ear is not None and parent is not None and ear != parent:
-                        print(
-                            f"{ear.alias}, {parent.alias} = check_ear_consume({all_parent_repr[i]}, {all_parent_repr[j]}, {num_relations == num_representatives})"
-                        )
-                        level.append(
-                            SemiJoin(ear=ear, parent=parent, score=ear.size)
-                        )
-                        hypergraph.union(ear, parent)
-                        removed_ear.append(ear)
-        print(level)
-        print(hypergraph)
-        if semijoin_program.has_last_level() is None:
-            semijoin_program.append(level.merge())
-        else:
-            semijoin_program.merge_up(level)
-        print(f"semijoin_prorgam (iteration: {iteration}): \n{semijoin_program}")
-    print(f"semijoin_program: \n{semijoin_program}")
-    assert num_relations == semijoin_program.size()
-    build_parent_child_columns(semijoin_program, attributes)
-    # todo: implement the special optimization logic (idea2 in google doc) using score
-    #  the idea is to first merge semijoins in semijoin_program whenever a pair of semijoins
-    #  shares the same parent. Then, we update the score by the sum of filters size (note
-    #  this is not what we have in idea2 but we stick with this for now). Then, we sort the
-    #  semijoins in after-merged semijoin program by score in non-decreasing order.
+    selected_relations = build_selected_relations(query_data)
+    removed_ears = []
+    if len(selected_relations) == 1:
+        root = list(selected_relations.values())[0]
+    else:
+        root = find_maximum_relation(selected_relations)
+    construct_join_subtree(root, True, attributes, hypergraph, attribute_alias, removed_ears, semijoin_program)
+    print(f"final semijoin_program: \n{semijoin_program}")
     return semijoin_program
 
 
@@ -2092,7 +2104,7 @@ def optimization(sql_query_name, output_file_path, src_output_dir) -> None:
     env = Environment(loader=FileSystemLoader("templates"))
     template_data = TemplateData(template=env.get_template("base.jinja"), data=dict())
 
-    semijoin_program = decide_join_tree(output_file_path)
+    semijoin_program = decide_join_tree2(output_file_path)
     generate_main_block(
         semijoin_program, sql_query_name, output_file_path, template_data
     )
