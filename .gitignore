@@ -3,3 +3,4 @@
 /imdb/*.parquet
 /imdb/queries
 .idea
+.DS_Store
