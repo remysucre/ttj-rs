@@ -89,67 +89,6 @@ pub fn q1b(db: &Data) -> Result<Option<(&str, &str, &i32)>, PolarsError> {
         }
     }
 
-    // let t_m: HashMap<i32, Vec<(&str, &i32)>> =
-    //     t.id.iter()
-    //         .zip(t.title.iter())
-    //         .zip(t.production_year.iter())
-    //         .filter_map(|((id, title), production_year)| {
-    //             if let Some(production_year) = production_year {
-    //                 if mi_idx_s.contains(&id) && (2005..=2010).contains(production_year) {
-    //                     Some((*id, title, production_year))
-    //                 } else {
-    //                     None
-    //                 }
-    //             } else {
-    //                 None
-    //             }
-    //         })
-    //         .fold(
-    //             HashMap::default(),
-    //             |mut acc, (id, title, production_year)| {
-    //                 acc.entry(id).or_default().push((title, production_year));
-    //                 acc
-    //             },
-    //         );
-    //
-    // let mut res: Option<(&str, &str, i32)> = None;
-    //
-    // for ((movie_id, company_type_id), note) in mc
-    //     .movie_id
-    //     .iter()
-    //     .zip(mc.company_type_id.iter())
-    //     .zip(mc.note.iter())
-    // {
-    //     if let Some(note) = note
-    //         && pictures.find(note.as_bytes()).is_some()
-    //         && ct_id == company_type_id
-    //         && let Some(tuples) = t_m.get(&movie_id)
-    //         && (title, production_year) = tuples
-    //     {
-    //         if !note.contains("(as Metro-Goldwyn-Mayer Pictures)")
-    //             && ct_s.contains(&company_type_id)
-    //         {
-    //             if let Some(tuples) = t_m.get(&movie_id) {
-    //                 for (title, production_year) in tuples {
-    //                     if let Some((old_note, old_title, old_production_year)) = res.as_mut() {
-    //                         if *title < *old_title {
-    //                             *old_title = title;
-    //                         }
-    //                         if *production_year < *old_production_year {
-    //                             *old_production_year = *production_year;
-    //                         }
-    //                         if note < *old_note {
-    //                             *old_note = note;
-    //                         }
-    //                     } else {
-    //                         res = Some((note, title, *production_year));
-    //                     }
-    //                 }
-    //             }
-    //         }
-    //     }
-    // }
-
     let duration = start.elapsed().as_secs_f32();
     println!("1b,{duration:}");
 
