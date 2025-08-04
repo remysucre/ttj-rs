@@ -809,7 +809,10 @@ def process_query_and_stats(
 
         # Find the corresponding size from the statistics file.
         # For aliases with numbers (like cct1, cct2), match both table name and alias suffix.
+        # For filtered tables, prefer query-specific keys (e.g., "q17a_keyword") over generic ones.
         best_match_key = ""
+        query_specific_key = ""
+        generic_key = ""
 
         # Extract numeric suffix from alias if present
         alias_match = re.search(r"(\D+)(\d*)$", alias)
@@ -819,19 +822,31 @@ def process_query_and_stats(
             for stats_key in relation_sizes.keys():
                 # Look for patterns like "q20a_comp_cast_type1" for alias "cct1"
                 if name in stats_key:
-                    if alias_suffix:  # If alias has a number suffix
-                        # Check if the stats key ends with the same number
-                        if stats_key.endswith(alias_suffix) and len(stats_key) > len(
-                            best_match_key
-                        ):
-                            best_match_key = stats_key
-                    else:  # If alias has no number suffix
-                        # Prefer keys without numbers, or if no such key exists, take any match
-                        if not re.search(r"\d+$", stats_key):
-                            if len(stats_key) > len(best_match_key):
-                                best_match_key = stats_key
-                        elif not best_match_key:  # Fallback to any match
-                            best_match_key = stats_key
+                    # Prefer query-specific keys (containing "q" followed by numbers and letters)
+                    if re.search(r"q\d+[a-z]_", stats_key):
+                        if alias_suffix:  # If alias has a number suffix
+                            # Check if the stats key ends with the same number
+                            if stats_key.endswith(alias_suffix) and len(stats_key) > len(query_specific_key):
+                                query_specific_key = stats_key
+                        else:  # If alias has no number suffix
+                            if len(stats_key) > len(query_specific_key):
+                                query_specific_key = stats_key
+                    else:
+                        # Generic keys as fallback
+                        if alias_suffix:  # If alias has a number suffix
+                            # Check if the stats key ends with the same number
+                            if stats_key.endswith(alias_suffix) and len(stats_key) > len(generic_key):
+                                generic_key = stats_key
+                        else:  # If alias has no number suffix
+                            # Prefer keys without numbers, or if no such key exists, take any match
+                            if not re.search(r"\d+$", stats_key):
+                                if len(stats_key) > len(generic_key):
+                                    generic_key = stats_key
+                            elif not generic_key:  # Fallback to any match
+                                generic_key = stats_key
+
+        # Choose the best match: prefer query-specific over generic
+        best_match_key = query_specific_key if query_specific_key else generic_key
 
         # Fallback to original logic if no specific match found
         if not best_match_key:
