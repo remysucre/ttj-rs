@@ -1190,7 +1190,6 @@ def decide_join_tree(output_file_path):
                 # For non-pure mode: attributes either appear in itself only (size 1) or in the other relation
                 unique_attrs = []
                 for attr in candidate.attributes:
-                    # set_size = attributes.get_set_size(attr)
                     set_size = len(attribute_alias[attr.attr])
                     if set_size == 1 or (
                         set_size == 2
@@ -1198,11 +1197,9 @@ def decide_join_tree(output_file_path):
                             attr, Attribute(alias=other.alias, attr=attr.attr)
                         )
                     ):
-                        # Attribute appears in itself only
                         unique_attrs.append(attr)
                         continue
                     else:
-                        # Check if it appears in the other relation
                         appears_in_other = any(
                             attributes.connected(attr, other_attr)
                             for other_attr in other.attributes
@@ -1211,8 +1208,17 @@ def decide_join_tree(output_file_path):
                             return False
                 return True
 
+        def check_joinable(candidate: Relation, other: Relation) -> bool:
+            # sanity check if two given relations are joinable:
+            for attr in candidate.attributes:
+                for attr2 in other.attributes:
+                    if attributes.connected(attr, attr2):
+                        return True
+
         # Check if 'one' is an ear consumed by 'two'
         if check_one_is_ear(one, two) and root is not None and one != root:
+            check_argument(check_joinable(one, two), f"{one} and {two} are not joinable")
+            print(f"one,two attribute_alias: {attribute_alias}")
             for attr in one.attributes:
                 print(
                     f"remove {one.alias} from attribute_alias[{attr.attr}]: {attribute_alias[attr.attr]}"
@@ -1222,6 +1228,8 @@ def decide_join_tree(output_file_path):
 
         # Check if 'two' is an ear consumed by 'one'
         if check_one_is_ear(two, one) and root is not None and two != root:
+            check_argument(check_joinable(one, two), f"{one} and {two} are not joinable")
+            print(f"two,one attribute_alias: {attribute_alias}")
             for attr in two.attributes:
                 print(
                     f"remove {two.alias} from attribute_alias[{attr.attr}]: {attribute_alias[attr.attr]}"
@@ -1293,12 +1301,18 @@ def decide_join_tree(output_file_path):
     removed_ear = []
     iteration = 0
 
+    def determine_root(selected_relations: typing.List[Relation],
+                       all_relations: typing.List[Relation]) -> Relation:
+        relation_names = dict()
+        for relation in selected_relations:
+            relation_names[relation.relation_name] = relation
+        if "name" in relation_names or "cast_info" in relation_names:
+            for relation in all_relations:
+                if relation.relation_name == "cast_info":
+                    return relation
+
     selected_relations = build_selected_relations(query_data)
-    root = None
-    if len(selected_relations) == 1:
-        root : Relation = list(selected_relations.values())[0]
-    else:
-        raise ValueError("Unimplemented!")
+    root = determine_root(list(selected_relations.values()), hypergraph.get_all_elements())
 
     while hypergraph.num_sets() > 1:
         iteration += 1
@@ -1366,11 +1380,6 @@ def decide_join_tree(output_file_path):
     print(f"semijoin_program: \n{semijoin_program}")
     assert num_relations == semijoin_program.size()
     build_parent_child_columns(semijoin_program, attributes)
-    # todo: implement the special optimization logic (idea2 in google doc) using score
-    #  the idea is to first merge semijoins in semijoin_program whenever a pair of semijoins
-    #  shares the same parent. Then, we update the score by the sum of filters size (note
-    #  this is not what we have in idea2 but we stick with this for now). Then, we sort the
-    #  semijoins in after-merged semijoin program by score in non-decreasing order.
     return semijoin_program
 
 
