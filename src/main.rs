@@ -6,7 +6,7 @@ fn main() -> Result<(), polars::prelude::PolarsError> {
     let data = data::Data::new(&db);
     o1a::q1a(&data)?;
     o1b::q1b(&data)?;
-    o1c::q1c(&db)?;
+    o1c::q1c(&data)?;
     o1d::q1d(&db)?;
     o2a::q2a(&db)?;
     o2b::q2b(&db)?;
