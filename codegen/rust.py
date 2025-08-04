@@ -549,6 +549,7 @@ class ProgramContext:
         self.parent_child_physical_columns: typing.List[ParentChildPhysicalColumns] = (
             self.__construct_parent_child_physical_columns(semijoin_program, query_data)
         )
+        self.child_parent_physical_columns: typing.Dict[Field, Field] = self.__construct_child_parent_columns()
         self.alias_column_field = self.__construct_alias_column_fields(query_data)
 
     def __build_attributes_union_find(self, query_data) -> UnionFind:
@@ -641,6 +642,11 @@ class ProgramContext:
             alias_column_fields[alias] = column_fields
         return alias_column_fields
 
+    def __construct_child_parent_columns(self) -> typing.Dict[Field, Field]:
+        ret = dict()
+        for physical_child_column in  self.parent_child_physical_columns:
+            ret[physical_child_column.child_field] = physical_child_column.parent_field
+        return ret
 
 @dataclass
 class CodeGenContext:
@@ -1909,6 +1915,31 @@ def generate_code_block(
                     join_columns.append(f"{selected_field_in_zip[0].column}.as_str()")
                 else:
                     raise ValueError("Unimplemented!")
+            if code_block.alias in code_gen_context.alias_sj:
+                ear_alias = [ear.alias for ear in code_gen_context.alias_sj[code_block.alias].ears]
+                selected_field_in_ears: typing.List[Field] = [column for column in program_context.selected_fields if column.alias in ear_alias]
+                if program_context.semijoin_program.get_root().alias == code_block.alias:
+                    for field in selected_field_in_ears:
+                       if  code_gen_context.alias_variable[field.alias].type == Type.map or \
+                           code_gen_context.alias_variable[field.alias].type == Type.map_vec:
+                           # Find the join column that connects code_block.alias to field.alias
+                           join_key = None
+                           for join_cond in program_context.query_data[code_block.alias]["join_cond"]:
+                               if join_cond["foreign_table"]["alias"] == field.alias:
+                                   join_key = join_cond["local_column"]
+                                   break
+                           if join_key:
+                               join_columns.append(f"{code_gen_context.alias_variable[field.alias].name}[&{join_key}]")
+                           else:
+                               # If no direct join found, look for indirect relationship through parent-child columns
+                               for parent_child in program_context.parent_child_physical_columns:
+                                   if (parent_child.parent_field.alias == code_block.alias and 
+                                       parent_child.child_field.alias == field.alias):
+                                       join_key = parent_child.parent_field.column
+                                       join_columns.append(f"{code_gen_context.alias_variable[field.alias].name}[&{join_key}]")
+                                       break
+                       else:
+                           raise ValueError("Unimplemented!")
             data["join_columns"] = join(join_columns, ",")
             return case1_template.render(data)
 
