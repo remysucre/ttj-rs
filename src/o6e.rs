@@ -109,7 +109,7 @@ mod test_6e {
     use crate::data::ImdbData;
 
     #[test]
-    fn test_q6d() -> Result<(), PolarsError> {
+    fn test_q6e() -> Result<(), PolarsError> {
         let db = ImdbData::new();
         let res = q6e(&db)?;
         assert_eq!(
