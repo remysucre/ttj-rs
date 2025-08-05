@@ -1,4 +1,4 @@
-use crate::data::{Data, ImdbData};
+use crate::data::Data;
 use ahash::{HashMap, HashSet};
 use polars::prelude::*;
 use std::time::Instant;
