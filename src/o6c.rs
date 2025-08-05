@@ -1,25 +1,28 @@
-use crate::data::ImdbData;
+use crate::data::{Data, ImdbData};
 use ahash::{HashMap, HashSet};
+use memchr::memmem;
 use polars::prelude::*;
 use std::time::Instant;
 
-pub fn q6c(db: &ImdbData) -> Result<Option<(&str, &str, &str)>, PolarsError> {
+pub fn q6c(db: &Data) -> Result<Option<(&str, &str, &str)>, PolarsError> {
     let ci = &db.ci;
     let k = &db.k;
     let mk = &db.mk;
     let n = &db.n;
     let t = &db.t;
 
+    let downey = memmem::Finder::new(b"Downey");
+    let robert = memmem::Finder::new(b"Robert");
+
     let start = Instant::now();
 
     let n_m: HashMap<i32, &str> = n
-        .column("id")?
-        .i32()?
-        .into_no_null_iter()
-        .zip(n.column("name")?.str()?.into_no_null_iter())
+        .id
+        .iter()
+        .zip(n.name.iter())
         .filter_map(|(id, name)| {
-            if name.contains("Downey") && name.contains("Robert") {
-                Some((id, name))
+            if downey.find(name.as_bytes()).is_some() && robert.find(name.as_bytes()).is_some() {
+                Some((*id, name.as_str()))
             } else {
                 None
             }
@@ -30,51 +33,38 @@ pub fn q6c(db: &ImdbData) -> Result<Option<(&str, &str, &str)>, PolarsError> {
     // then it's guaranteed that MIN(k.keyword) in SELECT is 'marvel-cinematic-universe'.
     // Therefore, we only need the id that corresponds to 'marvel-cinematic-universe'.
     let k_id = k
-        .column("keyword")?
-        .str()?
-        .into_no_null_iter()
-        .zip(k.column("id")?.i32()?.into_no_null_iter())
+        .keyword
+        .iter()
+        .zip(k.id.iter())
         .find(|(keyword, _)| *keyword == "marvel-cinematic-universe")
         .map(|(_, id)| id)
         .unwrap();
 
-    let t_m: HashMap<i32, &str> = t
-        .column("id")?
-        .i32()?
-        .into_no_null_iter()
-        .zip(t.column("title")?.str()?.into_no_null_iter())
-        .zip(t.column("production_year")?.i32()?)
-        .filter_map(|((id, title), production_year)| {
-            production_year
-                .filter(|&year| year > 2014)
-                .map(|_| (id, title))
-        })
-        .collect();
+    let t_m: HashMap<i32, &str> =
+        t.id.iter()
+            .zip(t.title.iter())
+            .zip(t.production_year.iter())
+            .filter_map(|((id, title), production_year)| {
+                production_year
+                    .filter(|&year| year > 2014)
+                    .map(|_| (*id, title.as_str()))
+            })
+            .collect();
 
     // Because k.id = mk.keyword_id and k.id is only one,
     // we just need a hashset.
     let mk_s: HashSet<i32> = mk
-        .column("movie_id")?
-        .i32()?
-        .into_no_null_iter()
-        .zip(mk.column("keyword_id")?.i32()?.into_no_null_iter())
+        .movie_id
+        .iter()
+        .zip(mk.keyword_id.iter())
         .filter_map(|(movie_id, keyword_id)| {
-            if k_id == keyword_id && t_m.contains_key(&movie_id) {
-                Some(movie_id)
-            } else {
-                None
-            }
+            (k_id == keyword_id && t_m.contains_key(&movie_id)).then_some(*movie_id)
         })
         .collect();
 
     let mut res: Option<(&str, &str)> = None;
 
-    for (pid, mid) in ci
-        .column("person_id")?
-        .i32()?
-        .into_no_null_iter()
-        .zip(ci.column("movie_id")?.i32()?.into_no_null_iter())
-    {
+    for (pid, mid) in ci.person_id.iter().zip(ci.movie_id.iter()) {
         if mk_s.contains(&mid)
             && let Some(name) = n_m.get(&pid)
             && let Some(title) = t_m.get(&mid)
@@ -117,7 +107,8 @@ mod test_6c {
     #[test]
     fn test_q6c() -> Result<(), PolarsError> {
         let db = ImdbData::new();
-        let res = q6c(&db)?;
+        let data = Data::new(&db);
+        let res = q6c(&data)?;
         assert_eq!(
             res,
             Some((
