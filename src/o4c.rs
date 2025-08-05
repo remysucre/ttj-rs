@@ -1,4 +1,4 @@
-use crate::data::ImdbData;
+use crate::data::Data;
 use ahash::{HashMap, HashSet};
 use polars::prelude::*;
 use std::time::Instant;
@@ -8,7 +8,7 @@ use std::time::Instant;
 // * |imdb.q4c_info_type(info_type_id)
 // * |imdb_int.movie_keyword(movie_id,keyword_id)
 // * ||imdb.q4c_keyword(keyword_id)
-pub fn q4c(db: &ImdbData) -> Result<Option<(&str, &str)>, PolarsError> {
+pub fn q4c(db: &Data) -> Result<Option<(&str, &str)>, PolarsError> {
     let it = &db.it;
     let k = &db.k;
     let mi_idx = &db.mi_idx;
@@ -17,103 +17,58 @@ pub fn q4c(db: &ImdbData) -> Result<Option<(&str, &str)>, PolarsError> {
 
     let start = Instant::now();
 
-    let it_s: HashSet<i32> = it
-        .column("info")?
-        .str()?
-        .into_iter()
-        .zip(it.column("id")?.i32()?)
-        .filter_map(|(info, id)| {
-            if let (Some(info), Some(id)) = (info, id) {
-                if info == "rating" { Some(id) } else { None }
-            } else {
-                None
-            }
-        })
-        .collect();
+    let it_id: &i32 = it
+        .info
+        .iter()
+        .zip(it.id.iter())
+        .find(|(info, _)| *info == "rating")
+        .map(|(_, id)| id)
+        .unwrap();
 
-    let k_s: HashSet<i32> = k
-        .column("keyword")?
-        .str()?
-        .into_iter()
-        .zip(k.column("id")?.i32()?)
-        .filter_map(|(keyword, id)| {
-            if let (Some(keyword), Some(id)) = (keyword, id) {
-                if keyword.contains("sequel") {
-                    Some(id)
-                } else {
-                    None
-                }
-            } else {
-                None
-            }
-        })
-        .collect();
+    let k_id = k
+        .keyword
+        .iter()
+        .zip(k.id.iter())
+        .find(|(keyword, _)| *keyword == "sequel")
+        .map(|(_, id)| id)
+        .unwrap();
 
-    let mk_s: HashSet<i32> = mk
-        .column("movie_id")?
-        .i32()?
-        .into_iter()
-        .zip(mk.column("keyword_id")?.i32()?)
-        .filter_map(|(movie_id, keyword_id)| {
-            if let (Some(movie_id), Some(keyword_id)) = (movie_id, keyword_id) {
-                if k_s.contains(&keyword_id) {
-                    Some(movie_id)
-                } else {
-                    None
-                }
-            } else {
-                None
-            }
-        })
-        .collect();
+    let mk_s = mk
+        .keyword_id
+        .iter()
+        .zip(mk.movie_id.iter())
+        .filter_map(|(keyword_id, movie_id)| (keyword_id == k_id).then_some(*movie_id))
+        .collect::<HashSet<_>>();
 
-    let t_m: HashMap<i32, &str> = t
-        .column("id")?
-        .i32()?
-        .into_iter()
-        .zip(t.column("title")?.str()?)
-        .zip(t.column("production_year")?.i32()?)
-        .filter_map(|((id, title), production_year)| {
-            if let (Some(id), Some(title), Some(production_year)) = (id, title, production_year) {
-                if production_year > 1990 && mk_s.contains(&id) {
-                    Some((id, title))
-                } else {
-                    None
-                }
-            } else {
-                None
-            }
-        })
-        .fold(HashMap::default(), |mut acc, (id, title)| {
-            acc.insert(id, title);
-            acc
-        });
+    let t_m: HashMap<i32, &str> =
+        t.id.iter()
+            .zip(t.title.iter())
+            .zip(t.production_year.iter())
+            .filter_map(|((id, title), production_year)| {
+                production_year
+                    .filter(|production_year| *production_year > 1990 && mk_s.contains(&id))
+                    .map(|_| (*id, title.as_str()))
+            })
+            .collect();
 
     let mut res: Option<(&str, &str)> = None;
 
     for ((movie_id, info), info_type_id) in mi_idx
-        .column("movie_id")?
-        .i32()?
-        .into_iter()
-        .zip(mi_idx.column("info")?.str()?.into_iter())
-        .zip(mi_idx.column("info_type_id")?.i32()?.into_iter())
+        .movie_id
+        .iter()
+        .zip(mi_idx.info.iter())
+        .zip(mi_idx.info_type_id.iter())
     {
-        if let (Some(movie_id), Some(info), Some(info_type_id)) = (movie_id, info, info_type_id) {
-            if it_s.contains(&info_type_id)
-                && info > "2.0"
-                && let Some(title) = t_m.get(&movie_id)
-            {
-                if let Some((old_info, old_title)) = res.as_mut() {
-                    if info < *old_info {
-                        *old_info = info;
-                    }
-                    if title < old_title {
-                        *old_title = title;
-                    }
-                } else {
-                    res = Some((info, title));
+        if it_id == info_type_id
+            && info.as_str() > "2.0"
+            && let Some(title) = t_m.get(&movie_id)
+        {
+            res = match res {
+                Some((old_info, old_title)) => {
+                    Some((info.as_str().min(&old_info), title.min(&old_title)))
                 }
-            }
+                None => Some((info, title)),
+            };
         }
     }
     let duration = start.elapsed().as_secs_f32();
@@ -139,14 +94,15 @@ pub fn q4c(db: &ImdbData) -> Result<Option<(&str, &str)>, PolarsError> {
 // AND k.id = mk.keyword_id
 // AND it.id = mi_idx.info_type_id;
 #[cfg(test)]
-mod test_4c {
+mod test_q4c {
     use super::*;
     use crate::data::ImdbData;
 
     #[test]
     fn test_q4c() -> Result<(), PolarsError> {
         let db = ImdbData::new();
-        let res = q4c(&db)?;
+        let data = Data::new(&db);
+        let res = q4c(&data)?;
         assert_eq!(res, Some(("2.1", "& Teller 2")));
         Ok(())
     }
