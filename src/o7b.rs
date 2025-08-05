@@ -1,11 +1,12 @@
-use crate::data::ImdbData;
+use crate::data::Data;
 use ahash::HashMap;
 use ahash::HashSet;
+use memchr::memmem::Finder;
 use polars::prelude::*;
 use std::time::Instant;
 
-pub fn q7b(db: &ImdbData) -> Result<Option<(&str, &str)>, PolarsError> {
-    // let an = &db.an;
+pub fn q7b(db: &Data) -> Result<Option<(&str, &str)>, PolarsError> {
+    let an = &db.an;
     let ci = &db.ci;
     let it = &db.it;
     let lt = &db.lt;
@@ -14,113 +15,89 @@ pub fn q7b(db: &ImdbData) -> Result<Option<(&str, &str)>, PolarsError> {
     let pi = &db.pi;
     let t = &db.t;
 
+    let d = Finder::new("D");
+    let a = Finder::new("a");
+
     let start = Instant::now();
 
     let lt_id = lt
-        .column("id")?
-        .i32()?
-        .into_no_null_iter()
-        .zip(lt.column("link")?.str()?.into_no_null_iter())
+        .id
+        .iter()
+        .zip(lt.link.iter())
         .find(|(_, link)| *link == "features")
         .map(|(id, _)| id)
         .unwrap();
 
     let it_id = it
-        .column("id")?
-        .i32()?
-        .into_no_null_iter()
-        .zip(it.column("info")?.str()?.into_no_null_iter())
+        .id
+        .iter()
+        .zip(it.info.iter())
         .find(|(_, info)| *info == "mini biography")
         .map(|(id, _)| id)
         .unwrap();
 
     let ml_s: HashSet<i32> = ml
-        .column("linked_movie_id")?
-        .i32()?
-        .into_no_null_iter()
-        .zip(ml.column("link_type_id")?.i32()?.into_no_null_iter())
-        .filter_map(|(id, link_type_id)| (lt_id == link_type_id).then_some(id))
+        .linked_movie_id
+        .iter()
+        .zip(ml.link_type_id.iter())
+        .filter_map(|(id, link_type_id)| (lt_id == link_type_id).then_some(*id))
         .collect();
 
     let pi_s: HashSet<i32> = pi
-        .column("person_id")?
-        .i32()?
-        .into_no_null_iter()
-        .zip(pi.column("info_type_id")?.i32()?.into_no_null_iter())
-        .zip(pi.column("note")?.str()?)
+        .person_id
+        .iter()
+        .zip(pi.info_type_id.iter())
+        .zip(pi.note.iter())
         .filter_map(|((person_id, info_type_id), note)| {
-            (it_id == info_type_id && note? == "Volker Boehm").then_some(person_id)
+            note.as_ref()
+                .filter(|note| it_id == info_type_id && *note == "Volker Boehm")
+                .map(|_| *person_id)
         })
         .collect();
 
-    let t_m: HashMap<i32, &str> = t
-        .column("id")?
-        .i32()?
-        .into_no_null_iter()
-        .zip(t.column("production_year")?.i32()?)
-        .zip(t.column("title")?.str()?.into_no_null_iter())
-        .filter_map(|((id, production_year), title)| {
-            (ml_s.contains(&id) && (1980..=1984).contains(&production_year?)).then_some((id, title))
-        })
-        .fold(HashMap::default(), |mut acc, (id, title)| {
-            acc.entry(id)
-                .and_modify(|existing| {
-                    if title < *existing {
-                        *existing = title;
-                    }
-                })
-                .or_insert(title);
-            acc
-        });
+    let t_m: HashMap<i32, &str> =
+        t.id.iter()
+            .zip(t.production_year.iter())
+            .zip(t.title.iter())
+            .filter_map(|((id, production_year), title)| {
+                production_year
+                    .filter(|production_year| {
+                        ml_s.contains(&id) && (1980..=1984).contains(production_year)
+                    })
+                    .map(|_| (*id, title.as_str()))
+            })
+            .collect();
 
-    let n_m: HashMap<i32, &str> = n
-        .column("id")?
-        .i32()?
-        .into_no_null_iter()
-        .zip(n.column("name")?.str()?.into_no_null_iter())
-        .zip(n.column("name_pcode_cf")?.str()?)
-        .zip(n.column("gender")?.str()?)
-        .filter_map(|(((id, name), name_pcode), gender)| {
-            (pi_s.contains(&id) && name_pcode?.starts_with('D') && gender? == "m")
-                .then_some((id, name))
-        })
-        .fold(HashMap::default(), |mut acc, (id, name)| {
-            acc.entry(id)
-                .and_modify(|existing| {
-                    if name < *existing {
-                        *existing = name;
-                    }
-                })
-                .or_insert(name);
-            acc
-        });
+    let an_s: HashSet<i32> = an
+        .person_id
+        .iter()
+        .zip(an.name.iter())
+        .filter_map(|(id, name)| a.find(name.as_bytes()).is_some().then_some(*id))
+        .collect();
 
-    // let an_s: HashSet<i32> = an
-    //     .column("person_id")?
-    //     .i32()?
-    //     .into_iter()
-    //     .zip(an.column("name")?.str()?)
-    //     .filter_map(|(id, name)| {
-    //         if let (Some(id), Some(name)) = (id, name) {
-    //             if n_m.contains_key(&id) && name.contains('a') {
-    //                 Some(id)
-    //             } else {
-    //                 None
-    //             }
-    //         } else {
-    //             None
-    //         }
-    //     })
-    //     .collect();
+    let n_m: HashMap<i32, &str> =
+        n.id.iter()
+            .zip(n.name.iter())
+            .zip(n.name_pcode_cf.iter())
+            .zip(n.gender.iter())
+            .filter_map(|(((id, name), name_pcode), gender)| {
+                if let Some(name_pcode) = name_pcode
+                    && let Some(gender) = gender
+                    && pi_s.contains(&id)
+                    && d.find(name_pcode.as_bytes()) == Some(0)
+                    && gender == "m"
+                    && an_s.contains(&id)
+                {
+                    Some((*id, name.as_str()))
+                } else {
+                    None
+                }
+            })
+            .collect();
 
     let mut res: Option<(&str, &str)> = None;
 
-    for (pid, mid) in ci
-        .column("person_id")?
-        .i32()?
-        .into_no_null_iter()
-        .zip(ci.column("movie_id")?.i32()?.into_no_null_iter())
-    {
+    for (pid, mid) in ci.person_id.iter().zip(ci.movie_id.iter()) {
         if let Some(name) = n_m.get(&pid)
             && let Some(title) = t_m.get(&mid)
         {
@@ -165,14 +142,15 @@ pub fn q7b(db: &ImdbData) -> Result<Option<(&str, &str)>, PolarsError> {
 // AND an.person_id = ci.person_id
 // AND ci.movie_id = ml.linked_movie_id;
 #[cfg(test)]
-mod test_7b {
+mod test_q7b {
     use super::*;
     use crate::data::ImdbData;
 
     #[test]
     fn test_q7b() -> Result<(), PolarsError> {
         let db = ImdbData::new();
-        let res = q7b(&db)?;
+        let data = Data::new(&db);
+        let res = q7b(&data)?;
         assert_eq!(res, Some(("De Palma, Brian", "Dressed to Kill")));
         Ok(())
     }
