@@ -1,4 +1,4 @@
-use crate::data::{Data, ImdbData};
+use crate::data::Data;
 use ahash::HashSet;
 use memchr::memmem::Finder;
 use polars::prelude::*;
