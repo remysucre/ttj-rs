@@ -1,11 +1,12 @@
-use crate::data::ImdbData;
+use crate::data::Data;
 use ahash::HashMap;
 use ahash::HashSet;
+use memchr::memmem::Finder;
 use polars::prelude::*;
 use std::time::Instant;
 
-pub fn q7c(db: &ImdbData) -> Result<Option<(&str, &str)>, PolarsError> {
-    // let an = &db.an;
+pub fn q7c(db: &Data) -> Result<Option<(&str, &str)>, PolarsError> {
+    let an = &db.an;
     let ci = &db.ci;
     let it = &db.it;
     let lt = &db.lt;
@@ -14,172 +15,104 @@ pub fn q7c(db: &ImdbData) -> Result<Option<(&str, &str)>, PolarsError> {
     let pi = &db.pi;
     let t = &db.t;
 
+    let a = Finder::new("A");
+
     let start = Instant::now();
 
+    let target_link: ahash::HashSet<&str> =
+        ["references", "referenced in", "features", "featured in"]
+            .into_iter()
+            .collect();
+
     let lt_s: Vec<i32> = lt
-        .column("id")?
-        .i32()?
-        .into_iter()
-        .zip(lt.column("link")?.str()?)
-        .filter_map(|(id, link)| {
-            if let (Some(id), Some(link)) = (id, link) {
-                if matches!(
-                    link,
-                    "references" | "referenced in" | "features" | "featured in"
-                ) {
-                    Some(id)
-                } else {
-                    None
-                }
-            } else {
-                None
-            }
-        })
+        .id
+        .iter()
+        .zip(lt.link.iter())
+        .filter_map(|(id, link)| target_link.contains(link.as_str()).then_some(*id))
         .collect();
 
-    let it_s: Vec<i32> = it
-        .column("id")?
-        .i32()?
-        .into_iter()
-        .zip(it.column("info")?.str()?)
-        .filter_map(|(id, info)| {
-            if let (Some(id), Some(info)) = (id, info) {
-                if info == "mini biography" {
-                    Some(id)
-                } else {
-                    None
-                }
-            } else {
-                None
-            }
-        })
+    let it_id = it
+        .id
+        .iter()
+        .zip(it.info.iter())
+        .find(|(_, info)| *info == "mini biography")
+        .map(|(id, _)| id)
+        .unwrap();
+
+    let ml_s: HashSet<&i32> = ml
+        .linked_movie_id
+        .iter()
+        .zip(ml.link_type_id.iter())
+        .filter_map(|(id, link_type_id)| (lt_s.contains(link_type_id)).then_some(id))
         .collect();
 
-    let ml_s: HashSet<i32> = ml
-        .column("linked_movie_id")?
-        .i32()?
-        .into_iter()
-        .zip(ml.column("link_type_id")?.i32()?)
-        .filter_map(|(id, link_type_id)| {
-            if let (Some(id), Some(link_type_id)) = (id, link_type_id) {
-                if lt_s.contains(&link_type_id) {
-                    Some(id)
-                } else {
-                    None
-                }
-            } else {
-                None
-            }
-        })
-        .collect();
-
-    let pi_m: HashMap<i32, Vec<&str>> = pi
-        .column("person_id")?
-        .i32()?
-        .into_iter()
-        .zip(pi.column("info_type_id")?.i32()?)
-        .zip(pi.column("info")?.str()?)
-        .filter_map(|((id, info_type_id), info)| {
-            if let (Some(id), Some(info_type_id), Some(info)) = (id, info_type_id, info) {
-                if it_s.contains(&info_type_id) {
-                    Some((id, info))
-                } else {
-                    None
-                }
-            } else {
-                None
-            }
-        })
+    let pi_m: HashMap<&i32, Vec<&str>> = pi
+        .person_id
+        .iter()
+        .zip(pi.info_type_id.iter())
+        .zip(pi.info.iter())
+        .filter_map(|((id, info_type_id), info)| (it_id == info_type_id).then_some((id, info)))
         .fold(HashMap::default(), |mut acc, (id, info)| {
             acc.entry(id).or_default().push(info);
             acc
         });
 
-    let t_s: HashSet<i32> = t
-        .column("id")?
-        .i32()?
-        .into_iter()
-        .zip(t.column("production_year")?.i32()?)
-        .filter_map(|(id, production_year)| {
-            if let (Some(id), Some(production_year)) = (id, production_year) {
-                if (1980..=2010).contains(&production_year) && ml_s.contains(&id) {
-                    Some(id)
-                } else {
-                    None
-                }
-            } else {
-                None
-            }
+    let t_s: HashSet<&i32> =
+        t.id.iter()
+            .zip(t.production_year.iter())
+            .filter_map(|(id, production_year)| {
+                production_year
+                    .as_ref()
+                    .filter(|production_year| {
+                        (1980..=2010).contains(*production_year) && ml_s.contains(&id)
+                    })
+                    .map(|_| id)
+            })
+            .collect();
+
+    let an_s: HashSet<&i32> = an
+        .person_id
+        .iter()
+        .zip(an.name.iter())
+        .filter_map(|(id, name)| {
+            (name.contains('a') || a.find(name.as_bytes()) == Some(0)).then_some(id)
         })
         .collect();
 
-    let n_m: HashMap<i32, &str> = n
-        .column("id")?
-        .i32()?
-        .into_iter()
-        .zip(n.column("name")?.str()?)
-        .zip(n.column("name_pcode_cf")?.str()?)
-        .zip(n.column("gender")?.str()?)
-        .fold(
-            HashMap::default(),
-            |mut acc, (((id, name), name_pcode), gender)| {
-                if let (Some(id), Some(name), Some(name_pcode), Some(gender)) =
-                    (id, name, name_pcode, gender)
+    let n_m: HashMap<&i32, &str> =
+        n.id.iter()
+            .zip(n.name.iter())
+            .zip(n.name_pcode_cf.iter())
+            .zip(n.gender.iter())
+            .filter_map(|(((id, name), name_pcode_cf), gender)| {
+                if let Some(gender) = gender
+                    && let Some(name_pcode_cf) = name_pcode_cf.as_deref()
+                    && pi_m.contains_key(&id)
+                    && an_s.contains(id)
+                    && (("A"..="F").contains(&name_pcode_cf) && gender == "m"
+                        || gender == "f" && a.find(name.as_bytes()).is_some())
                 {
-                    if pi_m.contains_key(&id)
-                        && (("A"..="F").contains(&name_pcode) && gender == "m"
-                            || gender == "f" && name.starts_with('A'))
-                    {
-                        acc.insert(id, name);
-                        acc
-                    } else {
-                        acc
-                    }
+                    Some((id, name.as_str()))
                 } else {
-                    acc
+                    None
                 }
-            },
-        );
-
-    // let mut an_s: HashSet<i32> = HashSet::default();
-    //
-    // let an_id_col = an.column("person_id")?.i32()?;
-    // let an_name_col = an.column("name")?.str()?;
-    //
-    // for (id, name) in an_id_col.into_iter().zip(an_name_col.into_iter()) {
-    //     if let (Some(id), Some(name)) = (id, name) {
-    //         if n_m.contains_key(&id) && (name.contains('a') || name.starts_with('A')) {
-    //             an_s.insert(id);
-    //         }
-    //     }
-    // }
+            })
+            .collect();
 
     let mut res: Option<(&str, &str)> = None;
 
-    for (pid, mid) in ci
-        .column("person_id")?
-        .i32()?
-        .into_iter()
-        .zip(ci.column("movie_id")?.i32()?.into_iter())
-    {
-        if let (Some(pid), Some(mid)) = (pid, mid) {
-            if let Some(info) = pi_m.get(&pid)
-                && let Some(name) = n_m.get(&pid)
-                && t_s.contains(&mid)
-            {
-                for info in info {
-                    if let Some((old_name, old_info)) = res.as_mut() {
-                        if name < old_name {
-                            *old_name = name;
-                        }
-                        if info < old_info {
-                            *old_info = info;
-                        }
-                    } else {
-                        res = Some((name, info));
-                    }
-                }
-            }
+    for (pid, mid) in ci.person_id.iter().zip(ci.movie_id.iter()) {
+        if let Some(info) = pi_m.get(&pid)
+            && let Some(name) = n_m.get(&pid)
+            && t_s.contains(&mid)
+        {
+            res = match res {
+                Some((old_name, old_info)) => Some((
+                    name.min(&old_name),
+                    info.iter().min().unwrap().min(&old_info),
+                )),
+                None => Some((name, info.iter().min().unwrap())),
+            };
         }
     }
 
@@ -227,7 +160,8 @@ mod test_q7c {
     #[test]
     fn test_q7c() -> Result<(), PolarsError> {
         let db = ImdbData::new();
-        let res = q7c(&db)?;
+        let data = Data::new(&db);
+        let res = q7c(&data)?;
         assert_eq!(
             res,
             Some((
