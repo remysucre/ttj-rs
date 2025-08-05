@@ -323,6 +323,24 @@ pub struct CT {
     pub kind: Vec<String>,
 }
 
+// CREATE TABLE person_info (
+//                                            id integer NOT NULL,
+//                                            person_id integer NOT NULL,
+//                                            info_type_id integer NOT NULL,
+//                                            info text NOT NULL,
+//                                            note text
+// --                                            FOREIGN KEY (info_type_id) REFERENCES info_type(id),
+// --                                            FOREIGN KEY (person_id) REFERENCES name(id)
+// );
+pub struct PI {
+    pub id: Vec<i32>,
+    pub person_id: Vec<i32>,
+    pub info_type_id: Vec<i32>,
+    pub info: Vec<String>,
+    pub note: Vec<Option<String>>,
+}
+
+
 pub struct Data {
     pub ci: CI,
     pub chn: CHN,
@@ -343,6 +361,7 @@ pub struct Data {
     pub ml: ML,
     pub mi: MI,
     pub ct: CT,
+    pub pi: PI,
 }
 
 impl Data {
@@ -1154,6 +1173,50 @@ impl Data {
                     .unwrap()
                     .into_no_null_iter()
                     .map(|s| s.to_string())
+                    .collect(),
+            },
+            pi: PI {
+                id: imdb
+                    .pi
+                    .column("id")
+                    .unwrap()
+                    .i32()
+                    .unwrap()
+                    .into_no_null_iter()
+                    .collect(),
+                person_id: imdb
+                    .pi
+                    .column("person_id")
+                    .unwrap()
+                    .i32()
+                    .unwrap()
+                    .into_no_null_iter()
+                    .collect(),
+                info_type_id: imdb
+                    .pi
+                    .column("info_type_id")
+                    .unwrap()
+                    .i32()
+                    .unwrap()
+                    .into_no_null_iter()
+                    .collect(),
+                info: imdb
+                    .pi
+                    .column("info")
+                    .unwrap()
+                    .str()
+                    .unwrap()
+                    .into_no_null_iter()
+                    .map(|s| s.to_string())
+                    .collect(),
+                note: imdb
+                    .pi
+                    .column("note")
+                    .unwrap()
+                    .str()
+                    .unwrap()
+                    .into_iter()
+                    .map(|opt| opt.map(|s| s.to_string()))
                     .collect(),
             },
         }
