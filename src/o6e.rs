@@ -1,75 +1,59 @@
-use crate::data::ImdbData;
+use crate::data::Data;
 use ahash::{HashMap, HashSet};
+use memchr::memmem::Finder;
 use polars::prelude::*;
 use std::time::Instant;
 
-pub fn q6e(db: &ImdbData) -> Result<Option<(&str, &str, &str)>, PolarsError> {
+pub fn q6e(db: &Data) -> Result<Option<(&str, &str, &str)>, PolarsError> {
     let ci = &db.ci;
     let k = &db.k;
     let mk = &db.mk;
     let n = &db.n;
     let t = &db.t;
 
+    let downey = Finder::new("Downey");
+    let robert = Finder::new("Robert");
+
     let start = Instant::now();
 
-    let n_m: HashMap<i32, &str> = n
-        .column("id")?
-        .i32()?
-        .into_no_null_iter()
-        .zip(n.column("name")?.str()?.into_no_null_iter())
-        .filter_map(|(id, name)| {
-            if name.contains("Downey") && name.contains("Robert") {
-                Some((id, name))
-            } else {
-                None
-            }
-        })
-        .collect();
+    let n_m: HashMap<i32, &str> =
+        n.id.iter()
+            .zip(n.name.iter())
+            .filter_map(|(id, name)| {
+                (downey.find(name.as_bytes()).is_some() && robert.find(name.as_bytes()).is_some())
+                    .then_some((*id, name.as_str()))
+            })
+            .collect();
 
     let k_id = k
-        .column("keyword")?
-        .str()?
-        .into_no_null_iter()
-        .zip(k.column("id")?.i32()?.into_no_null_iter())
+        .keyword
+        .iter()
+        .zip(k.id.iter())
         .find(|(keyword, _)| *keyword == "marvel-cinematic-universe")
         .map(|(_, id)| id)
         .unwrap();
 
     let mk_s: HashSet<i32> = mk
-        .column("movie_id")?
-        .i32()?
-        .into_no_null_iter()
-        .zip(mk.column("keyword_id")?.i32()?.into_no_null_iter())
-        .filter_map(|(movie_id, keyword_id)| {
-            if k_id == keyword_id {
-                Some(movie_id)
-            } else {
-                None
-            }
-        })
+        .movie_id
+        .iter()
+        .zip(mk.keyword_id.iter())
+        .filter_map(|(movie_id, keyword_id)| (k_id == keyword_id).then_some(*movie_id))
         .collect();
 
-    let t_m: HashMap<i32, &str> = t
-        .column("id")?
-        .i32()?
-        .into_no_null_iter()
-        .zip(t.column("title")?.str()?.into_no_null_iter())
-        .zip(t.column("production_year")?.i32()?)
-        .filter_map(|((id, title), production_year)| {
-            production_year
-                .filter(|&year| year > 2000 && mk_s.contains(&id))
-                .map(|_| (id, title))
-        })
-        .collect();
+    let t_m: HashMap<i32, &str> =
+        t.id.iter()
+            .zip(t.title.iter())
+            .zip(t.production_year.iter())
+            .filter_map(|((id, title), production_year)| {
+                production_year
+                    .filter(|&year| year > 2000 && mk_s.contains(&id))
+                    .map(|_| (*id, title.as_str()))
+            })
+            .collect();
 
     let mut res: Option<(&str, &str)> = None;
 
-    for (pid, mid) in ci
-        .column("person_id")?
-        .i32()?
-        .into_no_null_iter()
-        .zip(ci.column("movie_id")?.i32()?.into_no_null_iter())
-    {
+    for (pid, mid) in ci.person_id.iter().zip(ci.movie_id.iter()) {
         if mk_s.contains(&mid)
             && let Some(name) = n_m.get(&pid)
             && let Some(title) = t_m.get(&mid)
@@ -111,7 +95,8 @@ mod test_6e {
     #[test]
     fn test_q6e() -> Result<(), PolarsError> {
         let db = ImdbData::new();
-        let res = q6e(&db)?;
+        let data = Data::new(&db);
+        let res = q6e(&data)?;
         assert_eq!(
             res,
             Some((
