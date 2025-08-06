@@ -1,9 +1,10 @@
-use crate::data::ImdbData;
+use crate::data::Data;
 use ahash::{HashMap, HashSet};
+use memchr::memmem::Finder;
 use polars::prelude::*;
 use std::time::Instant;
 
-pub fn q10c(db: &ImdbData) -> Result<Option<(&str, &str)>, PolarsError> {
+pub fn q10c(db: &Data) -> Result<Option<(&str, &str)>, PolarsError> {
     let chn = &db.chn;
     let ci = &db.ci;
     let cn = &db.cn;
@@ -12,18 +13,16 @@ pub fn q10c(db: &ImdbData) -> Result<Option<(&str, &str)>, PolarsError> {
     // let rt = &db.rt;
     let t = &db.t;
 
-    let mut chn_m: HashMap<i32, Vec<&str>> = HashMap::default();
+    let producer = Finder::new("(producer)");
 
-    for (id, name) in chn
-        .column("id")?
-        .i32()?
-        .into_iter()
-        .zip(chn.column("name")?.str()?.into_iter())
-    {
-        if let (Some(id), Some(name)) = (id, name) {
-            chn_m.entry(id).or_default().push(name);
-        }
-    }
+    let chn_m: HashMap<&i32, Vec<&str>> =
+        chn.id
+            .iter()
+            .zip(chn.name.iter())
+            .fold(HashMap::default(), |mut acc, (chn_id, name)| {
+                acc.entry(chn_id).or_default().push(name);
+                acc
+            });
 
     // Due to ct and mc form a PK-FK join and there are no selection predicates on ct, we can drop
     // ct from the join.
@@ -31,45 +30,23 @@ pub fn q10c(db: &ImdbData) -> Result<Option<(&str, &str)>, PolarsError> {
 
     let start = Instant::now();
 
-    // Technically, we can drop cn as this doesn't impact query results.
-    let cn_s: HashSet<i32> = cn
-        .column("country_code")?
-        .str()?
-        .into_iter()
-        .zip(cn.column("id")?.i32()?)
+    let cn_s: HashSet<&i32> = cn
+        .country_code
+        .iter()
+        .zip(cn.id.iter())
         .filter_map(|(country_code, id)| {
-            if let (Some(country_code), Some(id)) = (country_code, id) {
-                if country_code == "[us]" {
-                    Some(id)
-                } else {
-                    None
-                }
-            } else {
-                None
-            }
+            country_code
+                .as_ref()
+                .filter(|code| code.as_str() == "[us]")
+                .map(|_| id)
         })
         .collect();
 
-    let mc_s: HashSet<i32> = mc
-        .column("company_type_id")?
-        .i32()?
-        .into_iter()
-        .zip(mc.column("company_id")?.i32()?)
-        .zip(mc.column("movie_id")?.i32()?)
-        .filter_map(|((company_type_id, company_id), movie_id)| {
-            if let (Some(_), Some(company_id), Some(movie_id)) =
-                (company_type_id, company_id, movie_id)
-            {
-                // if ct_s.contains(&company_type_id) && cn_s.contains(&company_id) {
-                if cn_s.contains(&company_id) {
-                    Some(movie_id)
-                } else {
-                    None
-                }
-            } else {
-                None
-            }
-        })
+    let mc_s: HashSet<&i32> = mc
+        .movie_id
+        .iter()
+        .zip(mc.company_id.iter())
+        .filter_map(|(movie_id, company_id)| cn_s.contains(&company_id).then_some(movie_id))
         .collect();
 
     // PK (rt) - FK (ci)
@@ -80,56 +57,53 @@ pub fn q10c(db: &ImdbData) -> Result<Option<(&str, &str)>, PolarsError> {
     //     .filter_map(|id| id)
     //     .collect();
 
-    let mut t_m: HashMap<i32, Vec<&str>> = HashMap::default();
-
-    for ((id, title), production_year) in t
-        .column("id")?
-        .i32()?
-        .into_iter()
-        .zip(t.column("title")?.str()?.into_iter())
-        .zip(t.column("production_year")?.i32()?.into_iter())
-    {
-        if let (Some(id), Some(title), Some(production_year)) = (id, title, production_year) {
-            if mc_s.contains(&id) && production_year > 1990 {
-                t_m.entry(id).or_default().push(title);
-            }
-        }
-    }
+    let t_m: HashMap<&i32, Vec<&str>> =
+        t.id.iter()
+            .zip(t.production_year.iter())
+            .zip(t.title.iter())
+            .filter_map(|((movie_id, production_year), title)| {
+                if let Some(production_year) = production_year
+                    && mc_s.contains(&movie_id)
+                    && *production_year > 1990
+                {
+                    Some((movie_id, title))
+                } else {
+                    None
+                }
+            })
+            .fold(HashMap::default(), |mut acc, (movie_id, title)| {
+                acc.entry(movie_id).or_default().push(title);
+                acc
+            });
 
     let mut res: Option<(&str, &str)> = None;
 
-    for (((mid, person_role_id), role_id), note) in ci
-        .column("movie_id")?
-        .i32()?
-        .into_iter()
-        .zip(ci.column("person_role_id")?.i32()?.into_iter())
-        .zip(ci.column("role_id")?.i32()?.into_iter())
-        .zip(ci.column("note")?.str()?.into_iter())
+    for ((mid, person_role_id), note) in ci
+        .movie_id
+        .iter()
+        .zip(ci.person_role_id.iter())
+        .zip(ci.note.iter())
     {
-        if let (Some(mid), Some(person_role_id), Some(_), Some(note)) =
-            (mid, person_role_id, role_id, note)
+        if let Some(person_role_id) = person_role_id
+            && let Some(note) = note
+            && producer.find(note.as_bytes()).is_some()
+            && let Some(character_names) = chn_m.get(&person_role_id)
+            && let Some(titles) = t_m.get(&mid)
         {
-            // if note.contains("(producer)") && rt_s.contains(&role_id) {
-            if note.contains("(producer)") {
-                if let Some(names) = chn_m.get(&person_role_id) {
-                    if let Some(titles) = t_m.get(&mid) {
-                        for name in names {
-                            for title in titles {
-                                if let Some((old_name, old_title)) = res.as_mut() {
-                                    if name < old_name {
-                                        *old_name = name;
-                                    }
-                                    if title < old_title {
-                                        *old_title = title;
-                                    }
-                                } else {
-                                    res = Some((name, title));
-                                }
-                            }
-                        }
-                    }
-                }
-            }
+            res = match res {
+                Some((old_character_name, old_title)) => Some((
+                    character_names
+                        .iter()
+                        .min()
+                        .unwrap()
+                        .min(&old_character_name),
+                    titles.iter().min().unwrap().min(&old_title),
+                )),
+                None => Some((
+                    character_names.iter().min().unwrap(),
+                    titles.iter().min().unwrap(),
+                )),
+            };
         }
     }
 
@@ -152,16 +126,17 @@ pub fn q10c(db: &ImdbData) -> Result<Option<(&str, &str)>, PolarsError> {
 // AND cn.id = mc.company_id
 // AND ct.id = mc.company_type_id;
 #[cfg(test)]
-mod test_10c {
+mod test_q10c {
     use super::*;
     use crate::data::ImdbData;
 
     #[test]
     fn test_q10c() -> Result<(), PolarsError> {
         let db = ImdbData::new();
+        let data = Data::new(&db);
 
         assert_eq!(
-            q10c(&db)?,
+            q10c(&data)?,
             Some(("Himself", "Evil Eyes: Behind the Scenes"))
         );
         Ok(())
