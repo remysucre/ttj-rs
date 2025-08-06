@@ -172,12 +172,12 @@ pub fn q10b(db: &ImdbData) -> Result<Option<(&str, &str)>, PolarsError> {
 //   AND cn.id = mc.company_id
 //   AND ct.id = mc.company_type_id;
 #[cfg(test)]
-mod test_10a {
+mod test_10b {
     use super::*;
     use crate::data::ImdbData;
 
     #[test]
-    fn test_q10a() -> Result<(), PolarsError> {
+    fn test_q10b() -> Result<(), PolarsError> {
         let db = ImdbData::new();
         let res = q10b(&db)?;
         assert_eq!(res, None);
