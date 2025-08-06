@@ -59,7 +59,7 @@ pub fn q11c(db: &Data) -> Result<Option<(&str, &str, &str)>, PolarsError> {
         .movie_id
         .iter()
         .zip(mk.keyword_id.iter())
-        .filter_map(|(movie_id, keyword_id)| (k_s.contains(keyword_id)).then_some(movie_id))
+        .filter_map(|(movie_id, keyword_id)| k_s.contains(keyword_id).then_some(movie_id))
         .collect();
 
     let ml_s: HashSet<&i32> = ml
