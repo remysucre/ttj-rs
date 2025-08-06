@@ -1,10 +1,10 @@
-use crate::data::ImdbData;
+use crate::data::Data;
 use ahash::HashMap;
 use ahash::HashSet;
 use polars::prelude::*;
 use std::time::Instant;
 
-pub fn q8c(db: &ImdbData) -> Result<Option<(&str, &str)>, PolarsError> {
+pub fn q8c(db: &Data) -> Result<Option<(&str, &str)>, PolarsError> {
     let t = &db.t;
     let an = &db.an;
     let n = &db.n;
@@ -13,59 +13,57 @@ pub fn q8c(db: &ImdbData) -> Result<Option<(&str, &str)>, PolarsError> {
     let mc = &db.mc;
     let cn = &db.cn;
 
-    let an_m: HashMap<i32, Vec<&str>> = an
-        .column("person_id")?
-        .i32()?
-        .into_no_null_iter()
-        .zip(an.column("name")?.str()?.into_no_null_iter())
-        .fold(HashMap::default(), |mut acc, (person_id, name)| {
+    let an_m: HashMap<&i32, Vec<&str>> = an.person_id.iter().zip(an.name.iter()).fold(
+        HashMap::default(),
+        |mut acc, (person_id, name)| {
             acc.entry(person_id).or_default().push(name);
             acc
-        });
+        },
+    );
 
-    let t_m: HashMap<i32, &str> = t
-        .column("id")?
-        .i32()?
-        .into_no_null_iter()
-        .zip(t.column("title")?.str()?.into_no_null_iter())
-        .collect();
+    let t_m: HashMap<&i32, &str> =
+        t.id.iter()
+            .zip(t.title.iter())
+            .map(|(id, title)| (id, title.as_str()))
+            .collect();
 
-    let n_s: HashSet<i32> = n.column("id")?.i32()?.into_no_null_iter().collect();
+    let n_s: HashSet<&i32> = n.id.iter().collect();
 
     let start = Instant::now();
 
-    let rt_s: HashSet<i32> = rt
-        .column("role")?
-        .str()?
-        .into_no_null_iter()
-        .zip(rt.column("id")?.i32()?.into_no_null_iter())
+    let rt_s: HashSet<&i32> = rt
+        .role
+        .iter()
+        .zip(rt.id.iter())
         .filter_map(|(role, id)| (role == "writer").then_some(id))
         .collect();
 
-    let cn_s: HashSet<i32> = cn
-        .column("country_code")?
-        .str()?
-        .into_iter()
-        .zip(cn.column("id")?.i32()?.into_no_null_iter())
-        .filter_map(|(country_code, id)| country_code.filter(|&code| code == "[us]").map(|_| id))
+    let cn_s: HashSet<&i32> = cn
+        .country_code
+        .iter()
+        .zip(cn.id.iter())
+        .filter_map(|(country_code, id)| {
+            country_code
+                .as_ref()
+                .filter(|code| code.as_str() == "[us]")
+                .map(|_| id)
+        })
         .collect();
 
-    let mc_s: HashSet<i32> = mc
-        .column("movie_id")?
-        .i32()?
-        .into_no_null_iter()
-        .zip(mc.column("company_id")?.i32()?.into_no_null_iter())
+    let mc_s: HashSet<&i32> = mc
+        .movie_id
+        .iter()
+        .zip(mc.company_id.iter())
         .filter_map(|(movie_id, company_id)| cn_s.contains(&company_id).then_some(movie_id))
         .collect();
 
     let mut res: Option<(&str, &str)> = None;
 
     for ((movie_id, person_id), role_id) in ci
-        .column("movie_id")?
-        .i32()?
-        .into_no_null_iter()
-        .zip(ci.column("person_id")?.i32()?.into_no_null_iter())
-        .zip(ci.column("role_id")?.i32()?.into_no_null_iter())
+        .movie_id
+        .iter()
+        .zip(ci.person_id.iter())
+        .zip(ci.role_id.iter())
     {
         if rt_s.contains(&role_id)
             && n_s.contains(&person_id)
@@ -108,14 +106,15 @@ pub fn q8c(db: &ImdbData) -> Result<Option<(&str, &str)>, PolarsError> {
 // AND an1.person_id = ci.person_id
 // AND ci.movie_id = mc.movie_id;
 #[cfg(test)]
-mod test_8c {
+mod test_q8c {
     use super::*;
     use crate::data::ImdbData;
 
     #[test]
     fn test_q8c() -> Result<(), PolarsError> {
         let db = ImdbData::new();
-        let res = q8c(&db)?;
+        let data = Data::new(&db);
+        let res = q8c(&data)?;
         assert_eq!(res, Some(("\"A.J.\"", "#1 Cheerleader Camp")));
         Ok(())
     }
