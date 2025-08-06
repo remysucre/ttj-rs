@@ -26,7 +26,7 @@ pub fn q9a(db: &Data) -> Result<Option<(&str, &str, &str)>, PolarsError> {
         },
     );
 
-    let mut chn_m: HashMap<&i32, Vec<&str>> =
+    let chn_m: HashMap<&i32, Vec<&str>> =
         chn.id
             .iter()
             .zip(chn.name.iter())
