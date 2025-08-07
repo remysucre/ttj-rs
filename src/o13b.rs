@@ -97,44 +97,6 @@ pub fn q13b(db: &Data) -> Result<Option<(&str, &str, &str)>, PolarsError> {
         .map(|(_, id)| id)
         .unwrap();
 
-    // let mut res: Option<(&str, &str, &str)> = None;
-    //
-    // for ((movie_id, company_id), company_type_id) in mc
-    //     .column("movie_id")?
-    //     .i32()?
-    //     .into_iter()
-    //     .zip(mc.column("company_id")?.i32()?.into_iter())
-    //     .zip(mc.column("company_type_id")?.i32()?.into_iter())
-    // {
-    //     if let (Some(movie_id), Some(company_id), Some(company_type_id)) =
-    //         (movie_id, company_id, company_type_id)
-    //     {
-    //         if mi_s.contains(&movie_id) && ct_s.contains(&company_type_id) {
-    //             if let Some(info) = mi_idx_m.get(&movie_id) {
-    //                 if let Some(title) = t_m.get(&movie_id) {
-    //                     if let Some(name) = cn_m.get(&company_id) {
-    //                         for info in info {
-    //                             if let Some((old_name, old_info, old_title)) = res.as_mut() {
-    //                                 if title < old_title {
-    //                                     *old_title = title;
-    //                                 }
-    //                                 if info < old_info {
-    //                                     *old_info = info;
-    //                                 }
-    //                                 if name < old_name {
-    //                                     *old_name = name;
-    //                                 }
-    //                             } else {
-    //                                 res = Some((name, info, title));
-    //                             }
-    //                         }
-    //                     }
-    //                 }
-    //             }
-    //         }
-    //     }
-    // }
-
     let mut res: Option<(&str, &str, &str)> = None;
 
     for ((movie_id, company_id), company_type_id) in mc
