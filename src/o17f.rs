@@ -1,91 +1,54 @@
-use crate::data::ImdbData;
-use ahash::{HashMap, HashSet};
+use crate::data::Data;
+use memchr::memmem::Finder;
 use polars::prelude::*;
 use std::time::Instant;
 
-pub fn q17f(db: &ImdbData) -> Result<Option<&str>, PolarsError> {
+pub fn q17f(db: &Data) -> Result<Option<&str>, PolarsError> {
     let ci = &db.ci;
     let k = &db.k;
     let mk = &db.mk;
     let n = &db.n;
 
+    let b = Finder::new("B");
+
     let start = Instant::now();
 
-    let k_s: HashSet<i32> = k
-        .column("keyword")?
-        .str()?
-        .into_iter()
-        .zip(k.column("id")?.i32()?)
-        .filter_map(|(keyword, id)| {
-            if let (Some(keyword), Some(id)) = (keyword, id) {
-                if keyword == "character-name-in-title" {
-                    Some(id)
-                } else {
-                    None
-                }
-            } else {
-                None
-            }
-        })
+    let k_id = k
+        .keyword
+        .iter()
+        .zip(k.id.iter())
+        .find(|(keyword, _)| *keyword == "character-name-in-title")
+        .map(|(_, id)| id)
+        .unwrap();
+
+    let mk_s: ahash::HashSet<i32> = mk
+        .keyword_id
+        .iter()
+        .zip(mk.movie_id.iter())
+        .filter_map(|(keyword_id, movie_id)| (keyword_id == k_id).then_some(*movie_id))
         .collect();
 
-    let mk_s: HashSet<i32> = mk
-        .column("keyword_id")?
-        .i32()?
-        .into_iter()
-        .zip(mk.column("movie_id")?.i32()?)
-        .filter_map(|(keyword_id, movie_id)| {
-            if let (Some(keyword_id), Some(movie_id)) = (keyword_id, movie_id) {
-                if k_s.contains(&keyword_id) {
-                    Some(movie_id)
-                } else {
-                    None
-                }
-            } else {
-                None
-            }
+    let n_m: ahash::HashMap<&i32, &str> =
+        n.id.iter()
+            .zip(n.name.iter())
+            .filter_map(|(id, name)| {
+                b.find(name.as_bytes())
+                    .is_some()
+                    .then_some((id, name.as_str()))
+            })
+            .collect();
+
+    let res = ci
+        .person_id
+        .iter()
+        .zip(ci.movie_id.iter())
+        .filter_map(|(person_id, movie_id)| {
+            // Check if this person has a "Bert" name and the movie is valid
+            n_m.get(&person_id)
+                .filter(|_| mk_s.contains(&movie_id))
+                .copied()
         })
-        .collect();
-
-    let mut n_m: HashMap<i32, Vec<&str>> = HashMap::default();
-
-    for (id, name) in n
-        .column("id")?
-        .i32()?
-        .into_iter()
-        .zip(n.column("name")?.str()?.into_iter())
-    {
-        if let (Some(id), Some(name)) = (id, name) {
-            if name.contains('B') {
-                n_m.entry(id).or_default().push(name);
-            }
-        }
-    }
-
-    let mut res: Option<&str> = None;
-
-    for (pid, mid) in ci
-        .column("person_id")?
-        .i32()?
-        .into_iter()
-        .zip(ci.column("movie_id")?.i32()?.into_iter())
-    {
-        if let (Some(pid), Some(mid)) = (pid, mid) {
-            if mk_s.contains(&mid) {
-                if let Some(names) = n_m.get(&pid) {
-                    for name in names {
-                        if let Some(old_name) = res.as_mut() {
-                            if name < old_name {
-                                *old_name = name;
-                            }
-                        } else {
-                            res = Some(name);
-                        }
-                    }
-                }
-            }
-        }
-    }
+        .min();
 
     println!("17f,{:}", start.elapsed().as_secs_f32());
 
@@ -114,14 +77,15 @@ pub fn q17f(db: &ImdbData) -> Result<Option<&str>, PolarsError> {
 // AND mc.movie_id = mk.movie_id;
 
 #[cfg(test)]
-mod test_17f {
+mod test_q17f {
     use super::*;
     use crate::data::ImdbData;
 
     #[test]
     fn test_q17f() -> Result<(), PolarsError> {
         let db = ImdbData::new();
-        assert_eq!(q17f(&db)?, Some("'El Galgo PornoStar', Blanquito"));
+        let data = Data::new(&db);
+        assert_eq!(q17f(&data)?, Some("'El Galgo PornoStar', Blanquito"));
         Ok(())
     }
 }
