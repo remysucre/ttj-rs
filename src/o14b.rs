@@ -1,11 +1,11 @@
-use crate::data::ImdbData;
+use crate::data::Data;
 use ahash::{HashMap, HashSet};
+use memchr::memmem::Finder;
 use polars::prelude::*;
 use std::time::Instant;
 
-pub fn q14b(db: &ImdbData) -> Result<Option<(&str, &str)>, PolarsError> {
-    let it1 = &db.it;
-    let it2 = &db.it;
+pub fn q14b(db: &Data) -> Result<Option<(&str, &str)>, PolarsError> {
+    let it = &db.it;
     let k = &db.k;
     let kt = &db.kt;
     let mi = &db.mi;
@@ -13,178 +13,116 @@ pub fn q14b(db: &ImdbData) -> Result<Option<(&str, &str)>, PolarsError> {
     let t = &db.t;
     let mk = &db.mk;
 
+    let mureder = Finder::new("murder");
+    let murder_c = Finder::new("Murder");
+    let mord = Finder::new("Mord");
+
     let start = Instant::now();
 
-    let it1_s: HashSet<i32> = it1
-        .column("info")?
-        .str()?
-        .into_iter()
-        .zip(it1.column("id")?.i32()?)
-        .filter_map(|(info, id)| {
-            if let (Some(info), Some(id)) = (info, id) {
-                if info == "countries" { Some(id) } else { None }
-            } else {
-                None
-            }
-        })
+    let mut it1_id: &i32 = &0;
+    let mut it2_id: &i32 = &0;
+
+    for (id, info) in it.id.iter().zip(it.info.iter()) {
+        if info == "countries" {
+            it1_id = id;
+        } else if info == "rating" {
+            it2_id = id;
+        }
+    }
+
+    let target_keywords: ahash::HashSet<&str> = ["murder", "murder-in-title"].into_iter().collect();
+
+    let k_s: HashSet<&i32> = k
+        .keyword
+        .iter()
+        .zip(k.id.iter())
+        .filter_map(|(keyword, id)| target_keywords.contains(keyword.as_str()).then_some(id))
         .collect();
 
-    let it2_s: HashSet<i32> = it2
-        .column("info")?
-        .str()?
-        .into_iter()
-        .zip(it2.column("id")?.i32()?)
-        .filter_map(|(info, id)| {
-            if let (Some(info), Some(id)) = (info, id) {
-                if info == "rating" { Some(id) } else { None }
-            } else {
-                None
-            }
-        })
-        .collect();
+    let kt_id = kt
+        .kind
+        .iter()
+        .zip(kt.id.iter())
+        .find(|(kind, _)| *kind == "movie")
+        .map(|(_, id)| id)
+        .unwrap();
 
-    let k_s: HashSet<i32> = k
-        .column("keyword")?
-        .str()?
-        .into_iter()
-        .zip(k.column("id")?.i32()?)
-        .filter_map(|(keyword, id)| {
-            if let (Some(keyword), Some(id)) = (keyword, id) {
-                if matches!(keyword, "murder" | "murder-in-title") {
-                    Some(id)
-                } else {
-                    None
-                }
-            } else {
-                None
-            }
-        })
-        .collect();
+    let target_info: HashSet<&str> = [
+        "Sweden",
+        "Norway",
+        "Germany",
+        "Denmark",
+        "Swedish",
+        "Denish",
+        "Norwegian",
+        "German",
+        "USA",
+        "American",
+    ]
+    .into_iter()
+    .collect();
 
-    let kt_s: HashSet<i32> = kt
-        .column("kind")?
-        .str()?
-        .into_iter()
-        .zip(kt.column("id")?.i32()?)
-        .filter_map(|(kind, id)| {
-            if let (Some(kind), Some(id)) = (kind, id) {
-                if kind == "movie" { Some(id) } else { None }
-            } else {
-                None
-            }
-        })
-        .collect();
-
-    let mi_s: HashSet<i32> = mi
-        .column("info")?
-        .str()?
-        .into_iter()
-        .zip(mi.column("movie_id")?.i32()?)
-        .zip(mi.column("info_type_id")?.i32()?)
+    let mi_s: HashSet<&i32> = mi
+        .info
+        .iter()
+        .zip(mi.movie_id.iter())
+        .zip(mi.info_type_id.iter())
         .filter_map(|((info, movie_id), info_type_id)| {
-            if let (Some(info), Some(movie_id), Some(info_type_id)) = (info, movie_id, info_type_id)
-            {
-                if matches!(
-                    info,
-                    "Sweden"
-                        | "Norway"
-                        | "Germany"
-                        | "Denmark"
-                        | "Swedish"
-                        // query has a typo, which makes this field useless.
-                        // | "Denish"
-                        | "Norwegian"
-                        | "German"
-                        | "USA"
-                        | "American"
-                ) && it1_s.contains(&(info_type_id))
-                {
-                    Some(movie_id)
-                } else {
-                    None
-                }
-            } else {
-                None
-            }
+            (target_info.contains(info.as_str()) && it1_id == info_type_id).then_some(movie_id)
         })
         .collect();
 
-    let mk_s: HashSet<i32> = mk
-        .column("keyword_id")?
-        .i32()?
-        .into_iter()
-        .zip(mk.column("movie_id")?.i32()?)
-        .filter_map(|(keyword_id, movie_id)| {
-            if let (Some(keyword_id), Some(movie_id)) = (keyword_id, movie_id) {
-                if k_s.contains(&keyword_id) {
-                    Some(movie_id)
-                } else {
-                    None
-                }
-            } else {
-                None
-            }
-        })
+    let mk_s: HashSet<&i32> = mk
+        .movie_id
+        .iter()
+        .zip(mk.keyword_id.iter())
+        .filter_map(|(movie_id, keyword_id)| k_s.contains(keyword_id).then_some(movie_id))
         .collect();
 
-    let t_m: HashMap<i32, Vec<&str>> = t
-        .column("id")?
-        .i32()?
-        .into_iter()
-        .zip(t.column("title")?.str()?)
-        .zip(t.column("production_year")?.i32()?)
-        .zip(t.column("kind_id")?.i32()?)
-        .filter_map(|(((id, title), production_year), kind_id)| {
-            if let (Some(id), Some(title), Some(production_year), Some(kind_id)) =
-                (id, title, production_year, kind_id)
-            {
-                if production_year > 2010
-                    && (title.contains("murder")
-                        || title.contains("Murder")
-                        || title.contains("Mord"))
-                    && kt_s.contains(&kind_id)
+    let t_m: HashMap<&i32, Vec<&str>> =
+        t.id.iter()
+            .zip(t.production_year.iter())
+            .zip(t.title.iter())
+            .zip(t.kind_id.iter())
+            .filter_map(|(((movie_id, production_year), title), kind_id)| {
+                if let Some(production_year) = production_year
+                    && *production_year > 2010
+                    && kt_id == kind_id
+                    && (mureder.find(title.as_bytes()).is_some()
+                        || murder_c.find(title.as_bytes()).is_some()
+                        || mord.find(title.as_bytes()).is_some())
                 {
-                    Some((id, title))
+                    Some((movie_id, title))
                 } else {
                     None
                 }
-            } else {
-                None
-            }
-        })
-        .fold(HashMap::default(), |mut acc, (id, title)| {
-            acc.entry(id).or_default().push(title);
-            acc
-        });
+            })
+            .fold(HashMap::default(), |mut acc, (movie_id, title)| {
+                acc.entry(movie_id).or_default().push(title);
+                acc
+            });
 
     let mut res: Option<(&str, &str)> = None;
 
     for ((info_type_id, movie_id), info) in mi_idx
-        .column("info_type_id")?
-        .i32()?
-        .into_iter()
-        .zip(mi_idx.column("movie_id")?.i32()?.into_iter())
-        .zip(mi_idx.column("info")?.str()?.into_iter())
+        .info_type_id
+        .iter()
+        .zip(mi_idx.movie_id.iter())
+        .zip(mi_idx.info.iter())
     {
-        if let (Some(info_type_id), Some(movie_id), Some(info)) = (info_type_id, movie_id, info) {
-            if it2_s.contains(&info_type_id) && info > "6.0" {
-                if let Some(titles) = t_m.get(&movie_id) {
-                    if mi_s.contains(&movie_id) && mk_s.contains(&movie_id) {
-                        for title in titles {
-                            if let Some((old_info, old_title)) = res.as_mut() {
-                                if title < old_title {
-                                    *old_title = title;
-                                }
-                                if info < *old_info {
-                                    *old_info = info;
-                                }
-                            } else {
-                                res = Some((info, title));
-                            }
-                        }
-                    }
-                }
-            }
+        if it2_id == info_type_id
+            && info.as_str() > "6.0"
+            && let Some(titles) = t_m.get(&movie_id)
+            && mi_s.contains(&movie_id)
+            && mk_s.contains(&movie_id)
+        {
+            res = match res {
+                Some((old_info, old_title)) => Some((
+                    info.as_str().min(old_info),
+                    titles.iter().min().unwrap().min(&old_title),
+                )),
+                None => Some((info, titles.iter().min().unwrap())),
+            };
         }
     }
 
@@ -230,7 +168,8 @@ mod test_14b {
     #[test]
     fn test_q14b() -> Result<(), PolarsError> {
         let db = ImdbData::new();
-        let res = q14b(&db)?;
+        let data = Data::new(&db);
+        let res = q14b(&data)?;
         assert_eq!(res, Some(("6.4", "Of Dolls and Murder")));
         Ok(())
     }
