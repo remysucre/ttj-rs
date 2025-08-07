@@ -1,9 +1,9 @@
-use crate::data::ImdbData;
-use ahash::{HashMap, HashSet};
+use crate::data::Data;
+use ahash::{HashMap, HashMapExt, HashSet};
 use polars::prelude::*;
 use std::time::Instant;
 
-pub fn q16b(db: &ImdbData) -> Result<Option<(&str, &str)>, PolarsError> {
+pub fn q16b(db: &Data) -> Result<Option<(&str, &str)>, PolarsError> {
     let an = &db.an;
     let ci = &db.ci;
     let cn = &db.cn;
@@ -12,128 +12,73 @@ pub fn q16b(db: &ImdbData) -> Result<Option<(&str, &str)>, PolarsError> {
     let t = &db.t;
     let mc = &db.mc;
 
+    let an_m: HashMap<&i32, Vec<&str>> = an.person_id.iter().zip(an.name.iter()).fold(
+        HashMap::<&i32, Vec<&str>>::new(),
+        |mut acc, (person_id, name)| {
+            acc.entry(person_id).or_default().push(name);
+            acc
+        },
+    );
+
     let start = Instant::now();
 
-    let k_s: HashSet<i32> = k
-        .column("id")?
-        .i32()?
-        .into_iter()
-        .zip(k.column("keyword")?.str()?)
-        .filter_map(|(id, keyword)| {
-            if let (Some(id), Some(keyword)) = (id, keyword) {
-                if keyword == "character-name-in-title" {
-                    Some(id)
-                } else {
-                    None
-                }
-            } else {
-                None
-            }
-        })
+    let k_id = k
+        .keyword
+        .iter()
+        .zip(k.id.iter())
+        .find(|(keyword, _)| *keyword == "character-name-in-title")
+        .map(|(_, id)| id)
+        .unwrap();
+
+    let mk_s: HashSet<&i32> = mk
+        .movie_id
+        .iter()
+        .zip(mk.keyword_id.iter())
+        .filter_map(|(movie_id, keyword_id)| (keyword_id == k_id).then_some(movie_id))
         .collect();
-
-    let mut mk_s: HashSet<i32> = HashSet::default();
-
-    for (movie_id, keyword_id) in mk
-        .column("movie_id")?
-        .i32()?
-        .into_iter()
-        .zip(mk.column("keyword_id")?.i32()?.into_iter())
-    {
-        if let (Some(movie_id), Some(keyword_id)) = (movie_id, keyword_id) {
-            if k_s.contains(&keyword_id) {
-                mk_s.insert(movie_id);
-            }
-        }
-    }
 
     let cn_s: HashSet<i32> = cn
-        .column("id")?
-        .i32()?
-        .into_iter()
-        .zip(cn.column("country_code")?.str()?)
-        .filter_map(|(id, country_code)| {
-            if let (Some(id), Some(country_code)) = (id, country_code) {
-                if country_code == "[us]" {
-                    Some(id)
-                } else {
-                    None
-                }
-            } else {
-                None
-            }
+        .country_code
+        .iter()
+        .zip(cn.id.iter())
+        .filter_map(|(country_code, id)| {
+            country_code
+                .as_ref()
+                .filter(|country_code| *country_code == "[us]")
+                .map(|_| *id)
         })
         .collect();
 
-    let mut mc_s: HashSet<i32> = HashSet::default();
+    let mc_s: HashSet<&i32> = mc
+        .company_id
+        .iter()
+        .zip(mc.movie_id.iter())
+        .filter_map(|(company_id, movie_id)| cn_s.contains(&company_id).then_some(movie_id))
+        .collect();
 
-    for (movie_id, company_id) in mc
-        .column("movie_id")?
-        .i32()?
-        .into_iter()
-        .zip(mc.column("company_id")?.i32()?.into_iter())
-    {
-        if let (Some(movie_id), Some(company_id)) = (movie_id, company_id) {
-            if cn_s.contains(&company_id) {
-                mc_s.insert(movie_id);
-            }
-        }
-    }
-
-    let mut t_m: HashMap<i32, Vec<&str>> = HashMap::default();
-
-    for (movie_id, title) in t
-        .column("id")?
-        .i32()?
-        .into_iter()
-        .zip(t.column("title")?.str()?.into_iter())
-    {
-        if let (Some(movie_id), Some(title)) = (movie_id, title) {
-            if mk_s.contains(&movie_id) && mc_s.contains(&movie_id) {
-                t_m.entry(movie_id).or_default().push(title);
-            }
-        }
-    }
-
-    let mut an_m: HashMap<i32, Vec<&str>> = HashMap::default();
-    for (person_id, name) in an
-        .column("person_id")?
-        .i32()?
-        .into_iter()
-        .zip(an.column("name")?.str()?.into_iter())
-    {
-        if let (Some(person_id), Some(name)) = (person_id, name) {
-            an_m.entry(person_id).or_default().push(name);
-        }
-    }
+    let t_m: HashMap<&i32, &str> =
+        t.id.iter()
+            .zip(t.title.iter())
+            .filter_map(|(movie_id, title)| {
+                (mk_s.contains(&movie_id) && mc_s.contains(&movie_id))
+                    .then_some((movie_id, title.as_str()))
+            })
+            .collect();
 
     let mut res: Option<(&str, &str)> = None;
 
-    for (x, y) in ci
-        .column("person_id")?
-        .i32()?
-        .into_iter()
-        .zip(ci.column("movie_id")?.i32()?.into_iter())
-    {
-        if let (Some(person_id), Some(movie_id)) = (x, y) {
-            if let Some(ts) = t_m.get(&movie_id) {
-                if let Some(names) = an_m.get(&person_id) {
-                    for name in names {
-                        for title in ts {
-                            if let Some((old_name, old_title)) = res.as_mut() {
-                                if name < old_name {
-                                    *old_name = name;
-                                }
-                                if title < old_title {
-                                    *old_title = title;
-                                }
-                            } else {
-                                res = Some((name, title));
-                            }
-                        }
-                    }
-                }
-            }
+    for (person_id, movie_id) in ci.person_id.iter().zip(ci.movie_id.iter()) {
+        if mc_s.contains(&movie_id)
+            && let Some(title) = t_m.get(&movie_id)
+            && let Some(name) = an_m.get(&person_id)
+        {
+            res = match res {
+                Some((old_name, old_title)) => Some((
+                    name.iter().min().unwrap().min(&old_name),
+                    title.min(&old_title),
+                )),
+                None => Some((name.iter().min().unwrap(), title)),
+            };
         }
     }
 
@@ -168,14 +113,15 @@ pub fn q16b(db: &ImdbData) -> Result<Option<(&str, &str)>, PolarsError> {
 //   AND mc.movie_id = mk.movie_id;
 
 #[cfg(test)]
-mod test_16b {
+mod test_q16b {
     use super::*;
     use crate::data::ImdbData;
 
     #[test]
     fn test_q16b() -> Result<(), PolarsError> {
         let db = ImdbData::new();
-        assert_eq!(q16b(&db)?, Some(("!!!, Toy", "& Teller")));
+        let data = Data::new(&db);
+        assert_eq!(q16b(&data)?, Some(("!!!, Toy", "& Teller")));
         Ok(())
     }
 }
