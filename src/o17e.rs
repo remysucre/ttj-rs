@@ -1,9 +1,9 @@
-use crate::data::ImdbData;
+use crate::data::Data;
 use ahash::{HashMap, HashSet};
 use polars::prelude::*;
 use std::time::Instant;
 
-pub fn q17e(db: &ImdbData) -> Result<Option<&str>, PolarsError> {
+pub fn q17e(db: &Data) -> Result<Option<&str>, PolarsError> {
     let ci = &db.ci;
     let k = &db.k;
     let mk = &db.mk;
@@ -20,116 +20,64 @@ pub fn q17e(db: &ImdbData) -> Result<Option<&str>, PolarsError> {
     //     .flatten()
     //     .collect();
 
-    let n_m: HashMap<i32, &str> = n
-        .column("id")?
-        .i32()?
-        .into_iter()
-        .zip(n.column("name")?.str()?.into_iter())
-        .filter_map(|(id, name)| {
-            if let (Some(id), Some(name)) = (id, name) {
-                Some((id, name))
-            } else {
-                None
-            }
-        })
-        .collect();
+    let n_m: HashMap<&i32, &str> =
+        n.id.iter()
+            .zip(n.name.iter())
+            .map(|(id, name)| (id, name.as_str()))
+            .collect();
 
     let start = Instant::now();
 
-    let k_s: Vec<i32> = k
-        .column("keyword")?
-        .str()?
-        .into_iter()
-        .zip(k.column("id")?.i32()?)
-        .filter_map(|(keyword, id)| {
-            if let (Some(keyword), Some(id)) = (keyword, id) {
-                if keyword == "character-name-in-title" {
-                    Some(id)
-                } else {
-                    None
-                }
-            } else {
-                None
-            }
-        })
-        .collect();
+    let k_id = k
+        .keyword
+        .iter()
+        .zip(k.id.iter())
+        .find(|(keyword, _)| *keyword == "character-name-in-title")
+        .map(|(_, id)| id)
+        .unwrap();
 
-    let mk_s: HashSet<i32> = mk
-        .column("keyword_id")?
-        .i32()?
-        .into_iter()
-        .zip(mk.column("movie_id")?.i32()?)
-        .filter_map(|(keyword_id, movie_id)| {
-            if let (Some(keyword_id), Some(movie_id)) = (keyword_id, movie_id) {
-                if k_s.contains(&keyword_id) {
-                    Some(movie_id)
-                } else {
-                    None
-                }
-            } else {
-                None
-            }
-        })
+    let mk_s: ahash::HashSet<i32> = mk
+        .keyword_id
+        .iter()
+        .zip(mk.movie_id.iter())
+        .filter_map(|(keyword_id, movie_id)| (keyword_id == k_id).then_some(*movie_id))
         .collect();
 
     let cn_s: HashSet<i32> = cn
-        .column("id")?
-        .i32()?
-        .into_iter()
-        .zip(cn.column("country_code")?.str()?)
-        .filter_map(|(id, country_code)| {
-            if let (Some(id), Some(country_code)) = (id, country_code) {
-                if country_code == "[us]" {
-                    Some(id)
-                } else {
-                    None
-                }
+        .country_code
+        .iter()
+        .zip(cn.id.iter())
+        .filter_map(|(country_code, id)| {
+            country_code
+                .as_ref()
+                .filter(|country_code| *country_code == "[us]")
+                .map(|_| *id)
+        })
+        .collect();
+
+    let mc_s: ahash::HashSet<&i32> = mc
+        .movie_id
+        .iter()
+        .zip(mc.company_id.iter())
+        .filter_map(|(movie_id, company_id)| {
+            (mk_s.contains(&movie_id) && cn_s.contains(&company_id)).then_some(movie_id)
+        })
+        .collect();
+
+    let res: Option<&str> = ci
+        .person_id
+        .iter()
+        .zip(ci.movie_id.iter())
+        .filter_map(|(person_id, movie_id)| {
+            if let Some(name) = n_m.get(&person_id)
+                && mc_s.contains(&movie_id)
+            {
+                Some(*name)
             } else {
                 None
             }
         })
-        .collect();
-
-    let mc_s: HashSet<i32> = mc
-        .column("company_id")?
-        .i32()?
-        .into_iter()
-        .zip(mc.column("movie_id")?.i32()?)
-        .filter_map(|(company_id, movie_id)| {
-            if let (Some(company_id), Some(movie_id)) = (company_id, movie_id) {
-                if cn_s.contains(&company_id) {
-                    Some(movie_id)
-                } else {
-                    None
-                }
-            } else {
-                None
-            }
-        })
-        .collect();
-
-    let mut res: Option<&str> = None;
-
-    for (pid, mid) in ci
-        .column("person_id")?
-        .i32()?
-        .into_iter()
-        .zip(ci.column("movie_id")?.i32()?.into_iter())
-    {
-        if let (Some(pid), Some(mid)) = (pid, mid) {
-            if mk_s.contains(&mid) && mc_s.contains(&mid) {
-                if let Some(name) = n_m.get(&pid) {
-                    if let Some(old_name) = res.as_mut() {
-                        if name < old_name {
-                            *old_name = *name;
-                        }
-                    } else {
-                        res = Some(name);
-                    }
-                }
-            }
-        }
-    }
+        .min();
 
     println!("17e,{:}", start.elapsed().as_secs_f32());
 
@@ -157,14 +105,15 @@ pub fn q17e(db: &ImdbData) -> Result<Option<&str>, PolarsError> {
 // AND ci.movie_id = mk.movie_id
 // AND mc.movie_id = mk.movie_id;
 #[cfg(test)]
-mod test_17e {
+mod test_q17e {
     use super::*;
     use crate::data::ImdbData;
 
     #[test]
     fn test_q17e() -> Result<(), PolarsError> {
         let db = ImdbData::new();
-        let res = q17e(&db)?;
+        let data = Data::new(&db);
+        let res = q17e(&data)?;
         assert_eq!(res, Some("$hort, Too"));
         Ok(())
     }
