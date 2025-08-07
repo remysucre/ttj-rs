@@ -1,9 +1,9 @@
-use crate::data::ImdbData;
-use ahash::{HashMap, HashSet};
+use crate::data::Data;
+use memchr::memmem::Finder;
 use polars::prelude::*;
 use std::time::Instant;
 
-pub fn q17d(db: &ImdbData) -> Result<Option<&str>, PolarsError> {
+pub fn q17d(db: &Data) -> Result<Option<&str>, PolarsError> {
     let ci = &db.ci;
     let k = &db.k;
     let mk = &db.mk;
@@ -12,6 +12,7 @@ pub fn q17d(db: &ImdbData) -> Result<Option<&str>, PolarsError> {
     let mc = &db.mc;
     // let t = &db.t;
 
+    let bert = Finder::new("Bert");
     // FK-PK optimization: FK is ci.movie_id and PK is title.id
     // let t_s: HashSet<i32> = t
     //     .column("id")?
@@ -25,42 +26,40 @@ pub fn q17d(db: &ImdbData) -> Result<Option<&str>, PolarsError> {
     let start = Instant::now();
 
     let k_id = k
-        .column("keyword")?
-        .str()?
-        .into_no_null_iter()
-        .zip(k.column("id")?.i32()?.into_no_null_iter())
+        .keyword
+        .iter()
+        .zip(k.id.iter())
         .find(|(keyword, _)| *keyword == "character-name-in-title")
         .map(|(_, id)| id)
         .unwrap();
 
-    let mk_s: HashSet<i32> = mk
-        .column("keyword_id")?
-        .i32()?
-        .into_no_null_iter()
-        .zip(mk.column("movie_id")?.i32()?.into_no_null_iter())
-        .filter_map(|(keyword_id, movie_id)| (k_id == keyword_id).then_some(movie_id))
+    let mk_s: ahash::HashSet<i32> = mk
+        .keyword_id
+        .iter()
+        .zip(mk.movie_id.iter())
+        .filter_map(|(keyword_id, movie_id)| (keyword_id == k_id).then_some(*movie_id))
         .collect();
 
-    let mc_s: HashSet<i32> = mc
-        .column("movie_id")?
-        .i32()?
-        .into_no_null_iter()
-        .filter(|movie_id| mk_s.contains(movie_id))
+    let mc_s: ahash::HashSet<i32> = mc
+        .movie_id
+        .iter()
+        .filter_map(|movie_id| mk_s.contains(&movie_id).then_some(*movie_id))
         .collect();
 
-    let n_m: HashMap<i32, &str> = n
-        .column("id")?
-        .i32()?
-        .into_no_null_iter()
-        .zip(n.column("name")?.str()?.into_no_null_iter())
-        .filter_map(|(id, name)| name.contains("Bert").then_some((id, name)))
-        .collect();
+    let n_m: ahash::HashMap<&i32, &str> =
+        n.id.iter()
+            .zip(n.name.iter())
+            .filter_map(|(id, name)| {
+                bert.find(name.as_bytes())
+                    .is_some()
+                    .then_some((id, name.as_str()))
+            })
+            .collect();
 
     let res = ci
-        .column("person_id")?
-        .i32()?
-        .into_no_null_iter()
-        .zip(ci.column("movie_id")?.i32()?.into_no_null_iter())
+        .person_id
+        .iter()
+        .zip(ci.movie_id.iter())
         .filter_map(|(person_id, movie_id)| {
             // Check if this person has a "Bert" name and the movie is valid
             n_m.get(&person_id)
@@ -95,14 +94,15 @@ pub fn q17d(db: &ImdbData) -> Result<Option<&str>, PolarsError> {
 // AND ci.movie_id = mk.movie_id
 // AND mc.movie_id = mk.movie_id;
 #[cfg(test)]
-mod test_17d {
+mod test_q17d {
     use super::*;
     use crate::data::ImdbData;
 
     #[test]
     fn test_q17d() -> Result<(), PolarsError> {
         let db = ImdbData::new();
-        let res = q17d(&db)?;
+        let data = Data::new(&db);
+        let res = q17d(&data)?;
         assert_eq!(res, Some("Abrahamsson, Bertil"));
         Ok(())
     }
