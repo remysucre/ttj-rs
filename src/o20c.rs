@@ -1,72 +1,62 @@
-use crate::data::ImdbData;
+use crate::data::Data;
 use ahash::HashSet;
 use ahash::{HashMap, HashSetExt};
+use memchr::memmem;
 use polars::prelude::*;
 use std::time::Instant;
 
-pub fn q20c(db: &ImdbData) -> Result<Option<(&str, &str)>, PolarsError> {
+pub fn q20c(db: &Data) -> Result<Option<(&str, &str)>, PolarsError> {
     let ci = &db.ci;
     let chn = &db.chn;
     let t = &db.t;
     let kt = &db.kt;
     let n = &db.n;
     let cc = &db.cc;
-    let cct: &DataFrame = &db.cct;
+    let cct = &db.cct;
     let mk = &db.mk;
     let k = &db.k;
 
-    let n_m: HashMap<i32, &str> = n
-        .column("id")?
-        .i32()?
-        .into_no_null_iter()
-        .zip(n.column("name")?.str()?.into_no_null_iter())
-        .collect();
+    let n_m: HashMap<&i32, &str> =
+        n.id.iter()
+            .zip(n.name.iter())
+            .map(|(id, name)| (id, name.as_str()))
+            .collect();
+
+    let man = memmem::Finder::new(b"man");
+    let big_man = memmem::Finder::new(b"Man");
 
     let start = Instant::now();
 
     let mut cct1_id: i32 = 0;
     let mut cct2_s = HashSet::new();
 
-    for (id, kind) in cct
-        .column("id")?
-        .i32()?
-        .into_no_null_iter()
-        .zip(db.cct.column("kind")?.str()?.into_no_null_iter())
-    {
+    for (id, kind) in cct.id.iter().zip(cct.kind.iter()) {
         if kind == "cast" {
-            cct1_id = id;
+            cct1_id = *id;
         } else if kind.contains("complete") {
             cct2_s.insert(id);
         }
     }
 
     let cc_s: HashSet<i32> = cc
-        .column("subject_id")?
-        .i32()?
-        .into_no_null_iter()
-        .zip(cc.column("status_id")?.i32()?.into_no_null_iter())
-        .zip(cc.column("movie_id")?.i32()?.into_no_null_iter())
+        .subject_id
+        .iter()
+        .zip(cc.status_id.iter())
+        .zip(cc.movie_id.iter())
         .filter_map(|((subject_id, status_id), movie_id)| {
-            (cct1_id == subject_id && cct2_s.contains(&status_id)).then_some(movie_id)
+            (*subject_id == cct1_id && cct2_s.contains(status_id)).then_some(*movie_id)
         })
         .collect();
 
-    let chn_s: HashSet<i32> = chn
-        .column("name")?
-        .str()?
-        .into_no_null_iter()
-        .zip(chn.column("id")?.i32()?.into_no_null_iter())
+    let chn_s = chn
+        .name
+        .iter()
+        .zip(chn.id.iter())
         .filter_map(|(name, id)| {
-            if name.contains("Sherlock") {
-                return None;
-            }
-            if name.contains("man") || name.contains("Man") {
-                Some(id)
-            } else {
-                None
-            }
+            (big_man.find(name.as_bytes()).is_some() || man.find(name.as_bytes()).is_some())
+                .then_some(id)
         })
-        .collect();
+        .collect::<HashSet<_>>();
 
     let target_keywords: HashSet<&str> = [
         "superhero",
@@ -83,46 +73,36 @@ pub fn q20c(db: &ImdbData) -> Result<Option<(&str, &str)>, PolarsError> {
     .into_iter()
     .collect();
 
-    let k_s: HashSet<i32> = k
-        .column("id")?
-        .i32()?
-        .into_no_null_iter()
-        .zip(k.column("keyword")?.str()?.into_no_null_iter())
-        .filter_map(|(id, keyword)| target_keywords.contains(keyword).then_some(id))
-        .collect();
+    let k_s: HashSet<i32> =
+        k.id.iter()
+            .zip(k.keyword.iter())
+            .filter_map(|(id, keyword)| target_keywords.contains(keyword.as_str()).then_some(*id))
+            .collect();
 
     let kt_id = kt
-        .column("kind")?
-        .str()?
-        .into_no_null_iter()
-        .zip(kt.column("id")?.i32()?.into_no_null_iter())
+        .kind
+        .iter()
+        .zip(kt.id.iter())
         .find(|(kind, _)| *kind == "movie")
         .map(|(_, id)| id)
         .unwrap();
 
-    let t_m: HashMap<i32, &str> = t
-        .column("id")?
-        .i32()?
-        .into_no_null_iter()
-        .zip(t.column("title")?.str()?.into_no_null_iter())
-        .zip(t.column("production_year")?.i32()?)
-        .zip(t.column("kind_id")?.i32()?.into_no_null_iter())
-        .filter_map(|(((id, title), production_year), kind_id)| {
-            (production_year? > 2000 && kt_id == kind_id && cc_s.contains(&id))
-                .then_some((id, title))
-        })
-        .fold(HashMap::default(), |mut acc, (id, title)| {
-            acc.entry(id)
-                .and_modify(|e| *e = (*e).min(title))
-                .or_insert(title);
-            acc
-        });
+    let t_m: HashMap<i32, &str> =
+        t.id.iter()
+            .zip(t.title.iter())
+            .zip(t.production_year.iter())
+            .zip(t.kind_id.iter())
+            .filter_map(|(((id, title), production_year), kind_id)| {
+                production_year
+                    .filter(|&year| year > 2000 && kt_id == kind_id && cc_s.contains(&id))
+                    .map(|_| (*id, title.as_str()))
+            })
+            .collect();
 
     let mk_s = mk
-        .column("keyword_id")?
-        .i32()?
-        .into_no_null_iter()
-        .zip(mk.column("movie_id")?.i32()?.into_no_null_iter())
+        .keyword_id
+        .iter()
+        .zip(mk.movie_id.iter())
         .filter_map(|(keyword_id, movie_id)| {
             (k_s.contains(&keyword_id) && t_m.contains_key(&movie_id)).then_some(movie_id)
         })
@@ -131,13 +111,13 @@ pub fn q20c(db: &ImdbData) -> Result<Option<(&str, &str)>, PolarsError> {
     let mut res: Option<(&str, &str)> = None;
 
     for ((movie_id, person_id), person_role_id) in ci
-        .column("movie_id")?
-        .i32()?
-        .into_no_null_iter()
-        .zip(ci.column("person_id")?.i32()?.into_no_null_iter())
-        .zip(ci.column("person_role_id")?.i32()?.into_no_null_iter())
+        .movie_id
+        .iter()
+        .zip(ci.person_id.iter())
+        .zip(ci.person_role_id.iter())
     {
-        if chn_s.contains(&person_role_id)
+        if let Some(person_role_id) = person_role_id
+            && chn_s.contains(person_role_id)
             && mk_s.contains(&movie_id)
             && let Some(name) = n_m.get(&person_id)
             && let Some(title) = t_m.get(&movie_id)
@@ -189,14 +169,15 @@ pub fn q20c(db: &ImdbData) -> Result<Option<(&str, &str)>, PolarsError> {
 // AND cct1.id = cc.subject_id
 // AND cct2.id = cc.status_id;
 #[cfg(test)]
-mod test_20c {
+mod test_q20c {
     use super::*;
     use crate::data::ImdbData;
 
     #[test]
     fn test_q20c() -> Result<(), PolarsError> {
         let db = ImdbData::new();
-        let res = q20c(&db)?;
+        let data = Data::new(&db);
+        let res = q20c(&data)?;
         assert_eq!(res, Some(("Abell, Alistair", "...And Then I...")));
         Ok(())
     }
