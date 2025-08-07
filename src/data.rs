@@ -340,6 +340,34 @@ pub struct PI {
     pub note: Vec<Option<String>>,
 }
 
+// CREATE TABLE aka_title (
+//                                          id integer NOT NULL,
+//                                          movie_id integer NOT NULL,
+//                                          title text NOT NULL,
+//                                          imdb_index character varying(12),
+//                                          kind_id integer NOT NULL,
+//                                          production_year integer,
+//                                          phonetic_code character varying(5),
+//                                          episode_of_id integer,
+//                                          season_nr integer,
+//                                          episode_nr integer,
+//                                          note text,
+//                                          md5sum character varying(32)
+pub struct AT {
+    pub id: Vec<i32>,
+    pub movie_id: Vec<i32>,
+    pub title: Vec<String>,
+    pub imdb_index: Vec<Option<String>>,
+    pub kind_id: Vec<i32>,
+    pub production_year: Vec<Option<i32>>,
+    pub phonetic_code: Vec<Option<String>>,
+    pub episode_of_id: Vec<Option<i32>>,
+    pub season_nr: Vec<Option<i32>>,
+    pub episode_nr: Vec<Option<i32>>,
+    pub note: Vec<Option<String>>,
+    pub md5sum: Vec<Option<String>>,
+}
+
 
 pub struct Data {
     pub ci: CI,
@@ -362,6 +390,7 @@ pub struct Data {
     pub mi: MI,
     pub ct: CT,
     pub pi: PI,
+    pub at: AT,
 }
 
 impl Data {
@@ -1219,6 +1248,109 @@ impl Data {
                     .map(|opt| opt.map(|s| s.to_string()))
                     .collect(),
             },
+            at: AT {
+                id: imdb
+                    .at
+                    .column("id")
+                    .unwrap()
+                    .i32()
+                    .unwrap()
+                    .into_no_null_iter()
+                    .collect(),
+                movie_id: imdb
+                    .at
+                    .column("movie_id")
+                    .unwrap()
+                    .i32()
+                    .unwrap()
+                    .into_no_null_iter()
+                    .collect(),
+                title: imdb
+                    .at
+                    .column("title")
+                    .unwrap()
+                    .str()
+                    .unwrap()
+                    .into_no_null_iter()
+                    .map(|s| s.to_string())
+                    .collect(),
+                imdb_index: imdb
+                    .at
+                    .column("imdb_index")
+                    .unwrap()
+                    .str()
+                    .unwrap()
+                    .into_iter()
+                    .map(|opt| opt.map(|s| s.to_string()))
+                    .collect(),
+                kind_id: imdb
+                    .at
+                    .column("kind_id")
+                    .unwrap()
+                    .i32()
+                    .unwrap()
+                    .into_no_null_iter()
+                    .collect(),
+                production_year: imdb
+                    .at
+                    .column("production_year")
+                    .unwrap()
+                    .i32()
+                    .unwrap()
+                    .into_iter()
+                    .collect(),
+                phonetic_code: imdb
+                    .at
+                    .column("phonetic_code")
+                    .unwrap()
+                    .str()
+                    .unwrap()
+                    .into_iter()
+                    .map(|opt| opt.map(|s| s.to_string()))
+                    .collect(),
+                episode_of_id: imdb
+                    .at
+                    .column("episode_of_id")
+                    .unwrap()
+                    .i32()
+                    .unwrap()
+                    .into_iter()
+                    .collect(),
+                season_nr: imdb
+                    .at
+                    .column("season_nr")
+                    .unwrap()
+                    .i32()
+                    .unwrap()
+                    .into_iter()
+                    .collect(),
+                episode_nr: imdb
+                    .at
+                    .column("episode_nr")
+                    .unwrap()
+                    .i32()
+                    .unwrap()
+                    .into_iter()
+                    .collect(),
+                note: imdb
+                    .at
+                    .column("note")
+                    .unwrap()
+                    .str()
+                    .unwrap()
+                    .into_iter()
+                    .map(|opt| opt.map(|s| s.to_string()))
+                    .collect(),
+                md5sum: imdb
+                    .at
+                    .column("md5sum")
+                    .unwrap()
+                    .str()
+                    .unwrap()
+                    .into_iter()
+                    .map(|opt| opt.map(|s| s.to_string()))
+                    .collect()
+            }
         }
     }
 }
