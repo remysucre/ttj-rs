@@ -79,7 +79,7 @@ fn main() -> Result<(), polars::prelude::PolarsError> {
     o20a::q20a(&data)?;
     o20b::q20b(&data)?;
     o20c::q20c(&data)?;
-    o21a::q21a(&db)?;
+    o21a::q21a(&data)?;
     o21b::q21b(&db)?;
     o21c::q21c(&db)?;
     o22a::q22a(&db)?;
