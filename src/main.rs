@@ -99,7 +99,7 @@ fn main() -> Result<(), polars::prelude::PolarsError> {
     o26c::q26c(&data)?;
     o27a::q27a(&data)?;
     o27b::q27b(&data)?;
-    o27c::q27c(&db)?;
+    o27c::q27c(&data)?;
     o28a::q28a(&db)?;
     o28b::q28b(&db)?;
     o28c::q28c(&db)?;
