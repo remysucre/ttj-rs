@@ -95,28 +95,18 @@ pub fn q7a(db: &Data) -> Result<Option<(&str, &str)>, PolarsError> {
             })
             .collect();
 
-    let res: Option<(&str, &str)> = ci
-        .person_id
-        .iter()
-        .zip(ci.movie_id.iter())
-        .filter_map(|(person_id, movie_id)| match (person_id, movie_id) {
-            (p_id, m_id) => {
-                if let Some(&name) = n_m.get(&p_id)
-                    && let Some(&title) = t_m.get(&m_id)
-                {
-                    Some((name, title))
-                } else {
-                    None
-                }
-            }
-        })
-        .fold(None, |acc: Option<(&str, &str)>, (name, title)| match acc {
-            None => Some((name, title)),
-            Some((min_name, min_title)) => Some((
-                if name < min_name { name } else { min_name },
-                if title < min_title { title } else { min_title },
-            )),
-        });
+    let mut res: Option<(&str, &str)> = None;
+
+    for (pid, mid) in ci.person_id.iter().zip(ci.movie_id.iter()) {
+        if let Some(name) = n_m.get(&pid)
+            && let Some(title) = t_m.get(&mid)
+        {
+            res = match res {
+                Some((old_name, old_title)) => Some((name.min(&old_name), title.min(&old_title))),
+                None => Some((name, title)),
+            };
+        }
+    }
 
     println!("7a,{:}", start.elapsed().as_secs_f32());
 
