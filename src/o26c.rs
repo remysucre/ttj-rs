@@ -1,6 +1,7 @@
 use crate::data::Data;
 use ahash::{HashMap, HashSet};
 use memchr::memmem;
+use memchr::memmem::Finder;
 use polars::prelude::*;
 use std::time::Instant;
 
@@ -31,6 +32,7 @@ pub fn q26c(db: &Data) -> Result<Option<(&str, &str, &str)>, PolarsError> {
 
     let man = memmem::Finder::new(b"man");
     let big_man = memmem::Finder::new(b"Man");
+    let complete = Finder::new(b"complete");
 
     let start = Instant::now();
 
@@ -50,7 +52,7 @@ pub fn q26c(db: &Data) -> Result<Option<(&str, &str, &str)>, PolarsError> {
     for (id, kind) in cct.id.iter().zip(cct.kind.iter()) {
         if kind == "cast" {
             cct1_id = *id;
-        } else if kind.contains("complete") {
+        } else if complete.find(kind.as_bytes()).is_some() {
             cct2_s.insert(id);
         }
     }
