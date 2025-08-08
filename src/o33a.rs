@@ -1,10 +1,10 @@
-use crate::data::ImdbData;
+use crate::data::Data;
 use ahash::{HashMap, HashSet};
 use polars::prelude::*;
 use std::time::Instant;
 
 #[allow(clippy::type_complexity)]
-pub fn q33a(db: &ImdbData) -> Result<Option<(&str, &str, &str, &str, &str, &str)>, PolarsError> {
+pub fn q33a(db: &Data) -> Result<Option<(&str, &str, &str, &str, &str, &str)>, PolarsError> {
     let cn = &db.cn;
     let it = &db.it;
     let kt = &db.kt;
@@ -16,72 +16,68 @@ pub fn q33a(db: &ImdbData) -> Result<Option<(&str, &str, &str, &str, &str, &str)
 
     let start = Instant::now();
 
-    let cn1_m: HashMap<i32, &str> = cn
-        .column("id")?
-        .i32()?
-        .into_no_null_iter()
-        .zip(cn.column("name")?.str()?.into_no_null_iter())
-        .zip(cn.column("country_code")?.str()?)
-        .filter_map(|((id, name), country_code)| (country_code? == "[us]").then_some((id, name)))
+    let cn1_m: HashMap<&i32, &str> = cn
+        .id
+        .iter()
+        .zip(cn.name.iter())
+        .zip(cn.country_code.iter())
+        .filter_map(|((id, name), country_code)| {
+            country_code
+                .as_deref()
+                .filter(|&code| code == "[us]")
+                .map(|_| (id, name.as_str()))
+        })
         .collect();
 
-    let it1_s: i32 = it
-        .column("id")?
-        .i32()?
-        .into_no_null_iter()
-        .zip(it.column("info")?.str()?.into_no_null_iter())
-        .find(|(_, info)| *info == "rating")
-        .map(|(id, _)| id)
+    let it1_id: &i32 = it
+        .info
+        .iter()
+        .zip(it.id.iter())
+        .find(|(info, _)| *info == "rating")
+        .map(|(_, id)| id)
         .unwrap();
 
-    let mut mi_idx1_m: HashMap<i32, &str> = HashMap::default();
-    let mut mi_idx2_m: HashMap<i32, &str> = HashMap::default();
+    let mut mi_idx1_m: HashMap<&i32, &str> = HashMap::default();
+    let mut mi_idx2_m: HashMap<&i32, &str> = HashMap::default();
 
     for ((it_id, info), movie_id) in mi_idx
-        .column("info_type_id")?
-        .i32()?
-        .into_no_null_iter()
-        .zip(mi_idx.column("info")?.str()?.into_no_null_iter())
-        .zip(mi_idx.column("movie_id")?.i32()?.into_no_null_iter())
+        .info_type_id
+        .iter()
+        .zip(mi_idx.info.iter())
+        .zip(mi_idx.movie_id.iter())
     {
-        if it1_s == it_id {
-            mi_idx1_m
-                .entry(movie_id)
-                .and_modify(|e| *e = (*e).min(info))
-                .or_insert(info);
-            if info < "3.0" {
-                mi_idx2_m
-                    .entry(movie_id)
-                    .and_modify(|e| *e = (*e).min(info))
-                    .or_insert(info);
+        if it1_id == it_id {
+            mi_idx1_m.insert(movie_id, info);
+            if info.as_str() < "3.0" {
+                mi_idx2_m.insert(movie_id, info);
             }
         }
     }
 
-    let kt1_s: i32 = kt
-        .column("id")?
-        .i32()?
-        .into_no_null_iter()
-        .zip(kt.column("kind")?.str()?.into_no_null_iter())
-        .find(|(_, kind)| *kind == "tv series")
-        .map(|(id, _)| id)
+    let kt_id = kt
+        .kind
+        .iter()
+        .zip(kt.id.iter())
+        .find(|(kind, _)| *kind == "tv series")
+        .map(|(_, id)| id)
         .unwrap();
 
-    let mut t1_m: HashMap<i32, &str> = HashMap::default();
-    let mut t2_m: HashMap<i32, &str> = HashMap::default();
+    let mut t1_m: HashMap<&i32, &str> = HashMap::default();
+    let mut t2_m: HashMap<&i32, &str> = HashMap::default();
 
-    for (((id, kind_id), title), production_year) in t
-        .column("id")?
-        .i32()?
-        .into_no_null_iter()
-        .zip(t.column("kind_id")?.i32()?.into_no_null_iter())
-        .zip(t.column("title")?.str()?.into_no_null_iter())
-        .zip(t.column("production_year")?.i32()?)
+    for (((id, kind_id), title), production_year) in
+        t.id.iter()
+            .zip(t.kind_id.iter())
+            .zip(t.title.iter())
+            .zip(t.production_year.iter())
     {
-        if kt1_s == kind_id {
-            t1_m.insert(id, title);
+        if kt_id == kind_id {
+            if mi_idx1_m.contains_key(id) {
+                t1_m.insert(id, title);
+            }
             if let Some(production_year) = production_year
-                && (2005..=2008).contains(&production_year)
+                && (2005..=2008).contains(production_year)
+                && mi_idx2_m.contains_key(id)
             {
                 t2_m.insert(id, title);
             }
@@ -90,52 +86,56 @@ pub fn q33a(db: &ImdbData) -> Result<Option<(&str, &str, &str, &str, &str, &str)
 
     let target_links: HashSet<&str> = ["sequel", "follows", "followed by"].into_iter().collect();
 
-    let lt_s: HashSet<i32> = lt
-        .column("id")?
-        .i32()?
-        .into_no_null_iter()
-        .zip(lt.column("link")?.str()?.into_no_null_iter())
-        .filter_map(|(id, link)| target_links.contains(link).then_some(id))
+    let lt_s: HashSet<&i32> = lt
+        .id
+        .iter()
+        .zip(lt.link.iter())
+        .filter_map(|(id, link)| target_links.contains(link.as_str()).then_some(id))
         .collect();
 
-    let mc1_m: HashMap<i32, &str> = mc
-        .column("company_id")?
-        .i32()?
-        .into_no_null_iter()
-        .zip(mc.column("movie_id")?.i32()?.into_no_null_iter())
-        .filter_map(|(company_id, movie_id)| cn1_m.get(&company_id).map(|&name| (movie_id, name)))
+    let mc1_m: HashMap<&i32, &str> = mc
+        .company_id
+        .iter()
+        .zip(mc.movie_id.iter())
+        .filter_map(|(company_id, movie_id)| {
+            if let Some(name) = cn1_m.get(&company_id)
+                && t1_m.contains_key(&movie_id)
+            {
+                Some((movie_id, name))
+            } else {
+                None
+            }
+        })
         .fold(HashMap::default(), |mut acc, (movie_id, name)| {
-            acc.entry(movie_id)
-                .and_modify(|existing| {
-                    if name < *existing {
-                        *existing = name;
-                    }
-                })
-                .or_insert(name);
+            acc.insert(movie_id, name);
             acc
         });
 
-    let mc2_m: HashMap<i32, &str> = mc
-        .column("company_id")?
-        .i32()?
-        .into_no_null_iter()
-        .zip(mc.column("movie_id")?.i32()?.into_no_null_iter())
-        .filter_map(|(company_id, movie_id)| cn1_m.get(&company_id).map(|&name| (movie_id, name)))
+    let mc2_m: HashMap<&i32, &str> = mc
+        .company_id
+        .iter()
+        .zip(mc.movie_id.iter())
+        .filter_map(|(company_id, movie_id)| {
+            if let Some(name) = cn1_m.get(&company_id)
+                && t2_m.contains_key(&movie_id)
+            {
+                Some((movie_id, name))
+            } else {
+                None
+            }
+        })
         .fold(HashMap::default(), |mut acc, (movie_id, name)| {
-            acc.entry(movie_id)
-                .and_modify(|e| *e = (*e).min(name))
-                .or_insert(name);
+            acc.insert(movie_id, name);
             acc
         });
 
     let mut res: Option<(&str, &str, &str, &str, &str, &str)> = None;
 
     for ((link_type_id, movie_id), linked_movie_id) in ml
-        .column("link_type_id")?
-        .i32()?
-        .into_no_null_iter()
-        .zip(ml.column("movie_id")?.i32()?.into_no_null_iter())
-        .zip(ml.column("linked_movie_id")?.i32()?.into_no_null_iter())
+        .link_type_id
+        .iter()
+        .zip(ml.movie_id.iter())
+        .zip(ml.linked_movie_id.iter())
     {
         if lt_s.contains(&link_type_id) {
             if let Some(mi_idx1_info) = mi_idx1_m.get(&movie_id)
@@ -228,7 +228,8 @@ mod test_q33a {
     #[test]
     fn test_q33a() -> Result<(), PolarsError> {
         let db = ImdbData::new();
-        let res = q33a(&db)?;
+        let data = Data::new(&db);
+        let res = q33a(&data)?;
         assert_eq!(
             res,
             Some((
