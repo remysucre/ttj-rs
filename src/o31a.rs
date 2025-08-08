@@ -1,13 +1,13 @@
-use crate::data::ImdbData;
+use crate::data::Data;
 use ahash::{HashMap, HashSet};
+use memchr::memmem::Finder;
 use polars::prelude::*;
 use std::time::Instant;
 
-pub fn q31a(db: &ImdbData) -> Result<Option<(&str, &str, &str, &str)>, PolarsError> {
+pub fn q31a(db: &Data) -> Result<Option<(&str, &str, &str, &str)>, PolarsError> {
     let ci = &db.ci;
     let cn = &db.cn;
-    let it1 = &db.it;
-    let it2 = &db.it;
+    let it = &db.it;
     let k = &db.k;
     let mc = &db.mc;
     let mi = &db.mi;
@@ -16,242 +16,152 @@ pub fn q31a(db: &ImdbData) -> Result<Option<(&str, &str, &str, &str)>, PolarsErr
     let n = &db.n;
     let t = &db.t;
 
+    let lionsgate = Finder::new("Lionsgate");
+
     let elapsed = Instant::now();
 
-    let cn_s: HashSet<i32> = cn
-        .column("name")?
-        .str()?
-        .into_iter()
-        .zip(cn.column("id")?.i32()?)
-        .filter_map(|(name, id)| {
-            if let (Some(name), Some(id)) = (name, id) {
-                if name.starts_with("Lionsgate") {
-                    Some(id)
-                } else {
-                    None
-                }
-            } else {
-                None
-            }
-        })
+    let cn_s: HashSet<&i32> = cn
+        .id
+        .iter()
+        .zip(cn.name.iter())
+        .filter_map(|(id, name)| (lionsgate.find(name.as_bytes()) == Some(0)).then_some(id))
         .collect();
 
-    let mc_s: HashSet<i32> = mc
-        .column("company_id")?
-        .i32()?
-        .into_iter()
-        .zip(mc.column("movie_id")?.i32()?)
-        .filter_map(|(company_id, movie_id)| {
-            if let (Some(company_id), Some(movie_id)) = (company_id, movie_id) {
-                if cn_s.contains(&company_id) {
-                    Some(movie_id)
-                } else {
-                    None
-                }
-            } else {
-                None
-            }
-        })
+    let mc_s: HashSet<&i32> = mc
+        .movie_id
+        .iter()
+        .zip(mc.company_id.iter())
+        .filter_map(|(movie_id, company_id)| (cn_s.contains(company_id)).then_some(movie_id))
         .collect();
 
-    let it1_s: HashSet<i32> = it1
-        .column("info")?
-        .str()?
-        .into_iter()
-        .zip(it1.column("id")?.i32()?)
-        .filter_map(|(info, id)| {
-            if let (Some(info), Some(id)) = (info, id) {
-                if info == "genres" { Some(id) } else { None }
-            } else {
-                None
-            }
-        })
-        .collect();
-
-    let mut mi_m: HashMap<i32, Vec<&str>> = HashMap::default();
-
-    for ((movie_id, info), info_type_id) in mi
-        .column("movie_id")?
-        .i32()?
-        .into_iter()
-        .zip(mi.column("info")?.str()?.into_iter())
-        .zip(mi.column("info_type_id")?.i32()?.into_iter())
-    {
-        if let (Some(movie_id), Some(info), Some(info_type_id)) = (movie_id, info, info_type_id) {
-            if matches!(info, "Horror" | "Thriller") && it1_s.contains(&info_type_id) {
-                mi_m.entry(movie_id).or_default().push(info);
-            }
+    let mut it_id: &i32 = &0;
+    let mut it2_id: &i32 = &0;
+    for (info, id) in it.info.iter().zip(it.id.iter()) {
+        if info == &"genres" {
+            it_id = id;
+        } else if info == "votes" {
+            it2_id = id;
         }
     }
 
-    let it2_s: HashSet<i32> = it2
-        .column("info")?
-        .str()?
-        .into_iter()
-        .zip(it2.column("id")?.i32()?)
-        .filter_map(|(info, id)| {
-            if let (Some(info), Some(id)) = (info, id) {
-                if info == "votes" { Some(id) } else { None }
-            } else {
-                None
-            }
+    let target_info: HashSet<&str> = ["Horror", "Thriller"].into_iter().collect();
+
+    let mi_m: HashMap<i32, Vec<&str>> = mi
+        .movie_id
+        .iter()
+        .zip(mi.info.iter())
+        .zip(mi.info_type_id.iter())
+        .filter_map(|((movie_id, info), info_type_id)| {
+            (it_id == info_type_id
+                && target_info.contains(info.as_str())
+                && mc_s.contains(&movie_id))
+            .then_some((*movie_id, info.as_str()))
+        })
+        .fold(HashMap::default(), |mut acc, (movie_id, info)| {
+            acc.entry(movie_id).or_default().push(info);
+            acc
+        });
+
+    let mi_idx_m: HashMap<&i32, Vec<&str>> = mi_idx
+        .movie_id
+        .iter()
+        .zip(mi_idx.info.iter())
+        .zip(mi_idx.info_type_id.iter())
+        .filter_map(|((movie_id, info), info_type_id)| {
+            (it2_id == info_type_id && mi_m.contains_key(&movie_id)).then_some((movie_id, info))
+        })
+        .fold(HashMap::default(), |mut acc, (idx, info)| {
+            acc.entry(idx).or_insert_with(Vec::new).push(info);
+            acc
+        });
+
+    let target_keywords: HashSet<&str> = [
+        "murder",
+        "violence",
+        "blood",
+        "gore",
+        "death",
+        "female-nudity",
+        "hospital",
+    ]
+    .into_iter()
+    .collect();
+
+    let k_s: HashSet<&i32> =
+        k.id.iter()
+            .zip(k.keyword.iter())
+            .filter_map(|(id, keyword)| target_keywords.contains(keyword.as_str()).then_some(id))
+            .collect();
+
+    let mk_s: HashSet<&i32> = mk
+        .keyword_id
+        .iter()
+        .zip(mk.movie_id.iter())
+        .filter_map(|(keyword_id, movie_id)| {
+            (k_s.contains(keyword_id) && mi_idx_m.contains_key(&movie_id)).then_some(movie_id)
         })
         .collect();
 
-    let mut mi_idx_m: HashMap<i32, Vec<&str>> = HashMap::default();
+    let n_m: HashMap<i32, Vec<&str>> =
+        n.id.iter()
+            .zip(n.gender.iter())
+            .zip(n.name.iter())
+            .filter_map(|((id, gender), name)| {
+                gender
+                    .as_ref()
+                    .filter(|gender| gender == &"m")
+                    .map(|_| (*id, name))
+            })
+            .fold(HashMap::default(), |mut acc, (id, name)| {
+                acc.entry(id).or_default().push(name);
+                acc
+            });
 
-    for ((movie_id, info), info_type_id) in mi_idx
-        .column("movie_id")?
-        .i32()?
-        .into_iter()
-        .zip(mi_idx.column("info")?.str()?.into_iter())
-        .zip(mi_idx.column("info_type_id")?.i32()?.into_iter())
-    {
-        if let (Some(movie_id), Some(info), Some(info_type_id)) = (movie_id, info, info_type_id) {
-            if it2_s.contains(&info_type_id) {
-                mi_idx_m.entry(movie_id).or_default().push(info);
-            }
-        }
-    }
+    let t_m: HashMap<&i32, &str> =
+        t.id.iter()
+            .zip(t.title.iter())
+            .filter_map(|(id, title)| mk_s.contains(&id).then_some((id, title.as_str())))
+            .collect();
 
-    let k_s: HashSet<i32> = k
-        .column("keyword")?
-        .str()?
-        .into_iter()
-        .zip(k.column("id")?.i32()?)
-        .filter_map(|(keyword, id)| {
-            if let (Some(keyword), Some(id)) = (keyword, id) {
-                if matches!(
-                    keyword,
-                    "murder"
-                        | "violence"
-                        | "blood"
-                        | "gore"
-                        | "death"
-                        | "female-nudity"
-                        | "hospital"
-                ) {
-                    Some(id)
-                } else {
-                    None
-                }
-            } else {
-                None
-            }
-        })
-        .collect();
-
-    let mk_s: HashSet<i32> = mk
-        .column("movie_id")?
-        .i32()?
-        .into_iter()
-        .zip(mk.column("keyword_id")?.i32()?)
-        .filter_map(|(movie_id, keyword_id)| {
-            if let (Some(movie_id), Some(keyword_id)) = (movie_id, keyword_id) {
-                if k_s.contains(&keyword_id) {
-                    Some(movie_id)
-                } else {
-                    None
-                }
-            } else {
-                None
-            }
-        })
-        .collect();
-
-    let mut n_m: HashMap<i32, Vec<&str>> = HashMap::default();
-
-    for ((id, name), gender) in n
-        .column("id")?
-        .i32()?
-        .into_iter()
-        .zip(n.column("name")?.str()?.into_iter())
-        .zip(n.column("gender")?.str()?.into_iter())
-    {
-        if let (Some(id), Some(name), Some(gender)) = (id, name, gender) {
-            if gender == "m" {
-                n_m.entry(id).or_default().push(name);
-            }
-        }
-    }
-
-    let mut t_m: HashMap<i32, Vec<&str>> = HashMap::default();
-
-    for (id, title) in t
-        .column("id")?
-        .i32()?
-        .into_iter()
-        .zip(t.column("title")?.str()?.into_iter())
-    {
-        if let (Some(id), Some(title)) = (id, title) {
-            if mi_m.contains_key(&id)
-                && mi_idx_m.contains_key(&id)
-                && mk_s.contains(&id)
-                && mc_s.contains(&id)
-            {
-                t_m.entry(id).or_default().push(title);
-            }
-        }
-    }
+    let target_note: ahash::HashSet<&str> = [
+        "(writer)",
+        "(head writer)",
+        "(written by)",
+        "(story)",
+        "(story editor)",
+    ]
+    .into_iter()
+    .collect();
 
     let mut res: Option<(&str, &str, &str, &str)> = None;
 
-    for ((pid, mid), note) in ci
-        .column("person_id")?
-        .i32()?
-        .into_iter()
-        .zip(ci.column("movie_id")?.i32()?.into_iter())
-        .zip(ci.column("note")?.str()?.into_iter())
+    for ((mid, pid), note) in ci
+        .movie_id
+        .iter()
+        .zip(ci.person_id.iter())
+        .zip(ci.note.iter())
     {
-        if let (Some(pid), Some(mid), Some(note)) = (pid, mid, note) {
-            if matches!(
-                note,
-                "(writer)" | "(head writer)" | "(written by)" | "(story)" | "(story editor)"
-            ) {
-                if let Some(titles) = t_m.get(&mid) {
-                    if let Some(names) = n_m.get(&pid) {
-                        if let Some(info) = mi_m.get(&mid) {
-                            if let Some(info_idx) = mi_idx_m.get(&mid) {
-                                for title in titles {
-                                    for name in names {
-                                        for movie_budget in info {
-                                            for movie_votes in info_idx {
-                                                if let Some((
-                                                    old_name,
-                                                    old_budget,
-                                                    old_votes,
-                                                    old_title,
-                                                )) = res.as_mut()
-                                                {
-                                                    if name < old_name {
-                                                        *old_name = name;
-                                                    }
-                                                    if movie_budget < old_budget {
-                                                        *old_budget = movie_budget;
-                                                    }
-                                                    if movie_votes < old_votes {
-                                                        *old_votes = movie_votes;
-                                                    }
-                                                    if title < old_title {
-                                                        *old_title = title;
-                                                    }
-                                                } else {
-                                                    res = Some((
-                                                        name,
-                                                        movie_budget,
-                                                        movie_votes,
-                                                        title,
-                                                    ));
-                                                }
-                                            }
-                                        }
-                                    }
-                                }
-                            }
-                        }
-                    }
-                }
-            }
+        if let Some(note) = note
+            && let Some(title) = t_m.get(&mid)
+            && target_note.contains(note.as_str())
+            && let Some(names) = n_m.get(&pid)
+            && let Some(info) = mi_m.get(&mid)
+            && let Some(info_idx) = mi_idx_m.get(&mid)
+        {
+            res = match res {
+                Some((old_info, old_info_idx, old_names, old_title)) => Some((
+                    info.iter().min().unwrap().min(&old_info),
+                    info_idx.iter().min().unwrap().min(&old_info_idx),
+                    names.iter().min().unwrap().min(&old_names),
+                    title.min(&old_title),
+                )),
+                None => Some((
+                    info.iter().min().unwrap(),
+                    info_idx.iter().min().unwrap(),
+                    names.iter().min().unwrap(),
+                    title,
+                )),
+            };
         }
     }
 
@@ -312,8 +222,9 @@ mod test_q31a {
     #[test]
     fn test_q31a() -> Result<(), PolarsError> {
         let db = ImdbData::new();
-        let res = q31a(&db)?;
-        assert_eq!(res, Some(("Agnew, Jim", "Horror", "1040", "2001 Maniacs")));
+        let data = Data::new(&db);
+        let res = q31a(&data)?;
+        assert_eq!(res, Some(("Horror", "1040", "Agnew, Jim", "2001 Maniacs")));
         Ok(())
     }
 }
