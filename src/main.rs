@@ -108,7 +108,7 @@ fn main() -> Result<(), polars::prelude::PolarsError> {
     o29c::q29c(&data)?;
     o30a::q30a(&data)?;
     o30b::q30b(&data)?;
-    o30c::q30c(&db)?;
+    o30c::q30c(&data)?;
     o31a::q31a(&db)?;
     o31b::q31b(&db)?;
     o31c::q31c(&db)?;
