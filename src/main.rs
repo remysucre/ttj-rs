@@ -116,6 +116,6 @@ fn main() -> Result<(), polars::prelude::PolarsError> {
     o32b::q32b(&data)?;
     o33a::q33a(&data)?;
     o33b::q33b(&data)?;
-    o33c::q33c(&db)?;
+    o33c::q33c(&data)?;
     Ok(())
 }
