@@ -80,13 +80,15 @@ pub fn q29b(db: &Data) -> Result<Option<(&str, &str, &str)>, PolarsError> {
         })
         .collect();
 
-    let it_id: &i32 = it
-        .info
-        .iter()
-        .zip(it.id.iter())
-        .find(|(info, _)| *info == "release dates")
-        .map(|(_, id)| id)
-        .unwrap();
+    let mut it_id: &i32 = &0;
+    let mut it2_id: &i32 = &0;
+    for (info, id) in it.info.iter().zip(it.id.iter()) {
+        if info == &"release dates" {
+            it_id = id;
+        } else if info == "height" {
+            it2_id = id;
+        }
+    }
 
     let mi_s: HashSet<&i32> = mi
         .info
@@ -119,19 +121,11 @@ pub fn q29b(db: &Data) -> Result<Option<(&str, &str, &str)>, PolarsError> {
         })
         .collect();
 
-    let it2_id = it
-        .info
-        .iter()
-        .zip(it.id.iter())
-        .find(|(info, _)| *info == "height")
-        .map(|(_, id)| *id)
-        .unwrap();
-
     let pi_s: HashSet<&i32> = pi
         .person_id
         .iter()
         .zip(pi.info_type_id.iter())
-        .filter_map(|(person_id, info_type_id)| (it2_id == *info_type_id).then_some(person_id))
+        .filter_map(|(person_id, info_type_id)| (it2_id == info_type_id).then_some(person_id))
         .collect();
 
     let n_m: HashMap<i32, Vec<&str>> =
