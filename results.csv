@@ -1,283 +1,116 @@
-   Compiling serde v1.0.219
-   Compiling pin-project-lite v0.2.16
-   Compiling futures-core v0.3.31
-   Compiling stable_deref_trait v1.2.0
-   Compiling futures-sink v0.3.31
-   Compiling smallvec v1.15.1
-   Compiling slab v0.4.10
-   Compiling once_cell v1.21.3
-   Compiling futures-task v0.3.31
-   Compiling either v1.15.0
-   Compiling futures-io v0.3.31
-   Compiling pin-utils v0.1.0
-   Compiling num-traits v0.2.19
-   Compiling fnv v1.0.7
-   Compiling litemap v0.8.0
-   Compiling writeable v0.6.1
-   Compiling zeroize v1.8.1
-   Compiling syn v2.0.103
-   Compiling socket2 v0.5.10
-   Compiling mio v1.0.4
-   Compiling icu_normalizer_data v2.0.0
-   Compiling icu_properties_data v2.0.1
-   Compiling ring v0.17.14
-   Compiling getrandom v0.3.3
-   Compiling httparse v1.10.1
-   Compiling untrusted v0.9.0
-   Compiling rustls v0.23.28
-   Compiling atomic-waker v1.1.2
-   Compiling futures-channel v0.3.31
-   Compiling tower-service v0.3.3
-   Compiling try-lock v0.2.5
-   Compiling subtle v2.6.1
-   Compiling sync_wrapper v1.0.2
-   Compiling form_urlencoded v1.2.1
-   Compiling rustls-pki-types v1.12.0
-   Compiling tracing-core v0.1.34
-   Compiling tower-layer v0.3.3
-   Compiling rayon v1.10.0
-   Compiling want v0.3.1
-   Compiling parking_lot_core v0.9.11
-   Compiling ipnet v2.11.0
-   Compiling openssl-probe v0.1.6
-   Compiling utf8_iter v1.0.4
-   Compiling serde_json v1.0.140
-   Compiling thiserror v2.0.12
-   Compiling iri-string v0.7.8
-   Compiling paste v1.0.15
-   Compiling log v0.4.27
-   Compiling same-file v1.0.6
-   Compiling itertools v0.14.0
-   Compiling humantime v2.2.0
-   Compiling adler2 v2.0.1
-   Compiling byteorder v1.5.0
-   Compiling parking_lot v0.12.4
-   Compiling walkdir v2.5.0
-   Compiling polars-utils v0.48.1
-   Compiling miniz_oxide v0.8.9
-   Compiling polars-schema v0.48.1
-   Compiling rand_core v0.9.3
-   Compiling polars-arrow v0.48.1
-   Compiling rustls-native-certs v0.8.1
-   Compiling polars-compute v0.48.1
-   Compiling ahash v0.8.12
-   Compiling polars-core v0.48.1
-   Compiling polars-ops v0.48.1
-   Compiling rand_chacha v0.9.0
-   Compiling rustix v1.0.7
-   Compiling blake3 v1.8.2
-   Compiling linux-raw-sys v0.9.4
-   Compiling arrayref v0.3.9
-   Compiling arrayvec v0.7.6
-   Compiling constant_time_eq v0.3.1
-   Compiling polars-plan v0.48.1
-   Compiling concurrent-queue v2.5.0
-   Compiling parking v2.2.1
-   Compiling polars-stream v0.48.1
-   Compiling crossbeam-queue v0.3.12
-   Compiling crossbeam-channel v0.5.15
-   Compiling rand v0.9.1
-   Compiling polars-lazy v0.48.1
-   Compiling polars v0.48.1
-   Compiling flate2 v1.1.2
-   Compiling event-listener v5.4.0
-   Compiling event-listener-strategy v0.5.4
-   Compiling rmp v0.8.14
-   Compiling rand_distr v0.4.3
-   Compiling argminmax v0.6.3
-   Compiling async-channel v2.3.1
-   Compiling synstructure v0.13.2
-   Compiling serde_derive v1.0.219
-   Compiling zerofrom-derive v0.1.6
-   Compiling yoke-derive v0.8.0
-   Compiling zerovec-derive v0.11.1
-   Compiling displaydoc v0.2.5
-   Compiling futures-macro v0.3.31
-   Compiling tokio-macros v2.5.0
-   Compiling tracing-attributes v0.1.29
-   Compiling thiserror-impl v2.0.12
-   Compiling async-trait v0.1.88
-   Compiling bytemuck_derive v1.9.3
-   Compiling strum_macros v0.26.4
-   Compiling async-stream-impl v0.3.6
-   Compiling recursive-proc-macro-impl v0.1.1
-   Compiling recursive v0.1.1
-   Compiling async-stream v0.3.6
-   Compiling futures-util v0.3.31
-   Compiling bytemuck v1.23.1
-   Compiling tracing v0.1.41
-   Compiling zerofrom v0.1.6
-   Compiling yoke v0.8.0
-   Compiling zerovec v0.11.2
-   Compiling zerotrie v0.2.2
-   Compiling rustls-webpki v0.103.3
-   Compiling tinystr v0.8.1
-   Compiling potential_utf v0.1.2
-   Compiling icu_collections v2.0.0
-   Compiling icu_locale_core v2.0.0
-   Compiling icu_provider v2.0.0
-   Compiling icu_normalizer v2.0.0
-   Compiling icu_properties v2.0.1
-   Compiling futures-executor v0.3.31
-   Compiling futures v0.3.31
-   Compiling polars-parquet-format v0.1.0
-   Compiling idna_adapter v1.2.1
-   Compiling idna v1.0.3
-   Compiling url v2.5.4
-   Compiling bytes v1.10.1
-   Compiling bitflags v2.9.1
-   Compiling hashbrown v0.15.4
-   Compiling chrono v0.4.41
-   Compiling serde_urlencoded v0.7.1
-   Compiling quick-xml v0.37.5
-   Compiling polars-arrow-format v0.1.0
-   Compiling compact_str v0.8.1
-   Compiling rmp-serde v1.3.0
-   Compiling bincode v1.3.3
-   Compiling serde_ignored v0.1.12
-   Compiling hashbrown v0.14.5
-   Compiling raw-cpuid v11.5.0
-   Compiling rustix v0.38.44
-   Compiling tokio v1.45.1
-   Compiling http v1.3.1
-   Compiling crossterm v0.28.1
-   Compiling indexmap v2.9.0
-   Compiling comfy-table v7.1.4
-   Compiling http-body v1.0.1
-   Compiling http-body-util v0.1.3
-   Compiling chrono-tz v0.10.3
-   Compiling now v0.1.3
-   Compiling fs4 v0.13.1
-   Compiling tokio-util v0.7.15
-   Compiling tower v0.5.2
-   Compiling tokio-rustls v0.26.2
-   Compiling tower-http v0.6.6
-   Compiling h2 v0.4.10
-   Compiling hyper v1.6.0
-   Compiling hyper-util v0.1.14
-   Compiling hyper-rustls v0.27.7
-   Compiling reqwest v0.12.20
-   Compiling object_store v0.12.2
-   Compiling polars-error v0.48.1
-   Compiling polars-row v0.48.1
-   Compiling polars-parquet v0.48.1
-   Compiling polars-time v0.48.1
-   Compiling polars-io v0.48.1
-   Compiling polars-expr v0.48.1
-   Compiling polars-mem-engine v0.48.1
    Compiling lfj v0.1.0 (/home/zeyuanhu/projects/remy-ttj-rs)
-    Finished `release` profile [optimized] target(s) in 3m 02s
+    Finished `release` profile [optimized] target(s) in 1m 56s
      Running `target/release/lfj`
-1a,0.09142372
-1b,0.101974495
-1c,0.077597626
-1d,0.09988859
-2a,0.051682644
-2b,0.049092535
-2c,0.045960248
-2d,0.07048111
-3a,0.22256365
-3b,0.21799272
-3c,0.23807073
-4a,0.094106905
-4b,0.09163193
-4c,0.09516238
-5a,0.24863482
-5b,0.25265735
-5c,0.2716155
-6a,0.46865934
-6b,0.42157882
-6c,0.42128244
-6d,0.54565096
-6e,0.47343138
-6f,0.5397243
-7a,0.9201688
-7b,0.4039499
-7c,0.44498545
-8a,0.87051076
-8b,0.89090407
-8c,0.37452057
-8d,0.37251124
-9a,0.9935501
-9b,0.892634
-9c,0.85737765
-9d,1.0131277
-10a,0.736748
-10b,0.7341224
-10c,0.79506207
-11a,0.49811107
-11b,0.1353833
-11c,0.12825921
-11d,0.1460075
-12a,0.34916204
-12b,0.30003124
-12c,0.43571898
-13a,0.34585282
-13b,0.18330522
-13c,0.15079254
-13d,0.30580488
-14a,0.28250825
-14b,0.30313966
-14c,0.4059771
-15a,0.5049757
-15b,0.5733673
-15c,0.5197552
-15d,0.36023834
-16a,0.31827828
-16b,0.60611546
-16c,0.6390557
-16d,0.71384174
-17a,0.36234456
-17b,0.3078202
-17c,0.31184518
-17d,0.44058058
-17e,0.4717754
-17f,0.4634292
-18a,0.98226166
-18b,1.0652134
-18c,0.9571713
-19a,1.3501366
-19b,1.3514221
-19c,1.36461
-19d,1.1745684
-20a,0.55597645
-20b,0.71189255
-20c,0.597328
-21a,0.7802941
-21b,0.27279308
-21c,0.30901018
-22a,0.42355645
-22b,0.40411374
-22c,0.46966127
-22d,0.45970538
-23a,0.42159247
-23b,0.45012036
-23c,0.4928287
-24a,1.6574167
-24b,1.6466806
-25a,1.2250162
-25b,1.553144
-25c,1.2124865
-26a,0.63943297
-26b,0.6113214
-26c,0.63360864
-27a,0.2773214
-27b,0.2910464
-27c,0.359946
-28a,0.37963313
-28b,0.36159015
-28c,0.38299456
-29a,1.222183
-29b,1.1873873
-29c,1.2556075
-30a,1.1924863
-30b,1.3727546
-30c,1.2336239
-31a,1.2051067
-31b,1.3178272
-31c,0.93068975
-32a,0.027114084
-32b,0.030050512
-33a,0.36938763
-33b,0.26028246
-33c,0.30692557
+1a,0.02923304
+1b,0.017245386
+1c,0.018523604
+1d,0.01668451
+2a,0.015225322
+2b,0.013281996
+2c,0.011803208
+2d,0.031219896
+3a,0.13012302
+3b,0.031589232
+3c,0.15022017
+4a,0.015407939
+4b,0.009520885
+4c,0.017690392
+5a,0.13931249
+5b,0.13541242
+5c,0.16014403
+6a,0.14728408
+6b,0.13703942
+6c,0.10539306
+6d,0.24487382
+6e,0.14939629
+6f,0.3531897
+7a,0.66758335
+7b,0.11328823
+7c,0.22296456
+8a,0.12730874
+8b,0.15949723
+8c,0.28693014
+8d,0.0754894
+9a,0.3775864
+9b,0.20398244
+9c,0.18306333
+9d,0.375117
+10a,0.09654524
+10b,0.08920074
+10c,0.18069439
+11a,0.02176501
+11b,0.023604676
+11c,0.04097537
+11d,0.046954174
+12a,0.19754855
+12b,0.098983996
+12c,0.25407422
+13a,0.21056932
+13b,0.053314373
+13c,0.046401035
+13d,0.1824617
+14a,0.17532752
+14b,0.17215255
+14c,0.29229382
+15a,0.12510191
+15b,0.1880966
+15c,0.2030389
+15d,0.12718311
+16a,0.10071246
+16b,0.5158437
+16c,0.38282642
+16d,0.38967276
+17a,0.24233189
+17b,0.16985641
+17c,0.1696813
+17d,0.17463669
+17e,0.750577
+17f,0.2987479
+18a,0.2968338
+18b,0.2495261
+18c,0.37198573
+19a,0.45097485
+19b,0.24193043
+19c,0.46246707
+19d,0.41094977
+20a,0.18975866
+20b,0.18561792
+20c,0.2104481
+21a,0.1461003
+21b,0.13783008
+21c,0.17427139
+22a,0.24624321
+22b,0.230292
+22c,0.25236452
+22d,0.25054514
+23a,0.122708194
+23b,0.061886523
+23c,0.12426776
+24a,0.6713577
+24b,0.60420024
+25a,0.51154476
+25b,0.4715451
+25c,0.48656377
+26a,0.3078246
+26b,0.1631214
+26c,0.17097072
+27a,0.13195461
+27b,0.13796565
+27c,0.14780185
+28a,0.19552338
+28b,0.17262281
+28c,0.20128135
+29a,0.391005
+29b,0.30984765
+29c,0.392803
+30a,0.4097139
+30b,0.3900104
+30c,0.4315225
+31a,0.50866437
+31b,0.39699534
+31c,0.18191704
+32a,0.00251874
+32b,0.014758873
+33a,0.07751267
+33b,0.071295306
+33c,0.17635034
