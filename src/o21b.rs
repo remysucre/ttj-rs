@@ -76,7 +76,15 @@ pub fn q21b(db: &Data) -> Result<Option<(&str, &str, &str)>, PolarsError> {
         .movie_id
         .iter()
         .zip(ml.link_type_id.iter())
-        .filter_map(|(mid, lt_id)| lt_m.get(&lt_id).map(|link| (mid, link)))
+        .filter_map(|(mid, lt_id)| {
+            if mk_s.contains(&mid)
+                && let Some(link) = lt_m.get(&lt_id)
+            {
+                Some((mid, link))
+            } else {
+                None
+            }
+        })
         .fold(HashMap::default(), |mut acc, (mid, link)| {
             acc.entry(mid).or_default().push(link);
             acc
@@ -88,7 +96,10 @@ pub fn q21b(db: &Data) -> Result<Option<(&str, &str, &str)>, PolarsError> {
         .movie_id
         .iter()
         .zip(mi.info.iter())
-        .filter_map(|(movie_id, info)| target_info.contains(info.as_str()).then_some(movie_id))
+        .filter_map(|(movie_id, info)| {
+            (ml_m.contains_key(&movie_id) && target_info.contains(info.as_str()))
+                .then_some(movie_id)
+        })
         .collect();
 
     let t_m: HashMap<&i32, &str> =
@@ -97,8 +108,6 @@ pub fn q21b(db: &Data) -> Result<Option<(&str, &str, &str)>, PolarsError> {
             .zip(t.production_year.iter())
             .filter_map(|((id, title), production_year)| {
                 if let Some(production_year) = production_year
-                    && mk_s.contains(&id)
-                    && ml_m.contains_key(&id)
                     && mi_s.contains(&id)
                     && (2000..=2010).contains(production_year)
                 {
