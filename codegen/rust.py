@@ -1287,9 +1287,70 @@ def decide_join_tree(output_file_path):
                 selected_relations[alias] = build_relation(alias, item)
         return selected_relations
 
+    def determine_root(selected_relations: typing.List[Relation],
+                       attribute_alias:  typing.Dict[Attribute, typing.List[Relation]],
+                       attributes: UnionFind,
+                       query_data) -> Relation:
+        def all_values_same(data: dict) -> bool:
+            """Checks if all values are the same using an iterator."""
+            if not data:
+                return True
+            values_iter = iter(data.values())
+            first_value = next(values_iter)
+            return all(value == first_value for value in values_iter)
+
+        def find_list_intersection(data: dict) -> list:
+            """
+            Finds the intersection of all lists that are values in a dictionary.
+            """
+            if not data:
+                return []  # Return an empty list if the dictionary is empty
+            # Get an iterator of the values (the lists)
+            value_iterator = iter(data.values())
+            # Initialize the intersection with the first list in the dictionary
+            result_set = set(next(value_iterator))
+            # Use intersection_update for efficiency
+            for lst in value_iterator:
+                result_set.intersection_update(lst)
+            return list(result_set)
+        
+        alias_attribute : typing.Dict[str, typing.List[Attribute]] = dict()
+        for selected_relation in selected_relations:
+            alias_attribute[selected_relation.alias] = []
+            for attribute in selected_relation.attributes:
+                alias_attribute[selected_relation.alias].append(attributes.find(attribute))
+        all_identical = all_values_same(alias_attribute)
+        candidate_roots = []
+        if all_identical:
+            # We are working on the case where aggregate relations are within the same bucket.
+            for attribute in alias_attribute[selected_relations[0].alias]:
+                candidate_roots.extend(attribute_alias[attribute])
+        else:
+            # We are working on the case where aggregate relations belong to different buckets.
+            alias_relations: typing.Dict[str, typing.List[Relation]] = dict()
+            for alias, attributes in alias_attribute.items():
+                alias_relations[alias] = []
+                for attribute in attributes:
+                    alias_relations[alias].extend(attribute_alias[attribute])
+            intersection_relation = find_list_intersection(alias_relations)
+            # TODO: we haven't used a special approach to handle case like 6a
+            check_argument(len(intersection_relation) >= 1, f"no common relation found from {alias_relations} and cannot produce a join tree")
+            candidate_roots = intersection_relation
+        if len(candidate_roots) == 1:
+            return candidate_roots[0]
+        else:
+            # We use a heuristic to make the largest relation to be the root
+            root = None
+            size_of_root = 0
+            for candidate_root in candidate_roots:
+                if query_data[candidate_root.alias]["size_after_filters"] > size_of_root:
+                    root = candidate_root
+                    size_of_root = query_data[candidate_root.alias]["size_after_filters"]
+            return root
+
     attributes = UnionFind()
     hypergraph = UnionFind()
-    attribute_alias = dict()
+    attribute_alias : typing.Dict[Attribute, typing.List[Relation]] = dict()
     try:
         with open(output_file_path, "r") as f:
             query_data = json.load(f)
@@ -1323,99 +1384,95 @@ def decide_join_tree(output_file_path):
         print(f"relation: {relation_obj}")
         hypergraph.find(relation_obj)
         for attr in relation_obj.attributes:
-            if attr.attr not in attribute_alias:
-                attribute_alias[attr.attr] = [alias]
+            rep = attributes.find(attr)
+            if rep not in attribute_alias:
+                attribute_alias[rep] = [relation_obj]
             else:
-                attribute_alias[attr.attr].append(alias)
+                attribute_alias[rep].append(relation_obj)
     print(f"attribute_alias: {attribute_alias}")
+
+    selected_relations = build_selected_relations(query_data)
+    print(f"selected_relations: {selected_relations}")
+
+    root = determine_root(list(selected_relations.values()), attribute_alias, attributes, query_data)
+    print(f"root: {root}")
+
     num_relations = len(query_data.items())
     semijoin_program = SemiJoinProgram()
     removed_ear = []
     iteration = 0
 
-    def determine_root(selected_relations: typing.List[Relation],
-                       all_relations: typing.List[Relation]) -> Relation:
-        relation_names = dict()
-        for relation in selected_relations:
-            relation_names[relation.relation_name] = relation
-        if "name" in relation_names or "cast_info" in relation_names:
-            for relation in all_relations:
-                if relation.relation_name == "cast_info":
-                    return relation
-        for relation in selected_relations:
-            if len(relation.selected_fields) > 1:
-                return relation
 
-    selected_relations = build_selected_relations(query_data)
-    root = determine_root(list(selected_relations.values()), hypergraph.get_all_elements())
-
-    while hypergraph.num_sets() > 1:
-        iteration += 1
-        level = Level()
-        last_level = semijoin_program.has_last_level()
-        if last_level is None:
-            last_level = level
-            all_representatives = sorted(
-                hypergraph.get_representatives(), key=lambda x: x.alias
-            )
-            all_parent_repr = [
-                last_level.get_parent(repr) for repr in all_representatives
-            ]
-        else:
-            all_parent_repr = []
-            for parent in last_level.get_parents():
-                found = False
-                for merged_sj in last_level.level:
-                    if parent in merged_sj.ears:
-                        found = True
-                        break
-                if not found:
-                    all_parent_repr.append(parent)
-            all_parent_repr = sorted(all_parent_repr, key=lambda x: x.alias)
-            print(f"all_parent_repr: {all_parent_repr}")
-            for repr in sorted(hypergraph.get_representatives(), key=lambda x: x.alias):
-                if repr not in all_parent_repr and not last_level.is_in_level(repr):
-                    all_parent_repr.append(repr)
-            print(f"all_parent_repr (not pure): {all_parent_repr}")
-        num_representatives = len(all_parent_repr)
-        # Sort representatives for deterministic ordering
-        all_parent_repr = sorted(all_parent_repr, key=lambda x: x.alias)
-        for i in range(num_representatives):
-            for j in range(num_representatives):
-                if (
-                    i != j
-                    and all_parent_repr[i] not in removed_ear
-                    and all_parent_repr[j] not in removed_ear
-                ):
-                    print(
-                        f"call check_ear_consume({all_parent_repr[i]}, {all_parent_repr[j]}, {num_relations == num_representatives}, {root})"
-                    )
-                    ear, parent = check_ear_consume(
-                        all_parent_repr[i],
-                        all_parent_repr[j],
-                        num_relations == num_representatives,
-                        root
-                    )
-                    if ear is not None and parent is not None and ear != parent:
-                        print(
-                            f"{ear.alias}, {parent.alias} = check_ear_consume({all_parent_repr[i]}, {all_parent_repr[j]}, {num_relations == num_representatives})"
-                        )
-                        level.append(
-                            SemiJoin(ear=ear, parent=parent, score=ear.size)
-                        )
-                        hypergraph.union(ear, parent)
-                        removed_ear.append(ear)
-        print(level)
-        print(hypergraph)
-        if semijoin_program.has_last_level() is None:
-            semijoin_program.append(level.merge())
-        else:
-            semijoin_program.merge_up(level)
-    print(f"semijoin_prorgam (iteration: {iteration}): \n{semijoin_program}")
-    print(f"semijoin_program: \n{semijoin_program}")
-    assert num_relations == semijoin_program.size()
-    build_parent_child_columns(semijoin_program, attributes)
-    return semijoin_program
+    #
+    # root = determine_root(list(selected_relations.values()), hypergraph.get_all_elements())
+    #
+    # while hypergraph.num_sets() > 1:
+    #     iteration += 1
+    #     level = Level()
+    #     last_level = semijoin_program.has_last_level()
+    #     if last_level is None:
+    #         last_level = level
+    #         all_representatives = sorted(
+    #             hypergraph.get_representatives(), key=lambda x: x.alias
+    #         )
+    #         all_parent_repr = [
+    #             last_level.get_parent(repr) for repr in all_representatives
+    #         ]
+    #     else:
+    #         all_parent_repr = []
+    #         for parent in last_level.get_parents():
+    #             found = False
+    #             for merged_sj in last_level.level:
+    #                 if parent in merged_sj.ears:
+    #                     found = True
+    #                     break
+    #             if not found:
+    #                 all_parent_repr.append(parent)
+    #         all_parent_repr = sorted(all_parent_repr, key=lambda x: x.alias)
+    #         print(f"all_parent_repr: {all_parent_repr}")
+    #         for repr in sorted(hypergraph.get_representatives(), key=lambda x: x.alias):
+    #             if repr not in all_parent_repr and not last_level.is_in_level(repr):
+    #                 all_parent_repr.append(repr)
+    #         print(f"all_parent_repr (not pure): {all_parent_repr}")
+    #     num_representatives = len(all_parent_repr)
+    #     # Sort representatives for deterministic ordering
+    #     all_parent_repr = sorted(all_parent_repr, key=lambda x: x.alias)
+    #     for i in range(num_representatives):
+    #         for j in range(num_representatives):
+    #             if (
+    #                 i != j
+    #                 and all_parent_repr[i] not in removed_ear
+    #                 and all_parent_repr[j] not in removed_ear
+    #             ):
+    #                 print(
+    #                     f"call check_ear_consume({all_parent_repr[i]}, {all_parent_repr[j]}, {num_relations == num_representatives}, {root})"
+    #                 )
+    #                 ear, parent = check_ear_consume(
+    #                     all_parent_repr[i],
+    #                     all_parent_repr[j],
+    #                     num_relations == num_representatives,
+    #                     root
+    #                 )
+    #                 if ear is not None and parent is not None and ear != parent:
+    #                     print(
+    #                         f"{ear.alias}, {parent.alias} = check_ear_consume({all_parent_repr[i]}, {all_parent_repr[j]}, {num_relations == num_representatives})"
+    #                     )
+    #                     level.append(
+    #                         SemiJoin(ear=ear, parent=parent, score=ear.size)
+    #                     )
+    #                     hypergraph.union(ear, parent)
+    #                     removed_ear.append(ear)
+    #     print(level)
+    #     print(hypergraph)
+    #     if semijoin_program.has_last_level() is None:
+    #         semijoin_program.append(level.merge())
+    #     else:
+    #         semijoin_program.merge_up(level)
+    # print(f"semijoin_prorgam (iteration: {iteration}): \n{semijoin_program}")
+    # print(f"semijoin_program: \n{semijoin_program}")
+    # assert num_relations == semijoin_program.size()
+    # build_parent_child_columns(semijoin_program, attributes)
+    # return semijoin_program
 
 
 def process_filters(
@@ -2190,23 +2247,23 @@ def optimization(sql_query_name, output_file_path, src_output_dir) -> None:
     template_data = TemplateData(template=env.get_template("base.jinja"), data=dict())
 
     semijoin_program = decide_join_tree(output_file_path)
-    generate_main_block(
-        semijoin_program, sql_query_name, output_file_path, template_data
-    )
-    template_data.data["initialize_relation_block"] = _initialize_relation_block(
-        output_file_path, []
-    )
-
-    query_implementation = template_data.template.render(template_data.data)
-    output_file_path = os.path.join(src_output_dir, f"o{sql_query_name}.rs")
-    try:
-        with open(output_file_path, "w") as f:
-            f.write(query_implementation)
-        print(
-            f"Successfully processed query and saved query implementation to '{output_file_path}'"
-        )
-    except IOError as e:
-        raise ValueError(f"Error writing to output file: {e}")
+    # generate_main_block(
+    #     semijoin_program, sql_query_name, output_file_path, template_data
+    # )
+    # template_data.data["initialize_relation_block"] = _initialize_relation_block(
+    #     output_file_path, []
+    # )
+    #
+    # query_implementation = template_data.template.render(template_data.data)
+    # output_file_path = os.path.join(src_output_dir, f"o{sql_query_name}.rs")
+    # try:
+    #     with open(output_file_path, "w") as f:
+    #         f.write(query_implementation)
+    #     print(
+    #         f"Successfully processed query and saved query implementation to '{output_file_path}'"
+    #     )
+    # except IOError as e:
+    #     raise ValueError(f"Error writing to output file: {e}")
 
 
 if __name__ == "__main__":
