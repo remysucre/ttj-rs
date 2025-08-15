@@ -1,5 +1,5 @@
 use crate::data::Data;
-use ahash::{HashMap, HashSet};
+use ahash::{HashMap, HashMapExt};
 use memchr::memmem::Finder;
 use polars::prelude::*;
 use std::time::Instant;
@@ -44,29 +44,36 @@ pub fn q6a(db: &Data) -> Result<Option<(&str, &str, &str)>, PolarsError> {
             })
             .collect();
 
-    let mk_s: HashSet<i32> = mk
+    let mk_m: HashMap<&i32, Vec<&str>> = mk
         .movie_id
         .iter()
         .zip(mk.keyword_id.iter())
         .filter_map(|(movie_id, keyword_id)| {
-            if k_id == keyword_id && t_m.contains_key(&movie_id) {
-                Some(*movie_id)
+            if k_id == keyword_id
+                && let Some(title) = t_m.get(movie_id)
+            {
+                Some((movie_id, title))
             } else {
                 None
             }
         })
-        .collect();
+        .fold(HashMap::new(), |mut acc, (movie_id, title)| {
+            acc.entry(movie_id).or_default().push(title);
+            acc
+        });
 
     let mut res: Option<(&str, &str)> = None;
 
     for (pid, mid) in ci.person_id.iter().zip(ci.movie_id.iter()) {
-        if mk_s.contains(&mid)
-            && let Some(name) = n_m.get(&pid)
-            && let Some(title) = t_m.get(&mid)
+        if let Some(name) = n_m.get(&pid)
+            && let Some(title) = mk_m.get(&mid)
         {
             res = match res {
-                Some((old_name, old_title)) => Some((name.min(&old_name), title.min(&old_title))),
-                None => Some((name, title)),
+                Some((old_name, old_title)) => Some((
+                    name.min(&old_name),
+                    title.iter().min().unwrap().min(&old_title),
+                )),
+                None => Some((name, title.iter().min().unwrap())),
             };
         }
     }

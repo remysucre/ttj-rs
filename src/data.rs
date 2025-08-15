@@ -368,7 +368,6 @@ pub struct AT {
     pub md5sum: Vec<Option<String>>,
 }
 
-
 pub struct Data {
     pub ci: CI,
     pub chn: CHN,
@@ -1349,8 +1348,8 @@ impl Data {
                     .unwrap()
                     .into_iter()
                     .map(|opt| opt.map(|s| s.to_string()))
-                    .collect()
-            }
+                    .collect(),
+            },
         }
     }
 }
