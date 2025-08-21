@@ -77,7 +77,7 @@ pub fn q14c(db: &Data) -> Result<Option<(&str, &str)>, PolarsError> {
         .filter_map(|(movie_id, keyword_id)| k_s.contains(keyword_id).then_some(movie_id))
         .collect();
 
-    let t_m: HashMap<&i32, Vec<&str>> =
+    let t_m: HashMap<i32, &str> =
         t.id.iter()
             .zip(t.production_year.iter())
             .zip(t.title.iter())
@@ -87,15 +87,12 @@ pub fn q14c(db: &Data) -> Result<Option<(&str, &str)>, PolarsError> {
                     && *production_year > 2005
                     && kt_s.contains(kind_id)
                 {
-                    Some((movie_id, title))
+                    Some((*movie_id, title.as_str()))
                 } else {
                     None
                 }
             })
-            .fold(HashMap::default(), |mut acc, (movie_id, title)| {
-                acc.entry(movie_id).or_default().push(title);
-                acc
-            });
+            .collect();
 
     let mut res: Option<(&str, &str)> = None;
 
@@ -107,16 +104,15 @@ pub fn q14c(db: &Data) -> Result<Option<(&str, &str)>, PolarsError> {
     {
         if it2_id == info_type_id
             && info.as_str() < "8.5"
-            && let Some(titles) = t_m.get(&movie_id)
+            && let Some(title) = t_m.get(&movie_id)
             && mi_s.contains(&movie_id)
             && mk_s.contains(&movie_id)
         {
             res = match res {
-                Some((old_info, old_title)) => Some((
-                    info.as_str().min(old_info),
-                    titles.iter().min().unwrap().min(&old_title),
-                )),
-                None => Some((info, titles.iter().min().unwrap())),
+                Some((old_info, old_title)) => {
+                    Some((info.as_str().min(old_info), title.min(&old_title)))
+                }
+                None => Some((info, title)),
             };
         }
     }

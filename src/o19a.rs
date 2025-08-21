@@ -58,7 +58,7 @@ pub fn q19a(db: &Data) -> Result<Option<(&str, &str)>, PolarsError> {
         .map(|(_, id)| id)
         .unwrap();
 
-    let n_m: HashMap<&i32, Vec<&str>> =
+    let n_m: HashMap<i32, &str> =
         n.id.iter()
             .zip(n.name.iter())
             .zip(n.gender.iter())
@@ -68,15 +68,12 @@ pub fn q19a(db: &Data) -> Result<Option<(&str, &str)>, PolarsError> {
                     && gender == "f"
                     && ang.find(name.as_bytes()).is_some()
                 {
-                    Some((id, name.as_str()))
+                    Some((*id, name.as_str()))
                 } else {
                     None
                 }
             })
-            .fold(HashMap::default(), |mut acc, (id, name)| {
-                acc.entry(id).or_default().push(name);
-                acc
-            });
+            .collect();
 
     let mc_s: ahash::HashSet<&i32> = mc
         .movie_id
@@ -110,7 +107,7 @@ pub fn q19a(db: &Data) -> Result<Option<(&str, &str)>, PolarsError> {
         })
         .collect();
 
-    let t_m: HashMap<&i32, Vec<&str>> =
+    let t_m: HashMap<i32, &str> =
         t.id.iter()
             .zip(t.production_year.iter())
             .zip(t.title.iter())
@@ -119,15 +116,12 @@ pub fn q19a(db: &Data) -> Result<Option<(&str, &str)>, PolarsError> {
                     && (2005..=2009).contains(production_year)
                     && mi_s.contains(movie_id)
                 {
-                    Some((movie_id, title))
+                    Some((*movie_id, title.as_str()))
                 } else {
                     None
                 }
             })
-            .fold(HashMap::default(), |mut acc, (movie_id, title)| {
-                acc.entry(movie_id).or_default().push(title);
-                acc
-            });
+            .collect();
 
     let target_note: HashSet<&str> = [
         "(voice)",
@@ -153,15 +147,12 @@ pub fn q19a(db: &Data) -> Result<Option<(&str, &str)>, PolarsError> {
             && target_note.contains(note.as_str())
             && rt_id == rid
             && chn_s.contains(&prid)
-            && let Some(titles) = t_m.get(&mid)
-            && let Some(names) = n_m.get(&pid)
+            && let Some(title) = t_m.get(&mid)
+            && let Some(name) = n_m.get(&pid)
         {
             res = match res {
-                Some((old_name, old_title)) => Some((
-                    names.iter().min().unwrap().min(&old_name),
-                    titles.iter().min().unwrap().min(&old_title),
-                )),
-                None => Some((names.iter().min().unwrap(), titles.iter().min().unwrap())),
+                Some((old_name, old_title)) => Some((name.min(&old_name), title.min(&old_title))),
+                None => Some((name, title)),
             };
         }
     }

@@ -61,7 +61,7 @@ pub fn q19b(db: &Data) -> Result<Option<(&str, &str)>, PolarsError> {
         .map(|(_, id)| *id)
         .unwrap();
 
-    let n_m: HashMap<i32, Vec<&str>> = n
+    let n_m: HashMap<&i32, &str> = n
         .id
         .iter()
         .zip(n.gender.iter())
@@ -72,12 +72,9 @@ pub fn q19b(db: &Data) -> Result<Option<(&str, &str)>, PolarsError> {
                 .filter(|gender| {
                     an_s.contains(&id) && gender == &"f" && angel.find(name.as_bytes()).is_some()
                 })
-                .map(|_| (*id, name))
+                .map(|_| (id, name.as_str()))
         })
-        .fold(HashMap::default(), |mut acc, (id, name)| {
-            acc.entry(id).or_default().push(name);
-            acc
-        });
+        .collect();
 
     let mc_s: HashSet<i32> = mc
         .note
@@ -111,7 +108,7 @@ pub fn q19b(db: &Data) -> Result<Option<(&str, &str)>, PolarsError> {
         })
         .collect::<HashSet<_>>();
 
-    let t_m: HashMap<i32, Vec<&str>> =
+    let t_m: HashMap<&i32, &str> =
         t.id.iter()
             .zip(t.title.iter())
             .zip(t.production_year.iter())
@@ -122,12 +119,9 @@ pub fn q19b(db: &Data) -> Result<Option<(&str, &str)>, PolarsError> {
                             && (2007..=2008).contains(production_year)
                             && mi_s.contains(&id)
                     })
-                    .map(|_| (*id, title))
+                    .map(|_| (id, title.as_str()))
             })
-            .fold(HashMap::default(), |mut acc, (id, title)| {
-                acc.entry(id).or_default().push(title);
-                acc
-            });
+            .collect();
 
     let mut res: Option<(&str, &str)> = None;
 
@@ -144,15 +138,12 @@ pub fn q19b(db: &Data) -> Result<Option<(&str, &str)>, PolarsError> {
             && note == "(voice)"
             && rt_id == *rid
             && chn_s.contains(&prid)
-            && let Some(titles) = t_m.get(&mid)
-            && let Some(names) = n_m.get(&pid)
+            && let Some(title) = t_m.get(&mid)
+            && let Some(name) = n_m.get(&pid)
         {
             res = match res {
-                Some((old_name, old_title)) => Some((
-                    names.iter().min().unwrap().min(&old_name),
-                    titles.iter().min().unwrap().min(&old_title),
-                )),
-                None => Some((names.iter().min().unwrap(), titles.iter().min().unwrap())),
+                Some((old_name, old_title)) => Some((name.min(&old_name), title.min(&old_title))),
+                None => Some((name, title)),
             };
         }
     }

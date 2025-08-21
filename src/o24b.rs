@@ -29,14 +29,12 @@ pub fn q24b(db: &Data) -> Result<Option<(&str, &str, &str)>, PolarsError> {
 
     let an_s: HashSet<i32> = an.person_id.iter().map(|id| *id).collect();
 
-    let chn_m: HashMap<i32, Vec<&str>> =
-        chn.id
-            .iter()
-            .zip(chn.name.iter())
-            .fold(HashMap::default(), |mut acc, (id, name)| {
-                acc.entry(*id).or_default().push(name);
-                acc
-            });
+    let chn_m: HashMap<&i32, &str> = chn
+        .id
+        .iter()
+        .zip(chn.name.iter())
+        .map(|(id, name)| (id, name.as_str()))
+        .collect();
 
     let cn_s: HashSet<i32> = cn
         .country_code
@@ -74,7 +72,7 @@ pub fn q24b(db: &Data) -> Result<Option<(&str, &str, &str)>, PolarsError> {
             .filter_map(|(id, keyword)| target_keywords.contains(keyword.as_str()).then_some(*id))
             .collect();
 
-    let t_m: HashMap<i32, Vec<&str>> =
+    let t_m: HashMap<&i32, &str> =
         t.id.iter()
             .zip(t.title.iter())
             .zip(t.production_year.iter())
@@ -83,12 +81,9 @@ pub fn q24b(db: &Data) -> Result<Option<(&str, &str, &str)>, PolarsError> {
                     .filter(|production_year| {
                         production_year > &2010 && kung_fu_panda.find(title.as_bytes()).is_some()
                     })
-                    .map(|_| (*id, title))
+                    .map(|_| (id, title.as_str()))
             })
-            .fold(HashMap::default(), |mut acc, (id, title)| {
-                acc.entry(id).or_default().push(title);
-                acc
-            });
+            .collect();
 
     let mi_s: HashSet<i32> = mi
         .movie_id
@@ -105,7 +100,7 @@ pub fn q24b(db: &Data) -> Result<Option<(&str, &str, &str)>, PolarsError> {
         })
         .collect::<HashSet<_>>();
 
-    let n_m: HashMap<i32, Vec<&str>> = n
+    let n_m: HashMap<&i32, &str> = n
         .gender
         .iter()
         .zip(n.id.iter())
@@ -118,12 +113,9 @@ pub fn q24b(db: &Data) -> Result<Option<(&str, &str, &str)>, PolarsError> {
                         && an_s.contains(&id)
                         && an_finder.find(name.as_bytes()).is_some()
                 })
-                .map(|_| (*id, name))
+                .map(|_| (id, name.as_str()))
         })
-        .fold(HashMap::default(), |mut acc, (id, name)| {
-            acc.entry(id).or_default().push(name);
-            acc
-        });
+        .collect();
 
     let rt_s: HashSet<i32> = rt
         .id
@@ -174,21 +166,17 @@ pub fn q24b(db: &Data) -> Result<Option<(&str, &str, &str)>, PolarsError> {
             && rt_s.contains(&role_id)
             && target_note.contains(note.as_str())
             && mc_s.contains(&movie_id)
-            && let Some(titles) = t_m.get(&movie_id)
-            && let Some(names) = n_m.get(&person_id)
-            && let Some(char_names) = chn_m.get(&person_role_id)
+            && let Some(title) = t_m.get(&movie_id)
+            && let Some(name) = n_m.get(&person_id)
+            && let Some(char_name) = chn_m.get(&person_role_id)
         {
             res = match res {
                 Some((old_char_name, old_name, old_title)) => Some((
-                    char_names.iter().min().unwrap().min(&old_char_name),
-                    names.iter().min().unwrap().min(&old_name),
-                    titles.iter().min().unwrap().min(&old_title),
+                    char_name.min(&old_char_name),
+                    name.min(&old_name),
+                    title.min(&old_title),
                 )),
-                None => Some((
-                    char_names.iter().min().unwrap(),
-                    names.iter().min().unwrap(),
-                    titles.iter().min().unwrap(),
-                )),
+                None => Some((char_name, name, title)),
             };
         }
     }

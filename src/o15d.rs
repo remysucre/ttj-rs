@@ -75,7 +75,7 @@ pub fn q15d(db: &Data) -> Result<Option<(&str, &str)>, PolarsError> {
         })
         .collect();
 
-    let t_m: HashMap<&i32, Vec<&str>> =
+    let t_m: HashMap<i32, &str> =
         t.id.iter()
             .zip(t.production_year.iter())
             .zip(t.title.iter())
@@ -84,32 +84,26 @@ pub fn q15d(db: &Data) -> Result<Option<(&str, &str)>, PolarsError> {
                     && *production_year > 1990
                     && mi_s.contains(&movie_id)
                 {
-                    Some((movie_id, title))
+                    Some((*movie_id, title.as_str()))
                 } else {
                     None
                 }
             })
-            .fold(HashMap::default(), |mut acc, (movie_id, title)| {
-                acc.entry(movie_id).or_default().push(title);
-                acc
-            });
+            .collect();
 
     let mut res: Option<(&str, &str)> = None;
 
     for (mid, cid) in mc.movie_id.iter().zip(mc.company_id.iter()) {
         if cn_s.contains(&cid)
-            && let Some(titles) = t_m.get(&mid)
+            && let Some(title) = t_m.get(&mid)
             && let Some(at_titles) = at_m.get(&mid)
         {
             res = match res {
                 Some((old_at_title, old_title)) => Some((
                     at_titles.iter().min().unwrap().min(&old_at_title),
-                    titles.iter().min().unwrap().min(&old_title),
+                    title.min(&old_title),
                 )),
-                None => Some((
-                    at_titles.iter().min().unwrap(),
-                    titles.iter().min().unwrap(),
-                )),
+                None => Some((at_titles.iter().min().unwrap(), title)),
             };
         }
     }

@@ -28,10 +28,10 @@ pub fn q15b(db: &Data) -> Result<Option<(&str, &str)>, PolarsError> {
 
     let at_s: HashSet<&i32> = at.movie_id.iter().collect();
 
-    let mk_s: HashSet<&i32> = mk
+    let mk_s: HashSet<i32> = mk
         .movie_id
         .iter()
-        .filter_map(|movie_id| at_s.contains(movie_id).then_some(movie_id))
+        .filter_map(|movie_id| at_s.contains(movie_id).then_some(*movie_id))
         .collect();
 
     let cn_s: HashSet<i32> = cn
@@ -79,7 +79,7 @@ pub fn q15b(db: &Data) -> Result<Option<(&str, &str)>, PolarsError> {
             acc
         });
 
-    let t_m: HashMap<&i32, Vec<&str>> =
+    let t_m: HashMap<i32, &str> =
         t.id.iter()
             .zip(t.production_year.iter())
             .zip(t.title.iter())
@@ -88,15 +88,12 @@ pub fn q15b(db: &Data) -> Result<Option<(&str, &str)>, PolarsError> {
                     && (2005..=2010).contains(production_year)
                     && mi_m.contains_key(&movie_id)
                 {
-                    Some((movie_id, title))
+                    Some((*movie_id, title.as_str()))
                 } else {
                     None
                 }
             })
-            .fold(HashMap::default(), |mut acc, (movie_id, title)| {
-                acc.entry(movie_id).or_default().push(title);
-                acc
-            });
+            .collect();
 
     let mut res: Option<(&str, &str)> = None;
 
@@ -110,15 +107,15 @@ pub fn q15b(db: &Data) -> Result<Option<(&str, &str)>, PolarsError> {
             && p_two_hundred.find(note.as_bytes()).is_some()
             && worldwide.find(note.as_bytes()).is_some()
             && cn_s.contains(&cid)
-            && let Some(titles) = t_m.get(&mid)
+            && let Some(title) = t_m.get(&mid)
             && let Some(info) = mi_m.get(&mid)
         {
             res = match res {
                 Some((old_info, old_title)) => Some((
                     info.iter().min().unwrap().min(&old_info),
-                    titles.iter().min().unwrap().min(&old_title),
+                    title.min(&old_title),
                 )),
-                None => Some((info.iter().min().unwrap(), titles.iter().min().unwrap())),
+                None => Some((info.iter().min().unwrap(), title)),
             };
         }
     }

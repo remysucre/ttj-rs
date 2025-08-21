@@ -105,19 +105,16 @@ pub fn q23c(db: &Data) -> Result<Option<(&str, &str)>, PolarsError> {
         .into_iter()
         .collect();
 
-    let kt_m: HashMap<&i32, Vec<&str>> = kt
+    let kt_m: HashMap<i32, &str> = kt
         .id
         .iter()
         .zip(kt.kind.iter())
         .filter_map(|(id, kind)| {
             target_kind_type
                 .contains(kind.as_str())
-                .then_some((id, kind))
+                .then_some((*id, kind.as_str()))
         })
-        .fold(HashMap::default(), |mut acc, (id, kind)| {
-            acc.entry(id).or_insert_with(Vec::new).push(kind);
-            acc
-        });
+        .collect();
 
     let mut res: Option<(&str, &str)> = None;
 
@@ -131,14 +128,13 @@ pub fn q23c(db: &Data) -> Result<Option<(&str, &str)>, PolarsError> {
         if let Some(production_year) = production_year
             && mi_s.contains(&id)
             && *production_year > 1990
-            && let Some(kinds) = kt_m.get(&kind_id)
+            && let Some(kind) = kt_m.get(&kind_id)
         {
             res = match res {
-                Some((old_kind, old_title)) => Some((
-                    kinds.iter().min().unwrap().min(&old_kind),
-                    title.as_str().min(old_title),
-                )),
-                None => Some((kinds.iter().min().unwrap(), title)),
+                Some((old_kind, old_title)) => {
+                    Some((kind.min(&old_kind), title.as_str().min(old_title)))
+                }
+                None => Some((kind, title)),
             };
         }
     }
