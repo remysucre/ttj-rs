@@ -5,7 +5,7 @@ use std::time::Instant;
 
 pub fn q22d(db: &Data) -> Result<Option<(&str, &str, &str)>, PolarsError> {
     let cn = &db.cn;
-    let ct = &db.ct;
+    // let ct = &db.ct;
     let it = &db.it;
     let k = &db.k;
     let kt = &db.kt;
@@ -14,8 +14,6 @@ pub fn q22d(db: &Data) -> Result<Option<(&str, &str, &str)>, PolarsError> {
     let mi_idx = &db.mi_idx;
     let mk = &db.mk;
     let t = &db.t;
-
-    let ct_s: HashSet<&i32> = ct.id.iter().collect();
 
     let start = Instant::now();
 
@@ -130,14 +128,8 @@ pub fn q22d(db: &Data) -> Result<Option<(&str, &str, &str)>, PolarsError> {
 
     let mut res: Option<(&str, &str, &str)> = None;
 
-    for ((movie_id, company_id), company_type_id) in mc
-        .movie_id
-        .iter()
-        .zip(mc.company_id.iter())
-        .zip(mc.company_type_id.iter())
-    {
-        if ct_s.contains(&company_type_id)
-            && let Some(title) = t_m.get(&movie_id)
+    for (movie_id, company_id) in mc.movie_id.iter().zip(mc.company_id.iter()) {
+        if let Some(title) = t_m.get(&movie_id)
             && let Some(infos) = mi_idx_m.get(&movie_id)
             && let Some(name) = cn_m.get(&company_id)
         {

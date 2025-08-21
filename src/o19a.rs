@@ -17,10 +17,6 @@ pub fn q19a(db: &Data) -> Result<Option<(&str, &str)>, PolarsError> {
     let rt = &db.rt;
     let t = &db.t;
 
-    let chn_s: HashSet<&i32> = chn.id.iter().collect();
-
-    let an_s: HashSet<&i32> = an.person_id.iter().collect();
-
     let ang = Finder::new("Ang");
     let usa = Finder::new("(USA)");
     let worldwide = Finder::new("(worldwide)");
@@ -29,6 +25,10 @@ pub fn q19a(db: &Data) -> Result<Option<(&str, &str)>, PolarsError> {
     let two_hundred = Finder::new("200");
 
     let start = Instant::now();
+
+    let chn_s: HashSet<&i32> = chn.id.iter().collect();
+
+    let an_s: HashSet<&i32> = an.person_id.iter().collect();
 
     let cn_s: HashSet<i32> = cn
         .country_code
@@ -104,8 +104,9 @@ pub fn q19a(db: &Data) -> Result<Option<(&str, &str)>, PolarsError> {
         .filter_map(|((info, movie_id), info_type_id)| {
             ((japan.find(info.as_bytes()).is_some() || usa_colon.find(info.as_bytes()).is_some())
                 && two_hundred.find(info.as_bytes()).is_some()
-                && it_id == info_type_id)
-                .then_some(movie_id)
+                && it_id == info_type_id
+                && mc_s.contains(movie_id))
+            .then_some(movie_id)
         })
         .collect();
 
@@ -116,8 +117,7 @@ pub fn q19a(db: &Data) -> Result<Option<(&str, &str)>, PolarsError> {
             .filter_map(|((movie_id, production_year), title)| {
                 if let Some(production_year) = production_year
                     && (2005..=2009).contains(production_year)
-                    && mi_s.contains(&movie_id)
-                    && mc_s.contains(&movie_id)
+                    && mi_s.contains(movie_id)
                 {
                     Some((movie_id, title))
                 } else {
@@ -129,7 +129,7 @@ pub fn q19a(db: &Data) -> Result<Option<(&str, &str)>, PolarsError> {
                 acc
             });
 
-    let target_note: ahash::HashSet<&str> = [
+    let target_note: HashSet<&str> = [
         "(voice)",
         "(voice: Japanese version)",
         "(voice) (uncredited)",

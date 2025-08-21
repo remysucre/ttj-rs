@@ -15,12 +15,6 @@ pub fn q2d(db: &Data) -> Result<Option<&str>, PolarsError> {
     let mk = &db.mk;
     let t = &db.t;
 
-    let t_m: HashMap<i32, &str> =
-        t.id.iter()
-            .zip(t.title.iter())
-            .map(|(id, title)| (*id, title.as_str()))
-            .collect();
-
     let start = Instant::now();
 
     let cn_s: HashSet<i32> = cn
@@ -50,11 +44,16 @@ pub fn q2d(db: &Data) -> Result<Option<&str>, PolarsError> {
         .filter_map(|(keyword_id, movie_id)| (keyword_id == k_id).then_some(*movie_id))
         .collect::<HashSet<_>>();
 
+    let t_m: HashMap<&i32, &str> =
+        t.id.iter()
+            .zip(t.title.iter())
+            .filter_map(|(id, title)| mk_s.contains(id).then_some((id, title.as_str())))
+            .collect();
+
     let mut res: Option<&str> = None;
 
     for (movie_id, company_id) in mc.movie_id.iter().zip(mc.company_id.iter()) {
         if cn_s.contains(&company_id)
-            && mk_s.contains(&movie_id)
             && let Some(title) = t_m.get(&movie_id)
         {
             res = match res {

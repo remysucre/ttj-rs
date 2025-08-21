@@ -18,11 +18,7 @@ pub fn q19c(db: &Data) -> Result<Option<(&str, &str)>, PolarsError> {
     let rt = &db.rt;
     let t = &db.t;
 
-    let chn_s: HashSet<i32> = chn.id.iter().map(|id| *id).collect();
-
-    let an_s: HashSet<&i32> = an.person_id.iter().collect();
-
-    let an = Finder::new("An");
+    let an_predicate = Finder::new("An");
     let usa = Finder::new("(USA)");
     let worldwide = Finder::new("(worldwide)");
     let two_hundred_p = Finder::new("(200");
@@ -31,6 +27,10 @@ pub fn q19c(db: &Data) -> Result<Option<(&str, &str)>, PolarsError> {
     let two_hundred = memmem::Finder::new("200");
 
     let start = Instant::now();
+
+    let chn_s: HashSet<i32> = chn.id.iter().map(|id| *id).collect();
+
+    let an_s: HashSet<&i32> = an.person_id.iter().collect();
 
     let cn_s: HashSet<i32> = cn
         .country_code
@@ -68,7 +68,7 @@ pub fn q19c(db: &Data) -> Result<Option<(&str, &str)>, PolarsError> {
                 if let Some(gender) = gender
                     && an_s.contains(&id)
                     && gender == "f"
-                    && an.find(name.as_bytes()).is_some()
+                    && an_predicate.find(name.as_bytes()).is_some()
                 {
                     Some((id, name.as_str()))
                 } else {
@@ -108,8 +108,9 @@ pub fn q19c(db: &Data) -> Result<Option<(&str, &str)>, PolarsError> {
             ((japan_colon.find(info.as_bytes()).is_some()
                 || usa_colon.find(info.as_bytes()).is_some())
                 && two_hundred.find(info.as_bytes()).is_some()
-                && it_id == info_type_id)
-                .then_some(movie_id)
+                && it_id == info_type_id
+                && mc_s.contains(movie_id))
+            .then_some(movie_id)
         })
         .collect();
 
@@ -121,7 +122,6 @@ pub fn q19c(db: &Data) -> Result<Option<(&str, &str)>, PolarsError> {
                 if let Some(production_year) = production_year
                     && *production_year > 2000
                     && mi_s.contains(&movie_id)
-                    && mc_s.contains(&movie_id)
                 {
                     Some((movie_id, title))
                 } else {

@@ -33,13 +33,13 @@ pub fn q26a(db: &Data) -> Result<Option<(&str, &str, &str, &str)>, PolarsError> 
     let man_finder = memmem::Finder::new("man");
     let man2_finder = memmem::Finder::new("Man");
 
+    let start = Instant::now();
+
     let n_m: HashMap<i32, &str> =
         n.id.iter()
             .zip(n.name.iter())
             .map(|(id, name)| (*id, name.as_str()))
             .collect();
-
-    let start = Instant::now();
 
     let mut cct1_id: i32 = 0;
     let mut cct2_s = HashSet::default();

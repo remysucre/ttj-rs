@@ -7,13 +7,11 @@ pub fn q11d(db: &Data) -> Result<Option<(&str, &str, &str)>, PolarsError> {
     let cn = &db.cn;
     let ct = &db.ct;
     let k = &db.k;
-    let lt = &db.lt;
+    // let lt = &db.lt;
     let mc = &db.mc;
     let mk = &db.mk;
     let ml = &db.ml;
     let t = &db.t;
-
-    let lt_s: HashSet<i32> = lt.id.iter().copied().collect();
 
     let start = Instant::now();
 
@@ -57,8 +55,7 @@ pub fn q11d(db: &Data) -> Result<Option<(&str, &str, &str)>, PolarsError> {
     let ml_s: HashSet<&i32> = ml
         .movie_id
         .iter()
-        .zip(ml.link_type_id.iter())
-        .filter_map(|(mid, lt_id)| lt_s.contains(&lt_id).then_some(mid))
+        .filter_map(|mid| mk_s.contains(&mid).then_some(mid))
         .collect();
 
     let t_m: HashMap<&i32, &str> =
@@ -67,7 +64,6 @@ pub fn q11d(db: &Data) -> Result<Option<(&str, &str, &str)>, PolarsError> {
             .zip(t.production_year.iter())
             .filter_map(|((id, title), production_year)| {
                 if let Some(production_year) = production_year
-                    && mk_s.contains(&id)
                     && ml_s.contains(&id)
                     && *production_year > 1950
                 {
@@ -89,7 +85,6 @@ pub fn q11d(db: &Data) -> Result<Option<(&str, &str, &str)>, PolarsError> {
     {
         if let Some(note) = note
             && ct_s.contains(&company_type_id)
-            && ml_s.contains(&mid)
             && let Some(name) = cn_m.get(&cid)
             && let Some(title) = t_m.get(&mid)
         {

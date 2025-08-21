@@ -16,32 +16,20 @@ pub fn q32a(db: &Data) -> Result<Option<(&str, &str, &str)>, PolarsError> {
     let ml = &db.ml;
     let t = &db.t;
 
-    let t1_m: HashMap<&i32, Vec<&str>> =
-        t.id.iter()
-            .zip(t.title.iter())
-            .fold(HashMap::default(), |mut acc, (id, title)| {
-                acc.entry(id).or_default().push(title);
-                acc
-            });
-
-    let t2_m: HashMap<&i32, Vec<&str>> =
-        t.id.iter()
-            .zip(t.title.iter())
-            .fold(HashMap::default(), |mut acc, (id, title)| {
-                acc.entry(id).or_default().push(title);
-                acc
-            });
-
-    let lt_m: HashMap<&i32, Vec<&str>> =
-        lt.id
-            .iter()
-            .zip(lt.link.iter())
-            .fold(HashMap::default(), |mut acc, (id, link)| {
-                acc.entry(id).or_default().push(link);
-                acc
-            });
-
     let elapsed = Instant::now();
+
+    let t1_m: HashMap<&i32, &str> =
+        t.id.iter()
+            .zip(t.title.iter())
+            .map(|(id, title)| (id, title.as_str()))
+            .collect();
+
+    let lt_m: HashMap<&i32, &str> = lt
+        .id
+        .iter()
+        .zip(lt.link.iter())
+        .map(|(id, link)| (id, link.as_str()))
+        .collect();
 
     let k_id = k
         .keyword
@@ -68,25 +56,19 @@ pub fn q32a(db: &Data) -> Result<Option<(&str, &str, &str)>, PolarsError> {
         .zip(ml.linked_movie_id.iter())
         .zip(ml.link_type_id.iter())
     {
-        if mk_s.contains(&movie_id) {
-            if let (Some(links), Some(titles1), Some(titles2)) = (
-                lt_m.get(&link_type_id),
-                t1_m.get(&movie_id),
-                t2_m.get(&linked_movie_id),
-            ) {
-                res = match res {
-                    Some((old_link, old_title1, old_title2)) => Some((
-                        links.iter().min().unwrap().min(&old_link),
-                        titles1.iter().min().unwrap().min(&old_title1),
-                        titles2.iter().min().unwrap().min(&old_title2),
-                    )),
-                    None => Some((
-                        links.iter().min().unwrap(),
-                        titles1.iter().min().unwrap(),
-                        titles2.iter().min().unwrap(),
-                    )),
-                };
-            }
+        if mk_s.contains(&movie_id)
+            && let Some(link) = lt_m.get(&link_type_id)
+            && let Some(title1) = t1_m.get(&movie_id)
+            && let Some(title2) = t1_m.get(&linked_movie_id)
+        {
+            res = match res {
+                Some((old_link, old_title1, old_title2)) => Some((
+                    link.min(&old_link),
+                    title1.min(&old_title1),
+                    title2.min(&old_title2),
+                )),
+                None => Some((link, title1, title2)),
+            };
         }
     }
 

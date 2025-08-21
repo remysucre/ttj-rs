@@ -15,34 +15,21 @@ pub fn q33b(db: &Data) -> Result<Option<(&str, &str, &str, &str, &str, &str)>, P
     let ml = &db.ml;
     let t = &db.t;
 
-    let cn2_m: HashMap<i32, &str> =
-        cn.id
-            .iter()
-            .zip(cn.name.iter())
-            .fold(HashMap::default(), |mut acc, (id, name)| {
-                acc.insert(*id, name.as_str());
-                acc
-            });
-
     let follow = memmem::Finder::new("follow");
 
     let start = Instant::now();
 
-    let cn1_m: HashMap<i32, &str> = cn
-        .id
-        .iter()
-        .zip(cn.name.iter())
-        .zip(cn.country_code.iter())
-        .filter_map(|((id, name), country_code)| {
-            country_code
-                .as_ref()
-                .filter(|country_code| country_code == &"[nl]")
-                .map(|_| (*id, name.as_str()))
-        })
-        .fold(HashMap::default(), |mut acc, (id, name)| {
-            acc.insert(id, name);
-            acc
-        });
+    let mut cn1_m: HashMap<&i32, &str> = HashMap::default();
+    let mut cn2_m: HashMap<&i32, &str> = HashMap::default();
+
+    for ((id, name), country_code) in cn.id.iter().zip(cn.name.iter()).zip(cn.country_code.iter()) {
+        cn2_m.insert(id, name.as_str());
+        if let Some(country_code) = country_code
+            && country_code == &"[nl]"
+        {
+            cn1_m.insert(id, name.as_str());
+        }
+    }
 
     let it1_s: i32 = it
         .id
@@ -77,8 +64,8 @@ pub fn q33b(db: &Data) -> Result<Option<(&str, &str, &str, &str, &str, &str)>, P
         .map(|(id, _)| *id)
         .unwrap();
 
-    let mut t1_m: HashMap<i32, Vec<&str>> = HashMap::default();
-    let mut t2_m: HashMap<i32, Vec<&str>> = HashMap::default();
+    let mut t1_m: HashMap<&i32, &str> = HashMap::default();
+    let mut t2_m: HashMap<&i32, &str> = HashMap::default();
 
     for (((id, kind_id), title), production_year) in
         t.id.iter()
@@ -88,13 +75,13 @@ pub fn q33b(db: &Data) -> Result<Option<(&str, &str, &str, &str, &str, &str)>, P
     {
         if kt1_s == *kind_id {
             if mi_idx1_m.contains_key(id) {
-                t1_m.entry(*id).or_default().push(title.as_str());
+                t1_m.insert(id, title.as_str());
             }
             if mi_idx2_m.contains_key(id)
                 && let Some(production_year) = production_year
                 && *production_year == 2007
             {
-                t2_m.entry(*id).or_default().push(title.as_str());
+                t2_m.insert(id, title.as_str());
             }
         }
     }
@@ -145,16 +132,16 @@ pub fn q33b(db: &Data) -> Result<Option<(&str, &str, &str, &str, &str, &str)>, P
                         old_n2.min(mc2_min_name.iter().min().unwrap()),
                         old_r1.min(mi_idx1_info.iter().min().unwrap()),
                         old_r2.min(mi_idx2_info.iter().min().unwrap()),
-                        old_t1.min(t1_title.iter().min().unwrap()),
-                        old_t2.min(t2_title.iter().min().unwrap()),
+                        old_t1.min(t1_title),
+                        old_t2.min(t2_title),
                     )),
                     None => Some((
                         mc1_min_name.iter().min().unwrap(),
                         mc2_min_name.iter().min().unwrap(),
                         mi_idx1_info.iter().min().unwrap(),
                         mi_idx2_info.iter().min().unwrap(),
-                        t1_title.iter().min().unwrap(),
-                        t2_title.iter().min().unwrap(),
+                        t1_title,
+                        t2_title,
                     )),
                 };
             }

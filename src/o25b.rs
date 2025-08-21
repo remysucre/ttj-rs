@@ -18,7 +18,7 @@ pub fn q25b(db: &Data) -> Result<Option<(&str, &str, &str, &str)>, PolarsError> 
 
     let start = Instant::now();
 
-    let t_m: HashMap<i32, Vec<&str>> =
+    let t_m: HashMap<&i32, &str> =
         t.id.iter()
             .zip(t.title.iter())
             .zip(t.production_year.iter())
@@ -27,12 +27,9 @@ pub fn q25b(db: &Data) -> Result<Option<(&str, &str, &str, &str)>, PolarsError> 
                     .filter(|production_year| {
                         production_year > &2010 && vampire.find(title.as_bytes()).is_some()
                     })
-                    .map(|_| (*id, title))
+                    .map(|_| (id, title.as_str()))
             })
-            .fold(HashMap::default(), |mut acc, (id, title)| {
-                acc.entry(id).or_default().push(title);
-                acc
-            });
+            .collect();
 
     let mut it_id: i32 = 0;
     let mut it2_id: i32 = 0;
@@ -91,7 +88,7 @@ pub fn q25b(db: &Data) -> Result<Option<(&str, &str, &str, &str)>, PolarsError> 
         })
         .collect();
 
-    let n_m: HashMap<i32, Vec<&str>> =
+    let n_m: HashMap<&i32, &str> =
         n.id.iter()
             .zip(n.name.iter())
             .zip(n.gender.iter())
@@ -99,12 +96,9 @@ pub fn q25b(db: &Data) -> Result<Option<(&str, &str, &str, &str)>, PolarsError> 
                 gender
                     .as_ref()
                     .filter(|&gender| gender == "m")
-                    .map(|_| (*id, name))
+                    .map(|_| (id, name.as_str()))
             })
-            .fold(HashMap::default(), |mut acc, (id, name)| {
-                acc.entry(id).or_default().push(name);
-                acc
-            });
+            .collect();
 
     let mut res: Option<(&str, &str, &str, &str)> = None;
 
@@ -129,21 +123,21 @@ pub fn q25b(db: &Data) -> Result<Option<(&str, &str, &str, &str)>, PolarsError> 
             && let Some(mi_info) = mi_m.get(&movie_id)
             && mk_s.contains(&movie_id)
             && let Some(mi_idx_info) = mi_idx_m.get(&movie_id)
-            && let Some(names) = n_m.get(&person_id)
-            && let Some(titles) = t_m.get(&movie_id)
+            && let Some(name) = n_m.get(&person_id)
+            && let Some(title) = t_m.get(&movie_id)
         {
             res = match res {
                 Some((old_mi_info, old_mi_idx_info, old_names, old_titles)) => Some((
                     mi_info.iter().min().unwrap().min(&old_mi_info),
                     mi_idx_info.iter().min().unwrap().min(&old_mi_idx_info),
-                    names.iter().min().unwrap().min(&old_names),
-                    titles.iter().min().unwrap().min(&old_titles),
+                    name.min(&old_names),
+                    title.min(&old_titles),
                 )),
                 None => Some((
                     mi_info.iter().min().unwrap(),
                     mi_idx_info.iter().min().unwrap(),
-                    names.iter().min().unwrap(),
-                    titles.iter().min().unwrap(),
+                    name,
+                    title,
                 )),
             };
         }

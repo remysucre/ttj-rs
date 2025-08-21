@@ -16,12 +16,15 @@ pub fn q10b(db: &Data) -> Result<Option<(&str, &str)>, PolarsError> {
     let chn = &db.chn;
     let ci = &db.ci;
     let cn = &db.cn;
-    let ct = &db.ct;
+    // FK-PK optimization
+    // let ct = &db.ct;
     let mc = &db.mc;
     let rt = &db.rt;
     let t = &db.t;
 
     let producer = Finder::new("(producer)");
+
+    let start = Instant::now();
 
     let chn_m: HashMap<&i32, Vec<&str>> =
         chn.id
@@ -31,10 +34,6 @@ pub fn q10b(db: &Data) -> Result<Option<(&str, &str)>, PolarsError> {
                 acc.entry(chn_id).or_default().push(name);
                 acc
             });
-
-    let start = Instant::now();
-
-    let ct_s: Vec<i32> = ct.id.iter().copied().collect();
 
     let cn_s: HashSet<&i32> = cn
         .country_code
@@ -52,10 +51,7 @@ pub fn q10b(db: &Data) -> Result<Option<(&str, &str)>, PolarsError> {
         .movie_id
         .iter()
         .zip(mc.company_id.iter())
-        .zip(mc.company_type_id.iter())
-        .filter_map(|((movie_id, company_id), company_type_id)| {
-            (cn_s.contains(&company_id) && ct_s.contains(&company_type_id)).then_some(movie_id)
-        })
+        .filter_map(|(movie_id, company_id)| cn_s.contains(&company_id).then_some(movie_id))
         .collect();
 
     let rt_id = rt

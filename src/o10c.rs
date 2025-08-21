@@ -15,6 +15,12 @@ pub fn q10c(db: &Data) -> Result<Option<(&str, &str)>, PolarsError> {
 
     let producer = Finder::new("(producer)");
 
+    // Due to ct and mc form a PK-FK join and there are no selection predicates on ct, we can drop
+    // ct from the join.
+    // let ct_s: Vec<i32> = ct.column("id")?.i32()?.into_iter().flatten().collect();
+
+    let start = Instant::now();
+
     let chn_m: HashMap<&i32, Vec<&str>> =
         chn.id
             .iter()
@@ -23,12 +29,6 @@ pub fn q10c(db: &Data) -> Result<Option<(&str, &str)>, PolarsError> {
                 acc.entry(chn_id).or_default().push(name);
                 acc
             });
-
-    // Due to ct and mc form a PK-FK join and there are no selection predicates on ct, we can drop
-    // ct from the join.
-    // let ct_s: Vec<i32> = ct.column("id")?.i32()?.into_iter().flatten().collect();
-
-    let start = Instant::now();
 
     let cn_s: HashSet<&i32> = cn
         .country_code

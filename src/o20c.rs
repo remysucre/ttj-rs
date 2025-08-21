@@ -16,16 +16,16 @@ pub fn q20c(db: &Data) -> Result<Option<(&str, &str)>, PolarsError> {
     let mk = &db.mk;
     let k = &db.k;
 
+    let man = memmem::Finder::new(b"man");
+    let big_man = memmem::Finder::new(b"Man");
+
+    let start = Instant::now();
+
     let n_m: HashMap<&i32, &str> =
         n.id.iter()
             .zip(n.name.iter())
             .map(|(id, name)| (id, name.as_str()))
             .collect();
-
-    let man = memmem::Finder::new(b"man");
-    let big_man = memmem::Finder::new(b"Man");
-
-    let start = Instant::now();
 
     let mut cct1_id: i32 = 0;
     let mut cct2_s = HashSet::new();

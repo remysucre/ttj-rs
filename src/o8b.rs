@@ -14,15 +14,6 @@ pub fn q8b(db: &Data) -> Result<Option<(&str, &str)>, PolarsError> {
     let mc = &db.mc;
     let cn = &db.cn;
 
-    let an_m: HashMap<i32, Vec<&str>> =
-        an.person_id
-            .iter()
-            .zip(an.name.iter())
-            .fold(HashMap::default(), |mut acc, (id, name)| {
-                acc.entry(*id).or_default().push(name);
-                acc
-            });
-
     let op_finder = memmem::Finder::new("One Piece");
     let dbz_finder = memmem::Finder::new("Dragon Ball Z");
     let yo_finder = memmem::Finder::new("Yo");
@@ -34,7 +25,16 @@ pub fn q8b(db: &Data) -> Result<Option<(&str, &str)>, PolarsError> {
 
     let start = Instant::now();
 
-    let t_m: HashMap<i32, Vec<&str>> =
+    let an_m: HashMap<i32, Vec<&str>> =
+        an.person_id
+            .iter()
+            .zip(an.name.iter())
+            .fold(HashMap::default(), |mut acc, (id, name)| {
+                acc.entry(*id).or_default().push(name);
+                acc
+            });
+
+    let t_m: HashMap<&i32, &str> =
         t.id.iter()
             .zip(t.title.iter())
             .zip(t.production_year.iter())
@@ -46,12 +46,9 @@ pub fn q8b(db: &Data) -> Result<Option<(&str, &str)>, PolarsError> {
                             && (op_finder.find(title_bytes) == Some(0)
                                 || dbz_finder.find(title_bytes) == Some(0))
                     })
-                    .map(|_| (*id, title))
+                    .map(|_| (id, title.as_str()))
             })
-            .fold(HashMap::default(), |mut acc, (id, title)| {
-                acc.entry(id).or_default().push(title);
-                acc
-            });
+            .collect();
 
     let n_s: HashSet<i32> = n
         .id
@@ -121,9 +118,9 @@ pub fn q8b(db: &Data) -> Result<Option<(&str, &str)>, PolarsError> {
             res = match res {
                 Some((old_name, old_title)) => Some((
                     name.iter().min().unwrap().min(&old_name),
-                    title.iter().min().unwrap().min(&old_title),
+                    title.min(&old_title),
                 )),
-                None => Some((name.iter().min().unwrap(), title.iter().min().unwrap())),
+                None => Some((name.iter().min().unwrap(), title)),
             };
         }
     }

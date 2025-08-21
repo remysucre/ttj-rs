@@ -9,7 +9,7 @@ pub fn q15b(db: &Data) -> Result<Option<(&str, &str)>, PolarsError> {
     let cn = &db.cn;
     // let ct = &db.ct;
     let it = &db.it;
-    let k = &db.k;
+    // let k = &db.k;
     let mc = &db.mc;
     let mi = &db.mi;
     let mk = &db.mk;
@@ -21,20 +21,17 @@ pub fn q15b(db: &Data) -> Result<Option<(&str, &str)>, PolarsError> {
     let p_two_hundred = Finder::new("(200");
     let worldwide = Finder::new("(worldwide)");
 
-    let at_s: HashSet<&i32> = at.movie_id.iter().collect();
-
-    let k_s: HashSet<&i32> = k.id.iter().collect();
-
     // Fk-PK optimization
     // let ct_s: HashSet<i32> = ct.column("id")?.i32()?.into_iter().flatten().collect();
 
     let start = Instant::now();
 
+    let at_s: HashSet<&i32> = at.movie_id.iter().collect();
+
     let mk_s: HashSet<&i32> = mk
         .movie_id
         .iter()
-        .zip(mk.keyword_id.iter())
-        .filter_map(|(movie_id, keyword_id)| k_s.contains(keyword_id).then_some(movie_id))
+        .filter_map(|movie_id| at_s.contains(movie_id).then_some(movie_id))
         .collect();
 
     let cn_s: HashSet<i32> = cn
@@ -70,6 +67,7 @@ pub fn q15b(db: &Data) -> Result<Option<(&str, &str)>, PolarsError> {
                 && internet.find(note.as_bytes()).is_some()
                 && usa.find(info.as_bytes()) == Some(0)
                 && two_hundred.find(info.as_bytes()).is_some()
+                && mk_s.contains(movie_id)
             {
                 Some((movie_id, info))
             } else {
@@ -89,8 +87,6 @@ pub fn q15b(db: &Data) -> Result<Option<(&str, &str)>, PolarsError> {
                 if let Some(production_year) = production_year
                     && (2005..=2010).contains(production_year)
                     && mi_m.contains_key(&movie_id)
-                    && at_s.contains(&movie_id)
-                    && mk_s.contains(&movie_id)
                 {
                     Some((movie_id, title))
                 } else {

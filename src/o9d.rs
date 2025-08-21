@@ -13,6 +13,8 @@ pub fn q9d(db: &Data) -> Result<Option<(&str, &str, &str, &str)>, PolarsError> {
     let rt = &db.rt;
     let t = &db.t;
 
+    let start = Instant::now();
+
     let an_m: HashMap<&i32, Vec<&str>> = an.person_id.iter().zip(an.name.iter()).fold(
         HashMap::default(),
         |mut acc, (person_id, name)| {
@@ -21,24 +23,18 @@ pub fn q9d(db: &Data) -> Result<Option<(&str, &str, &str, &str)>, PolarsError> {
         },
     );
 
-    let chn_m: HashMap<&i32, Vec<&str>> =
-        chn.id
-            .iter()
-            .zip(chn.name.iter())
-            .fold(HashMap::default(), |mut acc, (chn_id, name)| {
-                acc.entry(chn_id).or_default().push(name);
-                acc
-            });
+    let chn_m: HashMap<&i32, &str> = chn
+        .id
+        .iter()
+        .zip(chn.name.iter())
+        .map(|(id, title)| (id, title.as_str()))
+        .collect();
 
-    let t_m: HashMap<&i32, Vec<&str>> =
+    let t_m: HashMap<&i32, &str> =
         t.id.iter()
             .zip(t.title.iter())
-            .fold(HashMap::default(), |mut acc, (person_id, title)| {
-                acc.entry(person_id).or_default().push(title);
-                acc
-            });
-
-    let start = Instant::now();
+            .map(|(id, title)| (id, title.as_str()))
+            .collect();
 
     let cn_s: HashSet<&i32> = cn
         .country_code
@@ -64,7 +60,7 @@ pub fn q9d(db: &Data) -> Result<Option<(&str, &str, &str, &str)>, PolarsError> {
         })
         .collect();
 
-    let n_m: HashMap<&i32, Vec<&str>> =
+    let n_m: HashMap<&i32, &str> =
         n.id.iter()
             .zip(n.gender.iter())
             .zip(n.name.iter())
@@ -72,15 +68,12 @@ pub fn q9d(db: &Data) -> Result<Option<(&str, &str, &str, &str)>, PolarsError> {
                 if let Some(gender) = gender
                     && gender == "f"
                 {
-                    Some((id, name))
+                    Some((id, name.as_str()))
                 } else {
                     None
                 }
             })
-            .fold(HashMap::default(), |mut acc, (id, name)| {
-                acc.entry(id).or_default().push(name);
-                acc
-            });
+            .collect();
 
     let rt_id = rt
         .role
@@ -115,9 +108,9 @@ pub fn q9d(db: &Data) -> Result<Option<(&str, &str, &str, &str)>, PolarsError> {
             && rt_id == role_id
             && target_note.contains(note.as_str())
             && let Some(alternative_names) = an_m.get(&person_id)
-            && let Some(character_names) = chn_m.get(&person_role_id)
-            && let Some(names) = n_m.get(&person_id)
-            && let Some(titles) = t_m.get(&movie_id)
+            && let Some(character_name) = chn_m.get(&person_role_id)
+            && let Some(name) = n_m.get(&person_id)
+            && let Some(title) = t_m.get(&movie_id)
         {
             res = match res {
                 Some((old_alternative_name, old_character_name, old_name, old_title)) => Some((
@@ -126,19 +119,15 @@ pub fn q9d(db: &Data) -> Result<Option<(&str, &str, &str, &str)>, PolarsError> {
                         .min()
                         .unwrap()
                         .min(&old_alternative_name),
-                    character_names
-                        .iter()
-                        .min()
-                        .unwrap()
-                        .min(&old_character_name),
-                    names.iter().min().unwrap().min(&old_name),
-                    titles.iter().min().unwrap().min(&old_title),
+                    character_name.min(&old_character_name),
+                    name.min(&old_name),
+                    title.min(&old_title),
                 )),
                 None => Some((
                     alternative_names.iter().min().unwrap(),
-                    character_names.iter().min().unwrap(),
-                    names.iter().min().unwrap(),
-                    titles.iter().min().unwrap(),
+                    character_name,
+                    name,
+                    title,
                 )),
             };
         }

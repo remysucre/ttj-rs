@@ -16,17 +16,15 @@ pub fn q31c(db: &Data) -> Result<Option<(&str, &str, &str, &str)>, PolarsError> 
     let n = &db.n;
     let t = &db.t;
 
-    let n_m: HashMap<&i32, Vec<&str>> =
-        n.id.iter()
-            .zip(n.name.iter())
-            .fold(HashMap::default(), |mut acc, (id, name)| {
-                acc.entry(id).or_default().push(name);
-                acc
-            });
-
     let lionsgate = Finder::new("Lionsgate");
 
     let elapsed = Instant::now();
+
+    let n_m: HashMap<&i32, &str> =
+        n.id.iter()
+            .zip(n.name.iter())
+            .map(|(id, name)| (id, name.as_str()))
+            .collect();
 
     let cn_s: HashSet<&i32> = cn
         .id
@@ -139,7 +137,7 @@ pub fn q31c(db: &Data) -> Result<Option<(&str, &str, &str, &str)>, PolarsError> 
         if let Some(note) = note
             && let Some(title) = t_m.get(&mid)
             && target_note.contains(note.as_str())
-            && let Some(names) = n_m.get(&pid)
+            && let Some(name) = n_m.get(&pid)
             && let Some(info) = mi_m.get(&mid)
             && let Some(info_idx) = mi_idx_m.get(&mid)
         {
@@ -147,13 +145,13 @@ pub fn q31c(db: &Data) -> Result<Option<(&str, &str, &str, &str)>, PolarsError> 
                 Some((old_info, old_info_idx, old_names, old_title)) => Some((
                     info.iter().min().unwrap().min(&old_info),
                     info_idx.iter().min().unwrap().min(&old_info_idx),
-                    names.iter().min().unwrap().min(&old_names),
+                    name.min(&old_names),
                     title.min(&old_title),
                 )),
                 None => Some((
                     info.iter().min().unwrap(),
                     info_idx.iter().min().unwrap(),
-                    names.iter().min().unwrap(),
+                    name,
                     title,
                 )),
             };

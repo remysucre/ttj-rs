@@ -31,14 +31,14 @@ pub fn q24a(db: &Data) -> Result<Option<(&str, &str, &str)>, PolarsError> {
     let k = &db.k;
     let an = &db.an;
 
-    let an_s: HashSet<i32> = an.person_id.iter().map(|id| *id).collect();
-
     let japan = memmem::Finder::new("Japan:");
     let usa = memmem::Finder::new("USA:");
     let two_o_one = memmem::Finder::new("201");
     let an_finder = memmem::Finder::new("An");
 
     let start = Instant::now();
+
+    let an_s: HashSet<i32> = an.person_id.iter().map(|id| *id).collect();
 
     let chn_m: HashMap<i32, Vec<&str>> =
         chn.id

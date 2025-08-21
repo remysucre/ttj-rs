@@ -22,13 +22,13 @@ pub fn q29b(db: &Data) -> Result<Option<(&str, &str, &str)>, PolarsError> {
     let rt = &db.rt;
     let t = &db.t;
 
-    let an_s: HashSet<&i32> = an.person_id.iter().collect();
-
     let usa_colon = memmem::Finder::new("USA:");
     let two_hundred = memmem::Finder::new("200");
-    let an = Finder::new("An");
+    let an_finder = Finder::new("An");
 
     let start = Instant::now();
+
+    let an_s: HashSet<&i32> = an.person_id.iter().collect();
 
     let mut cct1_id: i32 = 0;
     let mut cct2_id: i32 = 0;
@@ -128,7 +128,7 @@ pub fn q29b(db: &Data) -> Result<Option<(&str, &str, &str)>, PolarsError> {
         .filter_map(|(person_id, info_type_id)| (it2_id == info_type_id).then_some(person_id))
         .collect();
 
-    let n_m: HashMap<i32, Vec<&str>> =
+    let n_m: HashMap<&i32, &str> =
         n.id.iter()
             .zip(n.gender.iter())
             .zip(n.name.iter())
@@ -139,14 +139,11 @@ pub fn q29b(db: &Data) -> Result<Option<(&str, &str, &str)>, PolarsError> {
                         an_s.contains(&id)
                             && pi_s.contains(id)
                             && gender == &"f"
-                            && an.find(name.as_bytes()).is_some()
+                            && an_finder.find(name.as_bytes()).is_some()
                     })
-                    .map(|_| (*id, name))
+                    .map(|_| (id, name.as_str()))
             })
-            .fold(HashMap::default(), |mut acc, (id, name)| {
-                acc.entry(id).or_default().push(name);
-                acc
-            });
+            .collect();
 
     let rt_id = rt
         .role
@@ -196,15 +193,12 @@ pub fn q29b(db: &Data) -> Result<Option<(&str, &str, &str)>, PolarsError> {
             && target_note.contains(note.as_str())
             && rt_id == role_id
             && let Some(title) = t_m.get(&movie_id)
-            && let Some(names) = n_m.get(&person_id)
+            && let Some(name) = n_m.get(&person_id)
             && chn_id == person_role_id
         {
             res = match res {
-                Some((old_name, old_title)) => Some((
-                    names.iter().min().unwrap().min(&old_name),
-                    title.min(&old_title),
-                )),
-                None => Some((names.iter().min().unwrap(), title)),
+                Some((old_name, old_title)) => Some((name.min(&old_name), title.min(&old_title))),
+                None => Some((name, title)),
             };
         }
     }

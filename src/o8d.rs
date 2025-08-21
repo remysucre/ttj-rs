@@ -7,11 +7,13 @@ use std::time::Instant;
 pub fn q8d(db: &Data) -> Result<Option<(&str, &str)>, PolarsError> {
     let t = &db.t;
     let an = &db.an;
-    let n = &db.n;
+    // let n = &db.n;
     let rt = &db.rt;
     let ci = &db.ci;
     let mc = &db.mc;
     let cn = &db.cn;
+
+    let start = Instant::now();
 
     let an_m: HashMap<&i32, Vec<&str>> = an.person_id.iter().zip(an.name.iter()).fold(
         HashMap::default(),
@@ -26,10 +28,6 @@ pub fn q8d(db: &Data) -> Result<Option<(&str, &str)>, PolarsError> {
             .zip(t.title.iter())
             .map(|(id, title)| (id, title.as_str()))
             .collect();
-
-    let n_s: HashSet<&i32> = n.id.iter().collect();
-
-    let start = Instant::now();
 
     let rt_id = rt
         .role
@@ -67,7 +65,6 @@ pub fn q8d(db: &Data) -> Result<Option<(&str, &str)>, PolarsError> {
         .zip(ci.role_id.iter())
     {
         if rt_id == role_id
-            && n_s.contains(&person_id)
             && mc_s.contains(&movie_id)
             && let Some(name) = an_m.get(&person_id)
             && let Some(title) = t_m.get(&movie_id)

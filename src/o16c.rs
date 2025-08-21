@@ -12,6 +12,8 @@ pub fn q16c(db: &Data) -> Result<Option<(&str, &str)>, PolarsError> {
     let t = &db.t;
     let mc = &db.mc;
 
+    let start = Instant::now();
+
     let an_m: HashMap<&i32, Vec<&str>> = an.person_id.iter().zip(an.name.iter()).fold(
         HashMap::<&i32, Vec<&str>>::default(),
         |mut acc, (person_id, name)| {
@@ -19,8 +21,6 @@ pub fn q16c(db: &Data) -> Result<Option<(&str, &str)>, PolarsError> {
             acc
         },
     );
-
-    let start = Instant::now();
 
     let k_id = k
         .keyword
@@ -53,7 +53,9 @@ pub fn q16c(db: &Data) -> Result<Option<(&str, &str)>, PolarsError> {
         .company_id
         .iter()
         .zip(mc.movie_id.iter())
-        .filter_map(|(company_id, movie_id)| cn_s.contains(&company_id).then_some(movie_id))
+        .filter_map(|(company_id, movie_id)| {
+            (mk_s.contains(movie_id) && cn_s.contains(&company_id)).then_some(movie_id)
+        })
         .collect();
 
     let t_m: HashMap<&i32, &str> =
@@ -62,7 +64,6 @@ pub fn q16c(db: &Data) -> Result<Option<(&str, &str)>, PolarsError> {
             .zip(t.episode_nr.iter())
             .filter_map(|((movie_id, title), episode_nr)| {
                 if let Some(episode_nr) = episode_nr
-                    && mk_s.contains(&movie_id)
                     && mc_s.contains(&movie_id)
                     && *episode_nr < 100
                 {
@@ -76,8 +77,7 @@ pub fn q16c(db: &Data) -> Result<Option<(&str, &str)>, PolarsError> {
     let mut res: Option<(&str, &str)> = None;
 
     for (person_id, movie_id) in ci.person_id.iter().zip(ci.movie_id.iter()) {
-        if mc_s.contains(&movie_id)
-            && let Some(title) = t_m.get(&movie_id)
+        if let Some(title) = t_m.get(&movie_id)
             && let Some(name) = an_m.get(&person_id)
         {
             res = match res {

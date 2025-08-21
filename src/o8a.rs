@@ -21,6 +21,13 @@ pub fn q8a(db: &Data) -> Result<Option<(&str, &str)>, PolarsError> {
     let mc = &db.mc;
     let cn = &db.cn;
 
+    let yo_finder = memmem::Finder::new("Yo");
+    let yu_finder = memmem::Finder::new("Yu");
+    let japan_finder = memmem::Finder::new("(Japan)");
+    let usa_finder = memmem::Finder::new("(USA)");
+
+    let start = Instant::now();
+
     let t_m: HashMap<i32, &str> =
         t.id.iter()
             .zip(t.title.iter())
@@ -35,13 +42,6 @@ pub fn q8a(db: &Data) -> Result<Option<(&str, &str)>, PolarsError> {
                 acc.entry(*id).or_default().push(name);
                 acc
             });
-
-    let yo_finder = memmem::Finder::new("Yo");
-    let yu_finder = memmem::Finder::new("Yu");
-    let japan_finder = memmem::Finder::new("(Japan)");
-    let usa_finder = memmem::Finder::new("(USA)");
-
-    let start = Instant::now();
 
     let n_s: HashSet<i32> = n
         .id

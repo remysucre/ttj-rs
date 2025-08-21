@@ -14,6 +14,10 @@ pub fn q9c(db: &Data) -> Result<Option<(&str, &str, &str, &str)>, PolarsError> {
     let rt = &db.rt;
     let t = &db.t;
 
+    let an_predicate = memmem::Finder::new("An");
+
+    let start = Instant::now();
+
     let an_m: HashMap<i32, Vec<&str>> = an
         .person_id
         .iter()
@@ -24,28 +28,18 @@ pub fn q9c(db: &Data) -> Result<Option<(&str, &str, &str, &str)>, PolarsError> {
             acc
         });
 
-    let chn_m: HashMap<i32, Vec<&str>> = chn
+    let chn_m: HashMap<&i32, &str> = chn
         .id
         .iter()
         .zip(chn.name.iter())
-        .map(|(id, name)| (*id, name))
-        .fold(HashMap::default(), |mut acc, (idx, name)| {
-            acc.entry(idx).or_insert_with(Vec::new).push(name);
-            acc
-        });
+        .map(|(id, name)| (id, name.as_str()))
+        .collect();
 
-    let t_m: HashMap<i32, Vec<&str>> =
+    let t_m: HashMap<&i32, &str> =
         t.id.iter()
             .zip(t.title.iter())
-            .map(|(id, title)| (*id, title))
-            .fold(HashMap::default(), |mut acc, (idx, title)| {
-                acc.entry(idx).or_insert_with(Vec::new).push(title);
-                acc
-            });
-
-    let an = memmem::Finder::new("An");
-
-    let start = Instant::now();
+            .map(|(id, title)| (id, title.as_str()))
+            .collect();
 
     let cn_s: HashSet<i32> = cn
         .country_code
@@ -66,20 +60,17 @@ pub fn q9c(db: &Data) -> Result<Option<(&str, &str, &str, &str)>, PolarsError> {
         .filter_map(|(movie_id, company_id)| (cn_s.contains(company_id)).then_some(*movie_id))
         .collect();
 
-    let n_m: HashMap<i32, Vec<&str>> =
+    let n_m: HashMap<&i32, &str> =
         n.id.iter()
             .zip(n.gender.iter())
             .zip(n.name.iter())
             .filter_map(|((id, gender), name)| {
                 gender
                     .as_ref()
-                    .filter(|&g| g == "f" && an.find(name.as_bytes()).is_some())
-                    .map(|_| (*id, name))
+                    .filter(|&g| g == "f" && an_predicate.find(name.as_bytes()).is_some())
+                    .map(|_| (id, name.as_str()))
             })
-            .fold(HashMap::default(), |mut acc, (id, name)| {
-                acc.entry(id).or_default().push(name);
-                acc
-            });
+            .collect();
 
     let rt_s: HashSet<i32> = rt
         .role
@@ -113,9 +104,9 @@ pub fn q9c(db: &Data) -> Result<Option<(&str, &str, &str, &str)>, PolarsError> {
             && rt_s.contains(role_id)
             && note_keywords.contains(note.as_str())
             && let Some(alternative_names) = an_m.get(person_id)
-            && let Some(character_names) = chn_m.get(person_role_id)
-            && let Some(names) = n_m.get(&person_id)
-            && let Some(titles) = t_m.get(&movie_id)
+            && let Some(character_name) = chn_m.get(person_role_id)
+            && let Some(name) = n_m.get(&person_id)
+            && let Some(title) = t_m.get(&movie_id)
         {
             res = match res {
                 Some((old_alternative_name, old_character_name, old_name, old_title)) => Some((
@@ -124,19 +115,15 @@ pub fn q9c(db: &Data) -> Result<Option<(&str, &str, &str, &str)>, PolarsError> {
                         .min()
                         .unwrap()
                         .min(&old_alternative_name),
-                    character_names
-                        .iter()
-                        .min()
-                        .unwrap()
-                        .min(&old_character_name),
-                    names.iter().min().unwrap().min(&old_name),
-                    titles.iter().min().unwrap().min(&old_title),
+                    character_name.min(&old_character_name),
+                    name.min(&old_name),
+                    title.min(&old_title),
                 )),
                 None => Some((
                     alternative_names.iter().min().unwrap(),
-                    character_names.iter().min().unwrap(),
-                    names.iter().min().unwrap(),
-                    titles.iter().min().unwrap(),
+                    character_name,
+                    name,
+                    title,
                 )),
             };
         }

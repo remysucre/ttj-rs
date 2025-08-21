@@ -13,15 +13,13 @@ pub fn q25a(db: &Data) -> Result<Option<(&str, &str, &str, &str)>, PolarsError> 
     let n = &db.n;
     let t = &db.t;
 
-    let t_m: HashMap<&i32, Vec<&str>> =
+    let start = Instant::now();
+
+    let t_m: HashMap<&i32, &str> =
         t.id.iter()
             .zip(t.title.iter())
-            .fold(HashMap::default(), |mut acc, (id, title)| {
-                acc.entry(id).or_default().push(title);
-                acc
-            });
-
-    let start = Instant::now();
+            .map(|(id, title)| (id, title.as_str()))
+            .collect();
 
     let mut it1_id: &i32 = &0;
     let mut it2_id: &i32 = &0;
@@ -80,7 +78,7 @@ pub fn q25a(db: &Data) -> Result<Option<(&str, &str, &str, &str)>, PolarsError> 
         })
         .collect();
 
-    let n_m: HashMap<i32, Vec<&str>> =
+    let n_m: HashMap<&i32, &str> =
         n.id.iter()
             .zip(n.gender.iter())
             .zip(n.name.iter())
@@ -88,12 +86,9 @@ pub fn q25a(db: &Data) -> Result<Option<(&str, &str, &str, &str)>, PolarsError> 
                 gender
                     .as_ref()
                     .filter(|gender| gender == &"m")
-                    .map(|_| (*id, name))
+                    .map(|_| (id, name.as_str()))
             })
-            .fold(HashMap::default(), |mut acc, (id, name)| {
-                acc.entry(id).or_default().push(name);
-                acc
-            });
+            .collect();
 
     let target_note: HashSet<&str> = [
         "(writer)",
@@ -118,21 +113,21 @@ pub fn q25a(db: &Data) -> Result<Option<(&str, &str, &str, &str)>, PolarsError> 
             && let Some(mi_info) = mi_m.get(&movie_id)
             && mk_s.contains(&movie_id)
             && let Some(mi_idx_info) = mi_idx_m.get(&movie_id)
-            && let Some(names) = n_m.get(&person_id)
-            && let Some(titles) = t_m.get(&movie_id)
+            && let Some(name) = n_m.get(&person_id)
+            && let Some(title) = t_m.get(&movie_id)
         {
             res = match res {
                 Some((old_mi_info, old_mi_idx_info, old_names, old_titles)) => Some((
                     mi_info.iter().min().unwrap().min(&old_mi_info),
                     mi_idx_info.iter().min().unwrap().min(&old_mi_idx_info),
-                    names.iter().min().unwrap().min(&old_names),
-                    titles.iter().min().unwrap().min(&old_titles),
+                    name.min(&old_names),
+                    title.min(&old_titles),
                 )),
                 None => Some((
                     mi_info.iter().min().unwrap(),
                     mi_idx_info.iter().min().unwrap(),
-                    names.iter().min().unwrap(),
-                    titles.iter().min().unwrap(),
+                    name,
+                    title,
                 )),
             };
         }

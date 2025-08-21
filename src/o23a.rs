@@ -12,7 +12,7 @@ pub fn q23a(db: &Data) -> Result<Option<(&str, &str)>, PolarsError> {
     // FK-PK optimization
     // let ct = &db.ct;
     let it = &db.it;
-    let k = &db.k;
+    // let k = &db.k;
     let kt = &db.kt;
     let mc = &db.mc;
     let mi = &db.mi;
@@ -24,16 +24,9 @@ pub fn q23a(db: &Data) -> Result<Option<(&str, &str)>, PolarsError> {
     let two_hundred = memmem::Finder::new(" 200");
     let one_nine_nine = memmem::Finder::new(" 199");
 
-    let k_s: HashSet<&i32> = k.id.iter().collect();
-
     let start = Instant::now();
 
-    let mk_s: HashSet<&i32> = mk
-        .movie_id
-        .iter()
-        .zip(mk.keyword_id.iter())
-        .filter_map(|(movie_id, keyword_id)| k_s.contains(&keyword_id).then_some(movie_id))
-        .collect();
+    let mk_s: HashSet<&i32> = mk.movie_id.iter().collect();
 
     let cct_id = cct
         .kind

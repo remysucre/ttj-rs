@@ -22,7 +22,7 @@ pub fn q28a(db: &Data) -> Result<Option<(&str, &str, &str)>, PolarsError> {
     let cc = &db.cc;
     let cct = &db.cct;
     let cn = &db.cn;
-    let ct = &db.ct;
+    // let ct = &db.ct;
     let it = &db.it;
     let k = &db.k;
     let kt = &db.kt;
@@ -31,8 +31,6 @@ pub fn q28a(db: &Data) -> Result<Option<(&str, &str, &str)>, PolarsError> {
     let mi_idx = &db.mi_idx;
     let mk = &db.mk;
     let t = &db.t;
-
-    let ct_s: HashSet<&i32> = ct.id.iter().collect();
 
     let two_hundred_p = Finder::new("(200");
     let usa_p = Finder::new("(USA)");
@@ -175,15 +173,13 @@ pub fn q28a(db: &Data) -> Result<Option<(&str, &str, &str)>, PolarsError> {
 
     let mut res: Option<(&str, &str, &str)> = None;
 
-    for (((movie_id, company_id), company_type_id), note) in mc
+    for ((movie_id, company_id), note) in mc
         .movie_id
         .iter()
         .zip(mc.company_id.iter())
-        .zip(mc.company_type_id.iter())
         .zip(mc.note.iter())
     {
         if let Some(note) = note
-            && ct_s.contains(&company_type_id)
             && two_hundred_p.find(note.as_bytes()).is_some()
             && usa_p.find(note.as_bytes()).is_none()
             && let Some(title) = t_m.get(&movie_id)

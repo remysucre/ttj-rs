@@ -14,38 +14,19 @@ pub fn q33c(db: &Data) -> Result<Option<(&str, &str, &str, &str, &str, &str)>, P
     let ml = &db.ml;
     let t = &db.t;
 
-    let cn2_m: HashMap<&i32, &str> =
-        cn.id
-            .iter()
-            .zip(cn.name.iter())
-            .fold(HashMap::default(), |mut acc, (k, v)| {
-                acc.insert(k, v.as_str());
-                acc
-            });
-
-    let mc2_m: HashMap<&i32, Vec<&i32>> =
-        mc.movie_id
-            .iter()
-            .zip(mc.company_id.iter())
-            .fold(HashMap::default(), |mut acc, (k, v)| {
-                acc.entry(k).or_default().push(v);
-                acc
-            });
-
     let start = Instant::now();
 
-    let cn1_m: ahash::HashMap<&i32, &str> = cn
-        .id
-        .iter()
-        .zip(cn.name.iter())
-        .zip(cn.country_code.iter())
-        .filter_map(|((id, name), country_code)| {
-            country_code
-                .as_deref()
-                .filter(|&code| code != "[us]")
-                .map(|_| (id, name.as_str()))
-        })
-        .collect();
+    let mut cn1_m: HashMap<&i32, &str> = HashMap::default();
+    let mut cn2_m: HashMap<&i32, &str> = HashMap::default();
+
+    for ((id, name), country_code) in cn.id.iter().zip(cn.name.iter()).zip(cn.country_code.iter()) {
+        cn2_m.insert(id, name.as_str());
+        if let Some(country_code) = country_code
+            && country_code != "[us]"
+        {
+            cn1_m.insert(id, name.as_str());
+        }
+    }
 
     let it1_id: &i32 = it
         .info
@@ -66,7 +47,7 @@ pub fn q33c(db: &Data) -> Result<Option<(&str, &str, &str, &str, &str, &str)>, P
     {
         if it1_id == it_id {
             mi_idx1_m.insert(movie_id, info);
-            if info.as_str() < "3.5" && mc2_m.contains_key(&movie_id) {
+            if info.as_str() < "3.5" {
                 mi_idx2_m.insert(movie_id, info);
             }
         }
@@ -81,54 +62,43 @@ pub fn q33c(db: &Data) -> Result<Option<(&str, &str, &str, &str, &str, &str)>, P
         .filter_map(|(kind, id)| target_kind_type.contains(kind.as_str()).then_some(id))
         .collect();
 
-    let mc1_m: HashMap<&i32, Vec<&str>> = mc
-        .company_id
-        .iter()
-        .zip(mc.movie_id.iter())
-        .filter_map(|(company_id, movie_id)| {
-            if let Some(name) = cn1_m.get(&company_id)
-                && mi_idx1_m.contains_key(&movie_id)
-            {
-                Some((movie_id, name))
-            } else {
-                None
-            }
-        })
-        .fold(HashMap::default(), |mut acc, (movie_id, name)| {
-            acc.entry(movie_id).or_default().push(name);
-            acc
-        });
+    let mut mc1_m: HashMap<i32, Vec<&str>> = HashMap::default();
+    let mut mc2_m: HashMap<i32, Vec<&str>> = HashMap::default();
 
-    let t1_m: HashMap<&i32, &str> =
-        t.id.iter()
-            .zip(t.kind_id.iter())
-            .zip(t.title.iter())
-            .filter_map(|((id, kind_id), title)| {
-                if kt_s.contains(&kind_id) && mc1_m.contains_key(&id) {
-                    Some((id, title.as_str()))
-                } else {
-                    None
-                }
-            })
-            .collect();
+    for (company_id, movie_id) in mc.company_id.iter().zip(mc.movie_id.iter()) {
+        if let Some(name) = cn1_m.get(&company_id)
+            && mi_idx1_m.contains_key(&movie_id)
+        {
+            mc1_m.entry(*movie_id).or_default().push(name);
+        }
+        if mi_idx2_m.contains_key(&movie_id)
+            && let Some(name) = cn2_m.get(&company_id)
+        {
+            mc2_m.entry(*movie_id).or_default().push(name);
+        }
+    }
 
-    let t2_m: HashMap<&i32, &str> =
+    let mut t1_m: HashMap<&i32, &str> = HashMap::default();
+    let mut t2_m: HashMap<&i32, &str> = HashMap::default();
+
+    for (((id, kind_id), title), production_year) in
         t.id.iter()
             .zip(t.kind_id.iter())
             .zip(t.title.iter())
             .zip(t.production_year.iter())
-            .filter_map(|(((id, kind_id), title), production_year)| {
-                if let Some(production_year) = production_year
-                    && kt_s.contains(&kind_id)
-                    && (2000..=2010).contains(production_year)
-                    && mi_idx2_m.contains_key(&id)
-                {
-                    Some((id, title.as_str()))
-                } else {
-                    None
-                }
-            })
-            .collect();
+    {
+        if kt_s.contains(&kind_id) {
+            if mc1_m.contains_key(&id) {
+                t1_m.insert(id, title.as_str());
+            }
+            if let Some(production_year) = production_year
+                && (2000..=2010).contains(production_year)
+                && mc2_m.contains_key(&id)
+            {
+                t2_m.insert(id, title.as_str());
+            }
+        }
+    }
 
     let target_link: ahash::HashSet<&str> =
         ["sequel", "follows", "followed by"].into_iter().collect();
@@ -154,30 +124,26 @@ pub fn q33c(db: &Data) -> Result<Option<(&str, &str, &str, &str, &str, &str)>, P
             && let Some(t1) = t1_m.get(&movie_id)
             && let Some(t2) = t2_m.get(&linked_movie_id)
             && let Some(c1s) = mc1_m.get(&movie_id)
-            && let Some(c2ids) = mc2_m.get(&linked_movie_id)
+            && let Some(c2s) = mc2_m.get(&linked_movie_id)
         {
-            for c2 in c2ids {
-                if let Some(n2) = cn2_m.get(c2) {
-                    res = match res {
-                        Some((old_n1, old_n2, old_r1, old_r2, old_t1, old_t2)) => Some((
-                            c1s.iter().min().unwrap().min(&old_n1),
-                            old_n2.min(n2),
-                            old_r1.min(mi_idx1_info),
-                            old_r2.min(mi_idx2_info),
-                            old_t1.min(t1),
-                            old_t2.min(t2),
-                        )),
-                        None => Some((
-                            c1s.iter().min().unwrap(),
-                            n2,
-                            mi_idx1_info,
-                            mi_idx2_info,
-                            t1,
-                            t2,
-                        )),
-                    };
-                }
-            }
+            res = match res {
+                Some((old_n1, old_n2, old_r1, old_r2, old_t1, old_t2)) => Some((
+                    c1s.iter().min().unwrap().min(&old_n1),
+                    c2s.iter().min().unwrap().min(&old_n2),
+                    old_r1.min(mi_idx1_info),
+                    old_r2.min(mi_idx2_info),
+                    old_t1.min(t1),
+                    old_t2.min(t2),
+                )),
+                None => Some((
+                    c1s.iter().min().unwrap(),
+                    c2s.iter().min().unwrap(),
+                    mi_idx1_info,
+                    mi_idx2_info,
+                    t1,
+                    t2,
+                )),
+            };
         }
     }
 

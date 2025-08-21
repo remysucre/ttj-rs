@@ -17,8 +17,6 @@ pub fn q19b(db: &Data) -> Result<Option<(&str, &str)>, PolarsError> {
     let rt = &db.rt;
     let t = &db.t;
 
-    let chn_s: HashSet<i32> = chn.id.iter().map(|id| *id).collect();
-
     let angel = memmem::Finder::new("Angel");
     let two_hundred = memmem::Finder::new("(200");
     let worldwide = memmem::Finder::new("(worldwide)");
@@ -30,6 +28,8 @@ pub fn q19b(db: &Data) -> Result<Option<(&str, &str)>, PolarsError> {
     let kung_fu_panda = memmem::Finder::new("Kung Fu Panda");
 
     let start = Instant::now();
+
+    let chn_s: HashSet<i32> = chn.id.iter().map(|id| *id).collect();
 
     let cn_s: HashSet<i32> = cn
         .country_code
@@ -105,7 +105,8 @@ pub fn q19b(db: &Data) -> Result<Option<(&str, &str)>, PolarsError> {
             let info_bytes = info.as_bytes();
             (it_id == *info_type_id
                 && ((japan.find(info_bytes).is_some() && y2007.find(info_bytes).is_some())
-                    || (usa2.find(info_bytes).is_some() && y2008.find(info_bytes).is_some())))
+                    || (usa2.find(info_bytes).is_some() && y2008.find(info_bytes).is_some()))
+                && mc_s.contains(movie_id))
             .then_some(*movie_id)
         })
         .collect::<HashSet<_>>();
@@ -120,7 +121,6 @@ pub fn q19b(db: &Data) -> Result<Option<(&str, &str)>, PolarsError> {
                         kung_fu_panda.find(title.as_bytes()).is_some()
                             && (2007..=2008).contains(production_year)
                             && mi_s.contains(&id)
-                            && mc_s.contains(&id)
                     })
                     .map(|_| (*id, title))
             })

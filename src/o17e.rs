@@ -20,13 +20,13 @@ pub fn q17e(db: &Data) -> Result<Option<&str>, PolarsError> {
     //     .flatten()
     //     .collect();
 
+    let start = Instant::now();
+
     let n_m: HashMap<&i32, &str> =
         n.id.iter()
             .zip(n.name.iter())
             .map(|(id, name)| (id, name.as_str()))
             .collect();
-
-    let start = Instant::now();
 
     let k_id = k
         .keyword

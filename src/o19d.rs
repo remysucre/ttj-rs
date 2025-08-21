@@ -16,11 +16,11 @@ pub fn q19d(db: &Data) -> Result<Option<(&str, &str)>, PolarsError> {
     let rt = &db.rt;
     let t = &db.t;
 
+    let start = Instant::now();
+
     let chn_s: HashSet<i32> = chn.id.iter().map(|id| *id).collect();
 
     let an_s: HashSet<&i32> = an.person_id.iter().collect();
-
-    let start = Instant::now();
 
     let cn_s: HashSet<i32> = cn
         .country_code
@@ -80,7 +80,9 @@ pub fn q19d(db: &Data) -> Result<Option<(&str, &str)>, PolarsError> {
         .movie_id
         .iter()
         .zip(mi.info_type_id.iter())
-        .filter_map(|(movie_id, info_type_id)| (it_id == info_type_id).then_some(movie_id))
+        .filter_map(|(movie_id, info_type_id)| {
+            (it_id == info_type_id && mc_s.contains(movie_id)).then_some(movie_id)
+        })
         .collect();
 
     let t_m: HashMap<&i32, Vec<&str>> =
@@ -91,7 +93,6 @@ pub fn q19d(db: &Data) -> Result<Option<(&str, &str)>, PolarsError> {
                 if let Some(production_year) = production_year
                     && *production_year > 2000
                     && mi_s.contains(&movie_id)
-                    && mc_s.contains(&movie_id)
                 {
                     Some((movie_id, title))
                 } else {

@@ -12,14 +12,12 @@ pub fn q23c(db: &Data) -> Result<Option<(&str, &str)>, PolarsError> {
     // FK-PK optimization
     // let ct = &db.ct;
     let it = &db.it;
-    let k = &db.k;
+    // let k = &db.k;
     let kt = &db.kt;
     let mc = &db.mc;
     let mi = &db.mi;
     let mk = &db.mk;
     let t = &db.t;
-
-    let k_s: HashSet<&i32> = k.id.iter().collect();
 
     let internet = Finder::new("internet");
     let usa_colon = memmem::Finder::new("USA:");
@@ -28,12 +26,7 @@ pub fn q23c(db: &Data) -> Result<Option<(&str, &str)>, PolarsError> {
 
     let start = Instant::now();
 
-    let mk_s: HashSet<&i32> = mk
-        .movie_id
-        .iter()
-        .zip(mk.keyword_id.iter())
-        .filter_map(|(movie_id, keyword_id)| k_s.contains(&keyword_id).then_some(movie_id))
-        .collect();
+    let mk_s: HashSet<&i32> = mk.movie_id.iter().collect();
 
     let cct_id = cct
         .kind

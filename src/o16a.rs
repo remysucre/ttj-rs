@@ -12,14 +12,14 @@ pub fn q16a(db: &Data) -> Result<Option<(&str, &str)>, PolarsError> {
     let t = &db.t;
     let mc = &db.mc;
 
+    let start = Instant::now();
+
     let an_m: HashMap<&i32, &str> = an
         .person_id
         .iter()
         .zip(an.name.iter())
         .map(|(person_id, name)| (person_id, name.as_str()))
         .collect();
-
-    let start = Instant::now();
 
     let k_id = k
         .keyword

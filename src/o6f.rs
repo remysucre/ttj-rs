@@ -10,16 +10,13 @@ pub fn q6f(db: &Data) -> Result<Option<(&str, &str, &str)>, PolarsError> {
     let n = &db.n;
     let t = &db.t;
 
-    let n_m: HashMap<i32, Vec<&str>> =
+    let start = Instant::now();
+
+    let n_m: HashMap<&i32, &str> =
         n.id.iter()
             .zip(n.name.iter())
-            .map(|(id, name)| (*id, name.as_str()))
-            .fold(HashMap::new(), |mut acc, (id, name)| {
-                acc.entry(id).or_insert_with(Vec::new).push(name);
-                acc
-            });
-
-    let start = Instant::now();
+            .map(|(id, name)| (id, name.as_str()))
+            .collect();
 
     let target_keywords: ahash::HashSet<&str> = [
         "superhero",
@@ -74,17 +71,17 @@ pub fn q6f(db: &Data) -> Result<Option<(&str, &str, &str)>, PolarsError> {
     for (pid, mid) in ci.person_id.iter().zip(ci.movie_id.iter()) {
         if let Some(title) = t_m.get(&mid)
             && let Some(kids) = mk_m.get(&mid)
-            && let Some(names) = n_m.get(&pid)
+            && let Some(name) = n_m.get(&pid)
         {
             for kid in kids {
                 if let Some(keyword) = k_m.get(kid) {
                     res = match res {
                         Some((old_name, old_keyword, old_title)) => Some((
-                            names.iter().min().unwrap().min(&old_name),
+                            name.min(&old_name),
                             keyword.min(&old_keyword),
                             title.min(&old_title),
                         )),
-                        None => Some((names.iter().min().unwrap(), keyword, title)),
+                        None => Some((name, keyword, title)),
                     };
                 }
             }

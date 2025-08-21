@@ -19,6 +19,8 @@ pub fn q9b(db: &Data) -> Result<Option<(&str, &str, &str, &str)>, PolarsError> {
     let worldwide = memmem::Finder::new("(worldwide)");
     let angel = memmem::Finder::new("Angel");
 
+    let start = Instant::now();
+
     let an_m: HashMap<i32, Vec<&str>> = an.person_id.iter().zip(an.name.iter()).fold(
         HashMap::default(),
         |mut acc, (person_id, name)| {
@@ -27,16 +29,12 @@ pub fn q9b(db: &Data) -> Result<Option<(&str, &str, &str, &str)>, PolarsError> {
         },
     );
 
-    let chn_m: HashMap<i32, Vec<&str>> =
-        chn.id
-            .iter()
-            .zip(chn.name.iter())
-            .fold(HashMap::default(), |mut acc, (id, name)| {
-                acc.entry(*id).or_default().push(name);
-                acc
-            });
-
-    let start = Instant::now();
+    let chn_m: HashMap<&i32, &str> = chn
+        .id
+        .iter()
+        .zip(chn.name.iter())
+        .map(|(id, name)| (id, name.as_str()))
+        .collect();
 
     let cn_s: HashSet<i32> = cn
         .country_code
@@ -67,7 +65,7 @@ pub fn q9b(db: &Data) -> Result<Option<(&str, &str, &str, &str)>, PolarsError> {
         })
         .collect();
 
-    let n_m: HashMap<i32, Vec<&str>> =
+    let n_m: HashMap<i32, &str> =
         n.id.iter()
             .zip(n.gender.iter())
             .zip(n.name.iter())
@@ -75,12 +73,9 @@ pub fn q9b(db: &Data) -> Result<Option<(&str, &str, &str, &str)>, PolarsError> {
                 gender
                     .as_ref()
                     .filter(|gender| gender == &"f" && angel.find(name.as_bytes()).is_some())
-                    .map(|_| (*id, name))
+                    .map(|_| (*id, name.as_str()))
             })
-            .fold(HashMap::default(), |mut acc, (id, name)| {
-                acc.entry(id).or_default().push(name);
-                acc
-            });
+            .collect();
 
     let rt_s: HashSet<i32> = rt
         .role
@@ -89,19 +84,16 @@ pub fn q9b(db: &Data) -> Result<Option<(&str, &str, &str, &str)>, PolarsError> {
         .filter_map(|(role, id)| (role == "actress").then_some(*id))
         .collect();
 
-    let t_m: HashMap<i32, Vec<&str>> =
+    let t_m: HashMap<&i32, &str> =
         t.id.iter()
             .zip(t.production_year.iter())
             .zip(t.title.iter())
             .filter_map(|((id, production_year), title)| {
                 production_year
                     .filter(|production_year| (2007..=2010).contains(production_year))
-                    .map(|_| (*id, title))
+                    .map(|_| (id, title.as_str()))
             })
-            .fold(HashMap::default(), |mut acc, (id, title)| {
-                acc.entry(id).or_default().push(title);
-                acc
-            });
+            .collect();
 
     let mut res: Option<(&str, &str, &str, &str)> = None;
 
@@ -119,9 +111,9 @@ pub fn q9b(db: &Data) -> Result<Option<(&str, &str, &str, &str)>, PolarsError> {
             && rt_s.contains(&role_id)
             && note == "(voice)"
             && let Some(alternative_names) = an_m.get(&person_id)
-            && let Some(character_names) = chn_m.get(&person_role_id)
-            && let Some(names) = n_m.get(&person_id)
-            && let Some(titles) = t_m.get(&movie_id)
+            && let Some(character_name) = chn_m.get(&person_role_id)
+            && let Some(name) = n_m.get(&person_id)
+            && let Some(title) = t_m.get(&movie_id)
         {
             res = match res {
                 Some((old_alternative_name, old_character_name, old_name, old_title)) => Some((
@@ -130,19 +122,15 @@ pub fn q9b(db: &Data) -> Result<Option<(&str, &str, &str, &str)>, PolarsError> {
                         .min()
                         .unwrap()
                         .min(&old_alternative_name),
-                    character_names
-                        .iter()
-                        .min()
-                        .unwrap()
-                        .min(&old_character_name),
-                    names.iter().min().unwrap().min(&old_name),
-                    titles.iter().min().unwrap().min(&old_title),
+                    character_name.min(&old_character_name),
+                    name.min(&old_name),
+                    title.min(&old_title),
                 )),
                 None => Some((
                     alternative_names.iter().min().unwrap(),
-                    character_names.iter().min().unwrap(),
-                    names.iter().min().unwrap(),
-                    titles.iter().min().unwrap(),
+                    character_name,
+                    name,
+                    title,
                 )),
             };
         }

@@ -18,6 +18,8 @@ pub fn q9a(db: &Data) -> Result<Option<(&str, &str, &str)>, PolarsError> {
     let worldwide = Finder::new("(worldwide)");
     let ang = Finder::new("Ang");
 
+    let start = Instant::now();
+
     let an_m: HashMap<&i32, Vec<&str>> = an.person_id.iter().zip(an.name.iter()).fold(
         HashMap::default(),
         |mut acc, (person_id, name)| {
@@ -26,16 +28,12 @@ pub fn q9a(db: &Data) -> Result<Option<(&str, &str, &str)>, PolarsError> {
         },
     );
 
-    let chn_m: HashMap<&i32, Vec<&str>> =
-        chn.id
-            .iter()
-            .zip(chn.name.iter())
-            .fold(HashMap::default(), |mut acc, (chn_id, name)| {
-                acc.entry(chn_id).or_default().push(name);
-                acc
-            });
-
-    let start = Instant::now();
+    let chn_m: HashMap<&i32, &str> = chn
+        .id
+        .iter()
+        .zip(chn.name.iter())
+        .map(|(id, title)| (id, title.as_str()))
+        .collect();
 
     let cn_s: HashSet<&i32> = cn
         .country_code
@@ -85,7 +83,7 @@ pub fn q9a(db: &Data) -> Result<Option<(&str, &str, &str)>, PolarsError> {
         .map(|(_, id)| id)
         .unwrap();
 
-    let t_m: HashMap<&i32, Vec<&str>> =
+    let t_m: HashMap<&i32, &str> =
         t.id.iter()
             .zip(t.production_year.iter())
             .zip(t.title.iter())
@@ -93,15 +91,12 @@ pub fn q9a(db: &Data) -> Result<Option<(&str, &str, &str)>, PolarsError> {
                 if let Some(production_year) = production_year
                     && (2005..=2015).contains(production_year)
                 {
-                    Some((movie_id, title))
+                    Some((movie_id, title.as_str()))
                 } else {
                     None
                 }
             })
-            .fold(HashMap::default(), |mut acc, (movie_id, title)| {
-                acc.entry(movie_id).or_default().push(title);
-                acc
-            });
+            .collect();
 
     let target_note: HashSet<&str> = [
         "(voice)",
@@ -128,9 +123,9 @@ pub fn q9a(db: &Data) -> Result<Option<(&str, &str, &str)>, PolarsError> {
             && n_s.contains(&person_id)
             && rt_id == role_id
             && target_note.contains(note.as_str())
-            && let Some(titles) = t_m.get(&movie_id)
+            && let Some(title) = t_m.get(&movie_id)
             && let Some(alternative_names) = an_m.get(&person_id)
-            && let Some(character_names) = chn_m.get(&person_role_id)
+            && let Some(character_name) = chn_m.get(&person_role_id)
         {
             res = match res {
                 Some((old_alternative_name, old_character_name, old_title)) => Some((
@@ -139,17 +134,13 @@ pub fn q9a(db: &Data) -> Result<Option<(&str, &str, &str)>, PolarsError> {
                         .min()
                         .unwrap()
                         .min(&old_alternative_name),
-                    character_names
-                        .iter()
-                        .min()
-                        .unwrap()
-                        .min(&old_character_name),
-                    titles.iter().min().unwrap().min(&old_title),
+                    character_name.min(&old_character_name),
+                    title.min(&old_title),
                 )),
                 None => Some((
                     alternative_names.iter().min().unwrap(),
-                    character_names.iter().min().unwrap(),
-                    titles.iter().min().unwrap(),
+                    character_name,
+                    title,
                 )),
             };
         }
