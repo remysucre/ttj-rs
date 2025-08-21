@@ -12,12 +12,6 @@ pub fn q32b(db: &Data) -> Result<Option<(&str, &str, &str)>, PolarsError> {
 
     let elapsed = Instant::now();
 
-    let t1_m: HashMap<&i32, &str> =
-        t.id.iter()
-            .zip(t.title.iter())
-            .map(|(id, title)| (id, title.as_str()))
-            .collect();
-
     let lt_m: HashMap<&i32, &str> = lt
         .id
         .iter()
@@ -37,10 +31,14 @@ pub fn q32b(db: &Data) -> Result<Option<(&str, &str, &str)>, PolarsError> {
         .keyword_id
         .iter()
         .zip(mk.movie_id.iter())
-        .filter_map(|(keyword_id, movie_id)| {
-            (k_id == keyword_id && t1_m.contains_key(&movie_id)).then_some(movie_id)
-        })
+        .filter_map(|(keyword_id, movie_id)| (k_id == keyword_id).then_some(movie_id))
         .collect();
+
+    let t1_m: HashMap<&i32, &str> =
+        t.id.iter()
+            .zip(t.title.iter())
+            .filter_map(|(id, title)| mk_s.contains(id).then_some((id, title.as_str())))
+            .collect();
 
     let mut res: Option<(&str, &str, &str)> = None;
 
